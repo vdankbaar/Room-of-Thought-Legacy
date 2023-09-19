@@ -3,6 +3,7 @@ const pathLib = require('path');
 var express = require("express");
 var bodyParser = require("body-parser");
 const fileUpload = require('express-fileupload');
+
 var app = express();
 let dataFolder = __dirname+"/data/";
 let publicFolder = __dirname+"/client/public/";
@@ -20,7 +21,7 @@ let playerNameList = [];
 
 app.post("/api", function(request, response) {
     let playerName = GetCookie(request, "playerName");
-    if (!playerNameList.includes(playerName))
+    if (!playerNameList.includes(playerName) && playerName!="")
     {
         console.log("A new player has connected: "+playerName);
         playerNameList.push(playerName);
@@ -36,12 +37,22 @@ app.post("/api", function(request, response) {
             currentMap.removedDrawings = removedDrawings;
             response.send(JSON.stringify(currentMap));
             break;
+        
+        case "setMapData":
+            LoadCurrentMap();
+            currentMap.map = request.body.map;
+            currentMap.x = request.body.x;
+            currentMap.y = request.body.y;
+            currentMap.offsetX = request.body.offsetX;
+            currentMap.offsetY = request.body.offsetY;
+            SaveCurrentMap();
+            response.send(true);
+            break;
 
         case "changeSelectedMap":
             selectedMap = request.body.selectedMap;
             response.send(true);
             break
-
 
         case "createToken":
             if (minMax(request.body.size, 0, 20))
@@ -53,6 +64,7 @@ app.post("/api", function(request, response) {
                 tmpToken.image = request.body.image;
                 tmpToken.size = request.body.size;
                 tmpToken.status = request.body.status;
+                tmpToken.layer = request.body.layer;
                 if (request.body.hidden!=null)
                     tmpToken.hidden = request.body.hidden;
                 currentMap.tokens.push(tmpToken);
@@ -64,7 +76,8 @@ app.post("/api", function(request, response) {
                 response.send("[false]");
             }
             break;
-        
+
+
         case "setTokenHidden":
             LoadCurrentMap();
             for (let i in currentMap.tokens)
@@ -91,6 +104,8 @@ app.post("/api", function(request, response) {
                     {
                         currentMap.tokens[i].status = request.body.status;
                         currentMap.tokens[i].size = request.body.size;
+                        currentMap.tokens[i].layer = request.body.layer;
+                        currentMap.tokens[i].initiative = request.body.initiative;
                     }
                 }
             }
@@ -319,12 +334,18 @@ app.post('/upload', function(req, res) {
 app.use(express.static('client'));
 app.listen(80);
 
+
 function LoadCurrentMap() 
 {
     currentMap = JSON.parse(readFile("data/"+selectedMap+".json"));
+    if (currentMap.offsetX==null)
+        currentMap.offsetX=0;
+    if (currentMap.offsetY==null)
+        currentMap.offsetY=0;
     currentMap.mapName = selectedMap;
     currentMap.tokenList = readDirectory(publicFolder+"tokens", "jpg|png");
     currentMap.dmTokenList = readDirectory(publicFolder+"dmTokens", "jpg|png");
+    currentMap.mapSourceList = readDirectory(publicFolder+"maps", "jpg|png");
     currentMap.maps = ReturnMaps();
 }
 

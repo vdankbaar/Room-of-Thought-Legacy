@@ -4,49 +4,54 @@
     </head>
     
     <body>
-        <div id="tokens">
+        <div id="board"> <!--Als shit hierdoor gebroken is: Haal alles uit de board div en verwijder de #board CSS-->
+            <div id="tokens"></div>
+            <div id="blockers"></div>
+            <canvas id="shapeMap"></canvas>
+            <canvas id="map"></canvas>
+            <canvas id="hitboxMap"></canvas>
+            <img id="hiddenMapLoader" width="0" height="0" src="">
+            <ul id="contextMenu" class='custom-menu' oncontextmenu="event.preventDefault();"></ul>
+            <ul id="subContextMenu" class='custom-menu' oncontextmenu="event.preventDefault();"></ul>
         </div>
-        <div id="blockers">
-            <canvas class="blocker" width="100" height="100"></canvas>
-        </div>
-        <div id="testBlocker">
-            <div></div>
-        </div>
-        <img id="hiddenMapLoader" width="0" height="0" src="">
-        <canvas id="shapeMap" width="1280" height="720"></canvas>
-        <canvas id="map" width="1280" height="720"></canvas>
-        <canvas id="hitboxMap" width="1280" height="720"></canvas>
-        <ul id="contextMenu" class='custom-menu' oncontextmenu="event.preventDefault();"></ul>
-        <ul id="subContextMenu" class='custom-menu' oncontextmenu="event.preventDefault();"></ul>
-        <div id="buttonDiv">
-            <input type="button" id="toggleGridButton" value="Toggle grid"></input>
-            <br>
+        <div id="sideMenu">
+            <div id="toggleButtons">
+                <button id="toggleGridButton"><object type="image/svg+xml" data="images/grid_on-24px.svg"></object></button>
+                <button id="toggleSnapButton"><object type="image/svg+xml" data="images/magnet-solid.svg"></object></button>
+                <button id="toggleSettingsButton" class="dmOnly"><object type="image/svg+xml" data="images/settings-24px.svg"></object></button>
+            </div>
+            <div id="mapOptionsMenu">
+                <label for="mapSource">Current map image file:</label>
+                <select id="mapSource"></select>
+                <div id="optionsGridDisplay">
+                    <label for="mapX">Grid X:<input type="number" id="mapX"></label>
+                    <label for="mapY">Grid Y:<input type="number" id="mapY"></label>
+                    <label for="offsetX">X offset:<input type="number" id="offsetX"></label>
+                    <label for="offsetY">Y offset:<input type="number" id="offsetY"></label>
+                </div>
+                <input id="importMap" class="dmOnly" type="button" value="Upload JSON file">
+                <input id="exportMap" class="dmOnly" type="button" value="Export JSON file">
+            </div>
             <p style="margin: 0px; font-size: 1vw;">Draw Color:</p>
             <input type="color" id="shapeColorPicker" value="#ff0000"></input>
-            <br>
-            <input id="importMap" type="button" class="btn" value="Upload New Map"></label>
-            <br>
-            <input type="button" id="exportMap" class="sideButtons" value="Export Map"></button>
-            <br>
-            <form id="fileForm" style="visibility:hidden;" action='/upload' method='post' encType="multipart/form-data" target="hiddenFrame">
-                <input id="fileImport" name="mapFile" type="file" accept=".json">
-                <br>
-                <input id="hiddenDMCheckbox" name="isDM" type="checkbox">
-                <br>
-                <input type="submit" id="submitMap">
-            </form>
         </div>
         <script>
+            let hbMap = document.getElementById("hitboxMap");
             function showHitmap() {
-                let hbMap = document.getElementById("hitboxMap");
                 hbMap.style.top = document.getElementById("map").clientHeight;
             }
             function hideHitmap() {
-                let hbMap = document.getElementById("hitboxMap");
                 hbMap.style.top = 0;
             }
         </script>
+        <iframe style="display:none;" id="hiddenFrame"></iframe>
+        <script type="module" src="map.js"></script>
+        <form id="fileForm" style="visibility:hidden;" action='/upload' method='post' encType="multipart/form-data" target="hiddenFrame">
+            <input id="fileImport" name="mapFile" type="file" accept=".json">
+            <br>
+            <input id="hiddenDMCheckbox" name="isDM" type="checkbox">
+            <br>
+            <input type="submit" id="submitMap">
+        </form>
     </body>
-    <script type="module" src="map.js"></script>
-    <iframe name="hiddenFrame" width="0" height="0" style="display: none;"></iframe>
 </html>

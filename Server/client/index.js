@@ -1,5 +1,17 @@
 let playerNameInput = document.getElementById("playerNameInput");
 let isDMInput = document.getElementById("isDMInput");
+document.getElementById("enterButton").onclick = function() {
+    if (isDMInput.checked)
+    {
+        if (confirm("Are you sure that you are the DM?"))
+            window.location='map.html';
+        else
+            isDMInput.checked = false;
+    }
+    else
+        window.location='map.html';
+}
+
 window.onload = function() {
     playerNameInput.value = getCookie("playerName");
     if (getCookie("isDM")==1)
@@ -7,15 +19,11 @@ window.onload = function() {
     else if (getCookie("isDM")==0)
         isDMInput.checked = false;
     else
-    {
         setCookie("isDM", 0);
-    }
 }
 
-playerNameInput.onchange = function() 
-{
+playerNameInput.onchange = function() {
     setCookie("playerName", playerNameInput.value);
-    console.log(playerNameInput.value);
 }
 
 isDMInput.onchange = function() {
