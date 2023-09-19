@@ -36,6 +36,12 @@ let noteEditor = document.getElementById("notesEditor");
 let detailsScreen = document.getElementById("detailsScreen");
 let gridColorPicker = document.getElementById("gridColorPicker");
 let mapSelect = document.getElementById("mapSelect");
+let bulkTokenSelect = document.getElementById("bulkTokenSelect");
+let bulkTokenNameInput = document.getElementById("bulkTokenNameInput");
+let bulkTokenAmountInput = document.getElementById("bulkTokenAmountInput");
+let bulkTokenConfirm = document.getElementById("bulkTokenConfirm");
+let bulkInitGeneratorScreen = document.getElementById("bulkInitGeneratorScreen");
+let antiBlocker = document.getElementById("antiBlocker");
 let noteArea = noteEditor.children[0];
 let mapCanvas;
 let shapeCanvas;
@@ -50,6 +56,7 @@ let circleMarkers = {x: 0, y: 0, radius: 0};
 let squareMarkers = {x: 0, y: 0, width: 0, height: 0};
 let lineMarkers = {x: 0, y: 0, destX: 0, destY: 0, range: 100};
 let coneMarkers = {x: 0, y: 0, range: 100, tokenSize: 1};
+let bulkInitSettings = {};
 let isDM = false;
 let clientName = getCookie("playerName");
 if (clientName == "")
@@ -60,6 +67,7 @@ let isPlacingSquare = false;
 let isPlacingLine = false;
 let isPlacingCone = false;
 let isDraggingBlocker = false;
+let blockerEditMode = false;
 let draggedBlocker = {x: 0, y: 0};
 let hiddenMapImportButton = document.getElementById("fileImport");
 let isMovingShape = false;
@@ -75,8 +83,10 @@ let oldData;
 let dataIsIdentical = false;
 let resizingSideMenu = false;
 let controlPressed = false;
+let placingBulkOrigin = false;
 let baseTokenIndex = 4;
 let previousSelectedBlocker;
+let draggingToken = -1;
 
 window.onload = function() {
     if (getCookie("isDM") == 1)
@@ -111,12 +121,10 @@ async function Setup() {
     }
     if (isDM)
     {
-        document.body.style.setProperty("--blocker-color", "#00000080");
         baseTokenIndex = 54;
     }
     else
     {
-        document.body.style.setProperty("--blocker-color", "#000000FF");
         baseTokenIndex = 4;
     }
     drawCanvas();
@@ -125,7 +133,6 @@ async function Setup() {
 async function updateMapData(force) 
 {
     mapData = await requestServer({c: "currentMapData", x: loadedMap.naturalWidth, y: loadedMap.naturalHeight});
-    GridColor = mapData.gridColor;
     let stringData = JSON.stringify(mapData);
     if (oldData != stringData || force)
     {
@@ -141,9 +148,34 @@ async function updateMapData(force)
     
     if (!dataIsIdentical)
     {
+        GridColor = mapData.gridColor;
+        if (mapData.antiBlockerOn)
+        {
+            document.body.style.setProperty("--blocker-color", "#00000000");
+            if (isDM)
+            {
+                document.body.style.setProperty("--antiBlocker-color", "#00000080");
+            }
+            else
+            {
+                document.body.style.setProperty("--antiBlocker-color", "#000000FF");
+            }
+            antiBlocker.style.display="";
+        }
+        else
+        {
+            if (isDM)
+            {
+                document.body.style.setProperty("--blocker-color", "#00000080");    
+            }
+            else
+            {
+                document.body.style.setProperty("--blocker-color", "#000000FF");
+            }
+            antiBlocker.style.display="none";
+        }
         if (isDM) { document.getElementById("exportMap").title = mapData.mapName + " : " + mapData.map; }
         loadedMap.src = "/public/maps/" + mapData.map;
-        
         mapSelect.innerHTML = "";
         for (let i = 0; i < mapData.maps.length; i++)
         {
@@ -153,7 +185,29 @@ async function updateMapData(force)
             mapSelect.append(tmpOption);
         }
         mapSelect.value = mapData.mapName;
-        
+
+        if (document.activeElement != bulkTokenSelect)
+        {
+            bulkTokenSelect.innerHTML = "";
+            let tmpOption = document.createElement("option");
+            tmpOption.value = "number";
+            tmpOption.innerText = "Auto number";
+            bulkTokenSelect.append(tmpOption);
+            for (let i = 0; i < mapData.tokenList.length; i++)
+            {
+                let tmpOption = document.createElement("option");
+                tmpOption.value = mapData.tokenList[i];
+                tmpOption.innerText = mapData.tokenList[i];
+                bulkTokenSelect.append(tmpOption);
+            }
+            for (let i = 0; i < mapData.dmTokenList.length; i++)
+            {
+                let tmpOption = document.createElement("option");
+                tmpOption.value = mapData.dmTokenList[i];
+                tmpOption.innerText = mapData.dmTokenList[i];
+                bulkTokenSelect.append(tmpOption);
+            }
+        }
         if (document.activeElement != mapSourceSelect)
         {
             mapSourceSelect.innerHTML = "";
@@ -214,6 +268,12 @@ document.getElementById("toggleSettingsButton").onclick = function() {
     else
         mapOptionsMenu.style.display = "flex";
     displayMapSettings =! displayMapSettings;
+    updateButtonColors();
+}
+
+document.getElementById("toggleBlockerEditing").onclick = function() {
+    blockerEditMode = !blockerEditMode;
+    updateMapData(true);
     updateButtonColors();
 }
 
@@ -300,6 +360,8 @@ function drawCanvas(force)
         clearCanvas();
         map.width = loadedMap.naturalWidth;
         map.height = loadedMap.naturalHeight;
+        antiBlocker.style.width = loadedMap.naturalWidth;
+        antiBlocker.style.height = loadedMap.naturalHeight;
         mapCanvas.strokeStyle = GridColor;
         mapCanvas.lineWidth = GridLineWidth;
         shapeMap.width = loadedMap.naturalWidth;
@@ -478,6 +540,10 @@ function drawBlockers()
 {
     if (!isDraggingBlocker)
     {
+        if (mapData.antiBlockerOn)
+        {
+            drawAntiBlocker();
+        }
         blockersDiv.innerHTML = "";
         for (let i = 0; i<mapData.blockers.length; i++)
         {
@@ -486,7 +552,7 @@ function drawBlockers()
             let extraBlocker = document.createElement("div");
             if (currentBlocker.id==selectedBlocker)
             {
-                tmpBlocker.style.outline = "0.5vh dashed "+blockerOutlineColor;
+                tmpBlocker.style.outline = "0.3vh dashed "+blockerOutlineColor;
                 previousSelectedBlocker=tmpBlocker;
             }
             tmpBlocker.className = "blocker";
@@ -499,97 +565,120 @@ function drawBlockers()
                 tmpBlocker.style.resize = "both";
                 extraBlocker.style.width = currentBlocker.width + "px";
                 extraBlocker.style.height = currentBlocker.height + "px";
-                extraBlocker.draggable = true;
-            }
-            else
-            {
-                extraBlocker.style.msUserSelect = "none";
-                extraBlocker.style.webkitUserSelect = "none";
-            }
-            tmpBlocker.appendChild(extraBlocker);
-            tmpBlocker.addEventListener("dragover", function(e) {
-                e.preventDefault();
-            })
-
-            tmpBlocker.addEventListener("contextmenu", function(e) {
-                e.preventDefault();
-                let menuOptions = [];
-                let DMoptions = [
-                    {text: "Remove blocker", hasSubMenu: false, callback: function() {
-                        previousSelectedBlocker=null;
-                        selectedBlocker=-1;
-                        requestServer({c: "removeBlocker", id: currentBlocker.id});
-                        updateMapData();
-                    }}
-                ];
-                if (isDM)
+                if (blockerEditMode)
                 {
-                    menuOptions.push(DMoptions[0]);
+                    extraBlocker.draggable = true;
                 }
-                displayMenu(e, menuOptions);
-            });
-            if (isDM)
-            {
-                tmpBlocker.addEventListener("mousedown", function(e) {
-                    updateMapData(true);
-                    if (previousSelectedBlocker)
-                        previousSelectedBlocker.style.outline = "";
-                    tmpBlocker.style.outline = "0.5vh dashed "+blockerOutlineColor;
-                    selectedToken=-1;
-                    selectedBlocker=currentBlocker.id;
-                    previousSelectedBlocker=tmpBlocker;
-                    isDraggingBlocker = true;
-                });
-                tmpBlocker.addEventListener("mouseup", function(e) {
+                else
+                {
+                    extraBlocker.style.pointerEvents="none";
+                    tmpBlocker.style.pointerEvents="none";
+                }
+                
+                if (blockerEditMode)
+                {
+                    tmpBlocker.addEventListener("dragover", function(e) {
+                        e.preventDefault();
+                    })
                     
-                    isDraggingBlocker = false;
-                    extraBlocker.style.width = currentBlocker.width + "px";
-                    extraBlocker.style.height = currentBlocker.height + "px";
-                    if (currentBlocker.width!=tmpBlocker.offsetWidth && currentBlocker.height != tmpBlocker.offsetHeight)
-                    {
-                        requestServer({c: "editBlocker", id: currentBlocker.id, x: currentBlocker.x, y: currentBlocker.y, width: tmpBlocker.offsetWidth, height: tmpBlocker.offsetHeight});
-                        updateMapData();
-                    }
-                })
-                extraBlocker.addEventListener("dragstart", function(e) {
-                    if (isDM)
-                    {
+                    tmpBlocker.addEventListener("contextmenu", function(e) {
+                        e.preventDefault();
+                        let menuOptions = [
+                            {text: "Remove blocker", hasSubMenu: false, callback: function() {
+                                previousSelectedBlocker=null;
+                                selectedBlocker=-1;
+                                requestServer({c: "removeBlocker", id: currentBlocker.id});
+                                updateMapData();
+                            }}
+                        ];
+                        displayMenu(e, menuOptions);
+                    });
+    
+                    tmpBlocker.addEventListener("mousedown", function(e) {
+                        updateMapData(true);
+                        if (previousSelectedBlocker)
+                            previousSelectedBlocker.style.outline = "";
+                        tmpBlocker.style.outline = "0.3vh dashed "+blockerOutlineColor;
+                        selectedToken=-1;
+                        selectedBlocker=currentBlocker.id;
+                        previousSelectedBlocker=tmpBlocker;
+                        isDraggingBlocker = true;
+                    });
+                    tmpBlocker.addEventListener("mouseup", function(e) {
+                        
+                        isDraggingBlocker = false;
+                        extraBlocker.style.width = currentBlocker.width + "px";
+                        extraBlocker.style.height = currentBlocker.height + "px";
+                        if (currentBlocker.width!=tmpBlocker.offsetWidth && currentBlocker.height != tmpBlocker.offsetHeight)
+                        {
+                            requestServer({c: "editBlocker", id: currentBlocker.id, x: currentBlocker.x, y: currentBlocker.y, width: tmpBlocker.offsetWidth, height: tmpBlocker.offsetHeight});
+                            updateMapData();
+                        }
+                    })
+
+                    extraBlocker.addEventListener("dragstart", function(e) {
                         isDraggingBlocker = true;
                         extraBlocker.style.backgroundColor = "#000000AA";
                         blockerDragOffset.x = currentBlocker.x - (e.pageX + board.scrollLeft);
                         blockerDragOffset.y = currentBlocker.y - (e.pageY + board.scrollTop);
-                    }
-                    else
-                    {
+                    })
+                    extraBlocker.addEventListener("dragend", function(e) {
                         e.preventDefault();
-                        e.stopPropagation();
-                    }
-                })
-                extraBlocker.addEventListener("dragend", function(e) {
-                    e.preventDefault();
-                    if (isDraggingBlocker)
-                    {
-                        isDraggingBlocker = false;
-                        let newX = draggedBlocker.x + blockerDragOffset.x;
-                        let newY = draggedBlocker.y + blockerDragOffset.y;
-                        console.log(newX+":"+newY);
-                        console.log(currentBlocker.x+":"+currentBlocker.y);
-                        if (newX!=currentBlocker.x && newY!=currentBlocker.y)
+                        if (isDraggingBlocker)
                         {
-                            requestServer({c: "editBlocker", id: currentBlocker.id, x: newX, y: newY, width: tmpBlocker.offsetWidth, height: tmpBlocker.offsetHeight});
-                            updateMapData();
+                            isDraggingBlocker = false;
+                            let newX = draggedBlocker.x + blockerDragOffset.x;
+                            let newY = draggedBlocker.y + blockerDragOffset.y;
+                            if (newX!=currentBlocker.x && newY!=currentBlocker.y)
+                            {
+                                requestServer({c: "editBlocker", id: currentBlocker.id, x: newX, y: newY, width: tmpBlocker.offsetWidth, height: tmpBlocker.offsetHeight});
+                                updateMapData();
+                            }
                         }
-                            
-                    }
-                    e.stopPropagation();
-                })
-                extraBlocker.addEventListener("dragover", function(e) {
-                    e.preventDefault();
-                })
+                        e.stopPropagation();
+                    })
+                }
             }
+            else
+            {
+                extraBlocker.addEventListener("dragstart", function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+                if (mapData.antiBlockerOn)
+                {
+                    extraBlocker.style.pointerEvents="none";
+                    tmpBlocker.style.pointerEvents="none";
+                }
+                else
+                {
+                    extraBlocker.style.msUserSelect = "none";
+                    extraBlocker.style.webkitUserSelect = "none";
+                }
+            }
+            tmpBlocker.appendChild(extraBlocker);
+            
             blockersDiv.appendChild(tmpBlocker);
         }
     }
+}
+
+function drawAntiBlocker() {
+    let baseSVG = document.createElement("svg");
+    baseSVG.setAttribute('xmlns', "http://www.w3.org/2000/svg");
+    baseSVG.setAttribute('viewBox', "0 0 " + map.width + " " + map.height);
+    baseSVG.setAttribute('preserverAspectRatio', "none");
+    for (let i = 0; i < mapData.blockers.length; i++)
+    {
+        let tmpPoly = document.createElement("polygon");
+        let tb = mapData.blockers[i];
+        tmpPoly.setAttribute('points', tb.x + "," + tb.y + " " + tb.x + "," + (tb.y + tb.height).toString() + " " + (tb.x + tb.width).toString() + "," + (tb.y + tb.height).toString() + " " + (tb.x + tb.width).toString() + "," + tb.y);
+        tmpPoly.setAttribute('fill', "black");
+        tmpPoly.style.pointerEvents="none";
+        baseSVG.appendChild(tmpPoly);
+    }
+    let svgData = "url('data:image/svg+xml;utf8,"+baseSVG.outerHTML+"')";
+    document.body.style.setProperty("--anti-blocker-data", svgData);
 }
 
 function drawGrid()
@@ -984,17 +1073,26 @@ function createToken(token)
     {
         let textHolder = document.createElement("div");
         textHolder.style.zIndex = parseInt(imageElement.style.zIndex)+1;
-        textHolder.style.left = (token.x - 0.5*token.size*gridSize).toString() + "px";
-        textHolder.style.top = (token.y - 0.5*token.size*gridSize).toString() + "px";
-        textHolder.style.width = (token.size*gridSize).toString() + "px";
-        textHolder.style.height = (token.size*gridSize).toString() + "px";
+        textHolder.style.left = (token.x - 0.4*token.size*gridSize).toString() + "px";
+        textHolder.style.top = (token.y - 0.25*token.size*gridSize).toString() + "px";
+        textHolder.style.width = (token.size*gridSize*0.8).toString() + "px";
+        textHolder.style.height = (token.size*gridSize*0.5).toString() + "px";
+        textHolder.style.lineHeight = (token.size*gridSize*0.5).toString() + "px";
         let textElement = document.createElement("a");
         textElement.innerText = token.text;
-        textElement.style.width = (token.size*gridSize).toString() + "px";
-        textElement.style.fontSize = (60*token.size/token.text.length).toString()+"px";
+        textElement.style.height = "100%";
+        textElement.style.whiteSpace = "nowrap";
+        textElement.style.fontSize = "10px";
         textElement.style.transform = "translate(-50%, -50%);";
+        textElement.style.userSelect = "none";
         textHolder.appendChild(textElement);
         tokensDiv.appendChild(textHolder);
+        let autoCalcSize = parseInt(textElement.style.fontSize.substr(0, textElement.style.fontSize.length-2)) * (textHolder.getBoundingClientRect().width/textElement.getBoundingClientRect().width);
+        if (autoCalcSize<0.8*imageElement.getBoundingClientRect().width)
+            textElement.style.fontSize = autoCalcSize;
+        else
+            textElement.style.fontSize = 0.8*imageElement.getBoundingClientRect().width;
+        textElement.style.width = (token.size*gridSize*0.8).toString() + "px";
     }
 }
 
@@ -1214,7 +1312,6 @@ function hideDetailsScreen()
 
 //#region misc Drag/Drop handlers
 let isDraggingToken = false;
-let draggingToken = -1;
 
 shapeMap.addEventListener("dragover", function(e) {
     e.preventDefault();
@@ -1231,25 +1328,42 @@ document.body.ondrop = async function(e)
     {
         let gridX = map.width / mapData.x;
         let gridY = map.height / mapData.y;
+        let draggingTokenData;
+        for (let b = 0; b < mapData.tokens.length; b++)
+        {
+            if (mapData.tokens[b].id == draggingToken)
+            {
+                draggingTokenData = mapData.tokens[b];
+            }
+        }
         if (GridSnap)
         {
             let tX;
             let tY;
-            if (mapData.tokens[draggingToken].size >= 1)
+            console.log(draggingTokenData);
+            if (draggingTokenData.size >= 1)
             {
-                tX = Math.round(((e.pageX + board.scrollLeft) + tokenDragOffset.x - 0.5 * gridX * mapData.tokens[draggingToken].size) / gridX) * gridX + 0.5 * gridSize * mapData.tokens[draggingToken].size+ offsetX + 1;
-                tY = Math.round(((e.pageY + board.scrollTop) + tokenDragOffset.y - 0.5 * gridY * mapData.tokens[draggingToken].size) / gridY) * gridY + 0.5 * gridY * mapData.tokens[draggingToken].size + offsetY + 1;
+                tX = Math.round(((e.pageX + board.scrollLeft) + tokenDragOffset.x - 0.5 * gridX * draggingTokenData.size) / gridX) * gridX + 0.5 * gridX * draggingTokenData.size + offsetX + 1;
+                tY = Math.round(((e.pageY + board.scrollTop) + tokenDragOffset.y - 0.5 * gridY * draggingTokenData.size) / gridY) * gridY + 0.5 * gridY * draggingTokenData.size + offsetY + 1;
             }
             else
             {
-                tX = Math.round(((e.pageX + board.scrollLeft) - offsetX + tokenDragOffset.x - 0.5 * gridX * mapData.tokens[draggingToken].size) / (gridX * mapData.tokens[draggingToken].size)) * (gridX * mapData.tokens[draggingToken].size) + 0.5 * gridX * mapData.tokens[draggingToken].size + offsetX + 1;
-                tY = Math.round(((e.pageY + board.scrollTop) - offsetY + tokenDragOffset.y - 0.5 * gridY * mapData.tokens[draggingToken].size) / (gridY * mapData.tokens[draggingToken].size)) * (gridY * mapData.tokens[draggingToken].size) + 0.5 * gridY * mapData.tokens[draggingToken].size + offsetY + 1;
+                tX = Math.round(((e.pageX + board.scrollLeft) - offsetX + tokenDragOffset.x - 0.5 * gridX * draggingTokenData.size) / (gridX * draggingTokenData.size)) * (gridX * draggingTokenData.size) + 0.5 * gridX * draggingTokenData.size + offsetX + 1;
+                tY = Math.round(((e.pageY + board.scrollTop) - offsetY + tokenDragOffset.y - 0.5 * gridY * draggingTokenData.size) / (gridY * draggingTokenData.size)) * (gridY * draggingTokenData.size) + 0.5 * gridY * draggingTokenData.size + offsetY + 1;
             }
-            await requestServer({c: "moveToken", id: draggingToken, x: tX, y: tY, bypassLink: controlPressed});
+            console.log("Did this");
+            if (tX != draggingTokenData.x || tY != draggingTokenData.y)
+            {
+                await requestServer({c: "moveToken", id: draggingToken, x: tX, y: tY, bypassLink: !controlPressed});
+            }
+                
         }
         else
         {
-            await requestServer({c: "moveToken", id: draggingToken, x: (e.pageX + board.scrollLeft) + tokenDragOffset.x, y: (e.pageY + board.scrollTop) + tokenDragOffset.y, bypassLink: controlPressed});
+            if ((e.pageX + board.scrollLeft + tokenDragOffset.x) != draggingTokenData.x || (e.pageY + board.scrollTop + tokenDragOffset.y) != draggingTokenData.y)
+            {
+                await requestServer({c: "moveToken", id: draggingToken, x: (e.pageX + board.scrollLeft) + tokenDragOffset.x, y: (e.pageY + board.scrollTop) + tokenDragOffset.y, bypassLink: !controlPressed});
+            }
         }
         updateMapData();
         isDraggingToken = false;
@@ -1306,6 +1420,37 @@ function CheckTokenPermission(token) {
         }
     }
     
+}
+
+document.getElementById("invertBlockerButton").onclick = function() {
+    requestServer({c: "invertBlockers"});
+    updateMapData(true);
+}
+
+document.getElementById("openBulkGenerator").onclick = function() {
+    if (bulkInitGeneratorScreen.style.display=="none" || bulkInitGeneratorScreen.style.display=="")
+        bulkInitGeneratorScreen.style.display = "block";
+    else
+        bulkInitGeneratorScreen.style.display = "none";
+}
+
+bulkTokenConfirm.onclick = function() {
+    let tokensToPlace = parseInt(bulkTokenAmountInput.value);
+    if (isNaN(tokensToPlace) || tokensToPlace<1)
+    {
+        alert("The settings of the bulk initiative generator aren't valid");
+        return;
+    }
+    let tokenSizes = parseFloat(prompt("Enter the size of the new tokens"));
+    if (isNaN(tokenSizes))
+    {
+        return;
+    }
+    bulkInitSettings.tokenSizes = tokenSizes;
+    bulkInitSettings.image = bulkTokenSelect.value;
+    bulkInitSettings.tokenAmount = tokensToPlace;
+    bulkInitSettings.commonName = bulkTokenNameInput.value;
+    placingBulkOrigin = true;
 }
 
 noteArea.oninput = function() {
@@ -1416,6 +1561,53 @@ shapeMap.addEventListener("mousedown", function(e) {
         selectedBlocker=-1;
         hideDetailsScreen();
         drawCanvas(true);
+        if (placingBulkOrigin)
+        {
+            let autoGenInit = confirm("Automatically generate initiatives for the new tokens?");
+            let dexBonus;
+            if (autoGenInit)
+            {
+                dexBonus = parseInt(prompt("Enter the dex mod of the new tokens"));
+                if (isNaN(dexBonus))
+                    return;
+            }
+
+            if (bulkInitSettings.image=="number")
+            {
+                
+                let commonNameInText = confirm("Display common name in token text?");
+                for (let f = 1; f <= bulkInitSettings.tokenAmount; f++)
+                {
+                    let tokenText;
+                    if (commonNameInText)
+                    {
+                        tokenText = bulkInitSettings.commonName+" "+f.toString();
+                    }
+                    else
+                    {
+                        tokenText = f.toString();
+                    }
+                    if (autoGenInit)
+                        requestServer({c: "createToken", text: tokenText, x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: Math.ceil(Math.random()*20)+dexBonus})
+                    else
+                        requestServer({c: "createToken", text: tokenText, x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString()})
+                }
+            }
+            else
+            {
+                for (let f = 1; f <= bulkInitSettings.tokenAmount; f++)
+                {
+                    if (autoGenInit)
+                        requestServer({c: "createToken", x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: Math.ceil(Math.random()*20)+dexBonus})
+                    else
+                        requestServer({c: "createToken", x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString()})
+                }
+            }
+            placingBulkOrigin = false;
+            updateMapData();
+            return;
+        }
+
         if (isPlacingBlocker)
         {
             if (isDM)
@@ -2068,7 +2260,6 @@ resizer.addEventListener("mousedown", function(e) {
 })
 
 
-
 function updateButtonColors()
 {
     if (GridActive)
@@ -2099,6 +2290,15 @@ function updateButtonColors()
         else
         {
             document.getElementById("toggleSettingsButton").style.backgroundColor = "rgb(240, 240, 240)";
+        }
+
+        if (blockerEditMode)
+        {
+            document.getElementById("toggleBlockerEditing").style.backgroundColor = "aquamarine";
+        }
+        else
+        {
+            document.getElementById("toggleBlockerEditing").style.backgroundColor = "rgb(240, 240, 240)";
         }
     }
 }

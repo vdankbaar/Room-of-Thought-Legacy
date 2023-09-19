@@ -1,3 +1,4 @@
+//Mocht port 80 geblokeerd zijn door windows, voer de command 'net stop http' uit in een shell met admin
 let port = 80;
 
 const fs = require('fs');
@@ -72,7 +73,50 @@ app.post("/api", function(request, response) {
             if (minMax(request.body.size, 0, 20))
             {
                 let tmpToken = {};
-                tmpToken.id = currentMap.tokens.length;
+                let tmpTokens = [];
+                if (currentMap.tokens.length>0)
+                {
+                    tmpTokens.push(currentMap.tokens[0]);
+                    if (currentMap.tokens.length>1)
+                    {
+                        for (let f = 1; f<currentMap.tokens.length; f++)
+                        {
+                            let currentLength = tmpTokens.length;
+                            for (let g = 0; g<currentLength; g++)
+                            {
+                                if (tmpTokens[g].id > currentMap.tokens[f].id)
+                                {
+                                    tmpTokens.splice(g, 0, currentMap.tokens[f]);
+                                    g = currentLength;
+                                }
+                                else
+                                {
+                                    if (g==tmpTokens.length-1)
+                                    {
+                                        tmpTokens.push(currentMap.tokens[f]);
+                                        g = currentLength;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    for (let s = 0; s < tmpTokens.length; s++)
+                    {
+                        if (tmpTokens[s].id!=s)
+                        {
+                            tmpToken.id = s;
+                            s = tmpTokens.length;
+                        }
+                    }
+                    if (tmpToken.id == null)
+                    {
+                        tmpToken.id = tmpTokens.length;
+                    }
+                }
+                else
+                {
+                    tmpToken.id = 0;
+                }
                 tmpToken.x = request.body.x;
                 tmpToken.y = request.body.y;
                 tmpToken.image = request.body.image;
@@ -85,6 +129,14 @@ app.post("/api", function(request, response) {
                     tmpToken.text = request.body.text;
                 if (request.body.hidden != null)
                     tmpToken.hidden = request.body.hidden;
+                if (request.body.initiative != null)
+                    tmpToken.initiative = request.body.initiative;
+                if (request.body.name != null)
+                    tmpToken.name = request.body.name;
+                if (request.body.ac != null)
+                    tmpToken.ac = request.body.ac;
+                if (request.body.hp != null)
+                    tmpToken.hp = request.body.hp;    
                 currentMap.tokens.push(tmpToken);
                 response.send("[true]");
                 saveCurrentMap();
@@ -167,19 +219,19 @@ app.post("/api", function(request, response) {
             }
             else
             {
-                let tokenFound = 0;
-                currentMap.tokens.splice(request.body.id, 1);
+                for (let h = 0; h < currentMap.tokens.length; h++)
+                {
+                    if (currentMap.tokens[h].id==request.body.id)
+                    {
+                        currentMap.tokens.splice(h, 1);
+                    }
+                }
                 for (let i = 0; i<currentMap.drawings.length; i++)
                 {
                     if (currentMap.drawings[i].link == request.body.id)
                     {
                         removeDrawingById(currentMap.drawings[i].id);
                     }
-                }
-                for (let i = tokenFound; i < currentMap.tokens.length; i++)
-                {
-                    updateLinkedShapes(currentMap.tokens[i].id, i, request.body.id);
-                    currentMap.tokens[i].id = i;
                 }
                 saveCurrentMap();
                 response.send("[true]");
@@ -325,20 +377,22 @@ app.post("/api", function(request, response) {
                 {
                     switch(currentMap.drawings[i].shape)
                     {
+                        case "cone":
+                            currentMap.drawings[i].angle = request.body.angle;
+                            break;
+
                         case "line":
                             let dx = currentMap.drawings[i].destX - currentMap.drawings[i].x;
                             let dy = currentMap.drawings[i].destY - currentMap.drawings[i].y;
                             currentMap.drawings[i].destX = request.body.x + dx;
                             currentMap.drawings[i].destY = request.body.y + dy;
+                            currentMap.drawings[i].x = request.body.x;
+                            currentMap.drawings[i].y = request.body.y;
                             break;
 
                         default:
                             currentMap.drawings[i].x = request.body.x;
                             currentMap.drawings[i].y = request.body.y;
-                            break;
-                        
-                        case "cone":
-                            currentMap.drawings[i].angle = request.body.angle;
                             break;
                     }
                 }
@@ -387,6 +441,13 @@ app.post("/api", function(request, response) {
                     currentMap.blockers[i].height = request.body.height;
                 }
             }
+            saveCurrentMap();
+            response.send("[true]");
+            break;
+
+        case "invertBlockers":
+            loadCurrentMap();
+            currentMap.antiBlockerOn = !currentMap.antiBlockerOn;
             saveCurrentMap();
             response.send("[true]");
             break;
@@ -455,7 +516,7 @@ function moveLinkedShapes(tokenData)
     }
 }
 
-function updateLinkedShapes(oldId, newId) {
+/*function updateLinkedShapes(oldId, newId) {
     for (let i = 0; i < currentMap.drawings.length; i++)
     {
         if (currentMap.drawings[i].link == oldId)
@@ -464,7 +525,7 @@ function updateLinkedShapes(oldId, newId) {
         }
     }
     saveCurrentMap();
-}
+}*/
 
 function removeDrawingById(targetId) {
     let shapeFound = 0;
@@ -490,6 +551,8 @@ function loadCurrentMap()
     currentMap = JSON.parse(readFile("data/" + selectedMap + ".json"));
     if (currentMap.offsetX == null)
         currentMap.offsetX = 0;
+    if (currentMap.antiBlockerOn == null)
+        currentMap.antiBlockerOn = false;
     if (currentMap.offsetY == null)
         currentMap.offsetY = 0;
     if (currentMap.gridColor == null)

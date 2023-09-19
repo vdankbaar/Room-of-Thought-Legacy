@@ -1,8 +1,9 @@
 :root {
     --blocker-color: rgb(0, 0, 0);
-    --blocker-opacity: 1;
+    --antiBlocker-color: rgb(0, 0, 0);
     --token-index: 4;
     --sidemenu-width: 12vw;
+    --anti-blocker-data: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" preserveAspectRatio="none"><polygon points="20,20 20,180 180,100" fill="black"/><polygon points="10,10 100,10 100,20 10,20" fill="black"/></svg>')
 }
 
 body {
@@ -40,6 +41,52 @@ body {
     background-color: rgb(145, 164, 185);
     height: 100vh;
     
+}
+
+#bulkInitGeneratorScreen {
+    display: none;
+    flex-direction: column;
+    background-color: lightgray;
+    height: auto;
+    width: 12vw;
+    top: 15vh;
+    position: fixed;
+    right: 14vw;
+    padding: 0px 0.3vw;
+    z-index: 999;
+    font-size: 1vw;
+}
+
+#bulkInitGeneratorScreen input {
+    width: 100%;
+    height: 3vh;
+    border: none;
+    background-size: 0.6vw;
+    background-repeat: no-repeat;
+    background-position: right;
+    background-position-x: calc(100% - 0.3vw);
+    font-size: 1vw;
+    margin: 0px;
+    margin-bottom: 1vh;
+    
+}
+
+#bulkInitGeneratorScreen input:focus {
+    outline: none;
+    box-shadow: 0 0 10px #719ECE;
+}
+
+#bulkInitGeneratorScreen select {
+    width: 100%;
+    border: none;
+    -webkit-appearance: none;
+    background-image: url(https://pngimage.net/wp-content/uploads/2018/06/upside-down-triangle-png-3.png);
+    background-size: 0.6vw;
+    background-repeat: no-repeat;
+    background-position: right;
+    background-position-x: calc(100% - 0.3vw);
+    font-size: 1vw;
+    margin-bottom: 1vh;
 }
 
 #mapOptionsMenu {
@@ -138,7 +185,22 @@ body {
     border-radius: 0.3vw;
 }
 
+#toggleSettingsButton:focus {outline: none;}
 #toggleSettingsButton object {pointer-events: none; width: 63%; height: 63%;}
+
+#toggleBlockerEditing {
+    width: 1.8vw;
+    height: 1.8vw;
+    border: none;
+    padding: 0px;
+    margin-right: 0.5vh;
+    text-align: center;
+    line-height: 50%;
+    border-radius: 0.3vw;
+}
+
+#toggleBlockerEditing:focus {outline: none;}
+#toggleBlockerEditing object {pointer-events: none; width: 63%; height: 63%;}
 
 #shapeColorPicker, #setInit, #mapOptionsMenu input {
     text-align: center;
@@ -230,11 +292,27 @@ body {
 }
 
 #initiativeHeader {
+    width: 100%;
+    overflow: hidden;
     margin-top: 2vh;
     margin-bottom: 0.5vh;
+}
+
+#initiativeHeader h3 {
+    margin: 0px;
+    float: left;
     font-size: 1vw;
     font-family: Helvetica;
-    width: 100%;
+    width: 80%;
+}
+
+#initiativeHeader input {
+    float: right;
+    padding: 0px;
+    border: 0px;
+    width: 20%;
+    font-size: 1vw;
+    font-family: Helvetica;
 }
 
 #initiativeTracker {
@@ -493,11 +571,23 @@ body {
     z-index: 50;
     overflow: hidden;
     background-color: var(--blocker-color);
+    background: var(--blocker-color);
+}
+
+#antiBlocker {
+    position: absolute;
+    background-color: var(--antiBlocker-color);
+    background: var(--antiBlocker-color);
+    z-index: 500;
+    pointer-events: none;
+    -webkit-mask-composite: destination-out;
+    -webkit-mask: var(--anti-blocker-data) 0/100% 100%, linear-gradient(#fff,#fff);
+    mask: var(--anti-blocker-data) 0/100% 100%, linear-gradient(#fff,#fff);
+    mask-composite: exclude;
 }
 
 .blocker div:not(.blocker){
     z-index: inherit;
-    
 }
 
 #tokens div {

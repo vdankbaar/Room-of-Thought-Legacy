@@ -6,6 +6,7 @@
     <body>
         <div id="board">
             <div id="tokens"></div>
+            <div id="antiBlocker"></div>
             <div id="blockers"></div>
             <canvas id="shapeMap"></canvas>
             <canvas id="map"></canvas>
@@ -19,6 +20,7 @@
             <div id="toggleButtons">
                 <button id="toggleGridButton" title="Toggle Grid"><object type="image/svg+xml" data="images/grid_on-24px.svg"></object></button>
                 <button id="toggleSnapButton" title="Toggle Grid Snapping"><object type="image/svg+xml" data="images/magnet-solid.svg"></object></button>
+                <button id="toggleBlockerEditing" title="Edit blockers" class="dmOnly"><object type="image/svg+xml" data="images/construction-24px.svg"></object></button>
                 <button id="toggleSettingsButton" title="More Settings" class="dmOnly"><object type="image/svg+xml" data="images/settings-24px.svg"></object></button>
             </div>
             <div id="mapOptionsMenu">
@@ -37,19 +39,29 @@
                 <input id="importMap" class="dmOnly" type="button" value="Upload JSON file">
                 <input id="exportMap" class="dmOnly" type="button" value="Export JSON file">
                 <input id="hideInits" class="dmOnly" type="button" value="Toggle initiatives">
-                
+                <input id="invertBlockerButton" class="dmOnly" type="button" value="Invert blockers">
             </div>
             <div id="notesEditor">
                 <textarea placeholder="Enter your notes here..."></textarea>
             </div>
+            <div id="bulkInitGeneratorScreen">
+                <a>Bulk initiative generator</a>
+                <label for="bulkTokenSelect">Token image:<select id="bulkTokenSelect"></select></label>
+                <label for="bulkTokenNameInput">Common name:<input type="text" id="bulkTokenNameInput" autocomplete="off"></select></label>
+                <label for="bulkTokenAmountInput">Tokens to place:<input type="number" id="bulkTokenAmountInput" value="1"></label>
+                <input id="bulkTokenConfirm" type="button" value="Start placing">
+            </div>
             <p style="margin: 0px; font-size: 1vw;">Draw Color:</p>
             <input type="color" id="shapeColorPicker" value="#ff0000">
-            <h3 id="initiativeHeader">Initiative Tracker</h3>
+            <div id="initiativeHeader">
+                <h3>Initiative Tracker</h3>
+                <input class="dmOnly" id="openBulkGenerator" type="button" value="+">
+            </div>
             <div id="initiativeTracker">
             </div>
-            <div id="detailsScreen">
+            <div id="detailsScreen" style="display: none;">
                 <h3 style="grid-area: title; margin: 0px;"></h3>
-                <div id="detailsIcon" title="Click to open notes!"><img src=""></div>
+                <div id="detailsIcon" title="Click to open notes!"><img></div>
                 <object id="hitpointsIcon" type="image/svg+xml" data="images/favorite-24px.svg"></object>
                 <div id="detailsHitpoints">
                     <input id="currentHitpoints" autocomplete="off">
