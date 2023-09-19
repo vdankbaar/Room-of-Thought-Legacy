@@ -68,6 +68,7 @@ let selectedTokenData;
 let oldData;
 let dataIsIdentical = false;
 let resizingSideMenu = false;
+let controlPressed = false;
 
 window.onload = function() {
     if (getCookie("isDM") == 1)
@@ -95,7 +96,7 @@ async function Setup() {
     mapCanvas = map.getContext("2d");
     hitboxCanvas = hitboxMap.getContext("2d");
     shapeCanvas = shapeMap.getContext("2d");
-    await UpdateMapData(true);
+    await updateMapData(true);
     for (let i = 0; i < mapData.mapSourceList.length; i++)
     {
         let tmpOption = document.createElement("option");
@@ -108,13 +109,13 @@ async function Setup() {
     mapXInput.value = mapData.x;
     offsetXInput.value = mapData.offsetX;
     offsetYInput.value = mapData.offsetY;
-    setInterval(function() {UpdateMapData();}, mapUpdateInterval);
+    setInterval(function() {updateMapData();}, mapUpdateInterval);
     drawCanvas();
 }
 
-async function UpdateMapData(force) 
+async function updateMapData(force) 
 {
-    mapData = await RequestServer({c: "currentMapData", x: loadedMap.naturalWidth, y: loadedMap.naturalHeight});
+    mapData = await requestServer({c: "currentMapData", x: loadedMap.naturalWidth, y: loadedMap.naturalHeight});
     let stringData = JSON.stringify(mapData);
     if (force == null)
     {
@@ -123,7 +124,7 @@ async function UpdateMapData(force)
     if (oldData != stringData || force)
     {
         dataIsIdentical = false;
-        console.log("Data is not identical, updating map!");
+        console.log("Data is not identical or update has been forced, updating map!");
         oldData = stringData;
     }
     else
@@ -148,13 +149,13 @@ async function UpdateMapData(force)
 //#region Side buttons
 let exportButton = document.getElementById("exportMap");
 exportButton.onclick = function() {
-    RequestServer({c: "exportMap"});
+    requestServer({c: "exportMap"});
     window.open("/public/export/export.json");
 }
 
 document.getElementById("toggleGridButton").onclick = function() {
     GridActive = !GridActive;
-    UpdateMapData(true);
+    updateMapData(true);
     updateButtonColors();
 }
 
@@ -195,42 +196,42 @@ document.getElementById("importMap").onclick = function() {
 hiddenMapImportButton.onchange = function() {
     console.log("Changed")
     document.getElementById("submitMap").click();
-    UpdateMapData(true);
+    updateMapData(true);
 }
 //#endregion
 
 //#region Map options
 document.getElementById("hideInits").onclick = function() {
     if (mapData.hideInit)
-        RequestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: false});
+        requestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: false});
     else
-        RequestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: true});
-    UpdateMapData();
+        requestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: true});
+    updateMapData();
 }
 
 mapSourceSelect.onchange = function() {
-    RequestServer({c: "setMapData", map: mapSourceSelect.value, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: mapData.hideInit});
-    UpdateMapData();
+    requestServer({c: "setMapData", map: mapSourceSelect.value, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: mapData.hideInit});
+    updateMapData();
 }
 
 mapYInput.onchange = function() {
-    RequestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: parseFloat(mapYInput.value), offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: mapData.hideInit});
-    UpdateMapData();
+    requestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: parseFloat(mapYInput.value), offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: mapData.hideInit});
+    updateMapData();
 }
 
 mapXInput.onchange = function() {
-    RequestServer({c: "setMapData", map: mapData.map, x: parseFloat(mapXInput.value), y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: mapData.hideInit});
-    UpdateMapData();
+    requestServer({c: "setMapData", map: mapData.map, x: parseFloat(mapXInput.value), y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: mapData.hideInit});
+    updateMapData();
 }
 
 offsetXInput.onchange = function() {
-    RequestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: parseFloat(offsetXInput.value), offsetY: mapData.offsetY, hideInit: mapData.hideInit});
-    UpdateMapData();
+    requestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: parseFloat(offsetXInput.value), offsetY: mapData.offsetY, hideInit: mapData.hideInit});
+    updateMapData();
 }
 
 offsetYInput.onchange = function() {
-    RequestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: parseFloat(offsetYInput.value), hideInit: mapData.hideInit});
-    UpdateMapData();
+    requestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: parseFloat(offsetYInput.value), hideInit: mapData.hideInit});
+    updateMapData();
 }
 //#endregion
 
@@ -446,15 +447,15 @@ function drawBlockers()
                 let menuOptions = [];
                 let DMoptions = [
                     {text: "Remove blocker", hasSubMenu: false, callback: function() {
-                        RequestServer({c: "removeBlocker", id: currentBlocker.id});
-                        UpdateMapData();
+                        requestServer({c: "removeBlocker", id: currentBlocker.id});
+                        updateMapData();
                     }}
                 ];
                 if (isDM)
                 {
                     menuOptions.push(DMoptions[0]);
                 }
-                DisplayMenu(e, menuOptions);
+                displayMenu(e, menuOptions);
             });
             if (isDM)
             {
@@ -465,8 +466,8 @@ function drawBlockers()
                     isDraggingBlocker = false;
                     extraBlocker.style.width = currentBlocker.width;
                     extraBlocker.style.height = currentBlocker.height;
-                    RequestServer({c: "editBlocker", id: currentBlocker.id, x: currentBlocker.x, y: currentBlocker.y, width: tmpBlocker.offsetWidth, height: tmpBlocker.offsetHeight});
-                    UpdateMapData();
+                    requestServer({c: "editBlocker", id: currentBlocker.id, x: currentBlocker.x, y: currentBlocker.y, width: tmpBlocker.offsetWidth, height: tmpBlocker.offsetHeight});
+                    updateMapData();
                 })
                 extraBlocker.addEventListener("dragstart", function(e) {
                     if (isDM)
@@ -489,8 +490,8 @@ function drawBlockers()
                         isDraggingBlocker = false;
                         let newX = draggedBlocker.x + blockerDragOffset.x;
                         let newY = draggedBlocker.y + blockerDragOffset.y;
-                        RequestServer({c: "editBlocker", id: currentBlocker.id, x: newX, y: newY, width: tmpBlocker.offsetWidth, height: tmpBlocker.offsetHeight});
-                        UpdateMapData();
+                        requestServer({c: "editBlocker", id: currentBlocker.id, x: newX, y: newY, width: tmpBlocker.offsetWidth, height: tmpBlocker.offsetHeight});
+                        updateMapData();
                     }
                     e.stopPropagation();
                 })
@@ -531,6 +532,25 @@ function drawTokens()
 
 function createToken(token) 
 {
+    if (token.id == selectedToken)
+    {
+        if (CheckTokenPermission(token))
+        {
+            LoadTokenData();
+        }
+        else
+        {
+            nameInput.value = "DM only!";
+            maxHpInput.value = "";
+            currentHpInput.value = "";
+            statusInput.value = token.status;
+            initiativeInput.value = "";
+            groupIdInput.value = "";
+            acInput.value = "";
+            noteArea.value = "";
+        }
+    }
+    
     let imageElement = document.createElement("img");
     let isTextToken = false;
     if (token.image!=null)
@@ -548,7 +568,6 @@ function createToken(token)
     {
         if (token.text!=null)
         {
-            console.log("Found text token!");
             imageElement.src = "public/blankToken.png";
             isTextToken = true;
         }
@@ -585,46 +604,46 @@ function createToken(token)
         imageElement.style.outline = "0.15vw dashed aqua";
     }
 
-    imageElement.addEventListener("click", function() {
-        function LoadTokenData() {
-            nameInput.value = token.name;
-            if (token.notes == null)
-            { noteArea.value = ""; }
-            else
-            { noteArea.value = token.notes; }
+    function LoadTokenData() {
+        nameInput.value = token.name;
+        if (token.notes == null)
+        { noteArea.value = ""; }
+        else
+        { noteArea.value = token.notes; }
 
-            if (token.initiative == null)
-            { initiativeInput.value = ""; }
-            else
-            { initiativeInput.value = token.initiative; }
-            
-            if (token.ac == null)
-            { acInput.value = ""; }
-            else
-            { acInput.value = token.ac; }
+        if (token.initiative == null)
+        { initiativeInput.value = ""; }
+        else
+        { initiativeInput.value = token.initiative; }
+        
+        if (token.ac == null)
+        { acInput.value = ""; }
+        else
+        { acInput.value = token.ac; }
 
-            if (token.hp == null)
-            {
-                currentHpInput.value = "";
-                maxHpInput.value = "";
-            }
-            else
-            {
-                currentHpInput.value = token.hp.split("/")[0];
-                maxHpInput.value = token.hp.split("/")[1];
-            }
-
-            if (token.status == null)
-            { statusInput.value = "No status"; }
-            else
-            { statusInput.value = token.status; }
-
-            if (token.group == null)
-            { groupIdInput.value = ""; }
-            else
-            { groupIdInput.value = token.group; }
+        if (token.hp == null)
+        {
+            currentHpInput.value = "";
+            maxHpInput.value = "";
+        }
+        else
+        {
+            currentHpInput.value = token.hp.split("/")[0];
+            maxHpInput.value = token.hp.split("/")[1];
         }
 
+        if (token.status == null)
+        { statusInput.value = "No status"; }
+        else
+        { statusInput.value = token.status; }
+
+        if (token.group == null)
+        { groupIdInput.value = ""; }
+        else
+        { groupIdInput.value = token.group; }
+    }
+
+    imageElement.addEventListener("click", function() {
         showDetailsScreen();
         selectedToken = token.id;
         if (mapData.tokenList.includes(token.image))
@@ -648,7 +667,7 @@ function createToken(token)
             acInput.value = "";
             noteArea.value = "";
         }
-        UpdateMapData(true);
+        updateMapData(true);
     })
 
     imageElement.addEventListener("dragstart", function(e) {
@@ -656,6 +675,10 @@ function createToken(token)
         tokenDragOffset.y = token.y - (e.pageY + board.scrollTop);
         draggingToken = token.id;
         isDraggingToken = true;
+        if (e.ctrlKey)
+        {
+            controlPressed = true;
+        }
     })
 
     imageElement.addEventListener("dragover", function(e) {
@@ -663,8 +686,8 @@ function createToken(token)
     })
 
     imageElement.addEventListener("contextmenu", function(e) {
-        CloseMenu();
-        CloseSubMenu();
+        closeMenu();
+        closeSubMenu();
         e.preventDefault();
         let menuOptions = [
             {text: "Remove token", hasSubMenu: false, callback: async function() {
@@ -683,10 +706,10 @@ function createToken(token)
                     groupIdInput.value = "";
                     selectedToken = -1;
                 }
-                let result = await RequestServer({c: "removeToken", id: token.id, tokensRemoved: mapData.removedTokens});
+                let result = await requestServer({c: "removeToken", id: token.id, tokensRemoved: mapData.removedTokens});
                 if(result[0] == true)
                 {
-                    UpdateMapData();
+                    updateMapData();
                 }
                 else
                 {
@@ -703,7 +726,7 @@ function createToken(token)
                             {
                                 if (tokenSize < 20 && tokenSize > 0)
                                 {
-                                    RequestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, group: token.group});
+                                    requestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, group: token.group});
                                 }
                                 else
                                 {
@@ -714,22 +737,22 @@ function createToken(token)
                             {
                                 if (tokenSize < 6 && tokenSize > 0)
                                 {
-                                    RequestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, group: token.group});
+                                    requestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, group: token.group});
                                 }
                                 else
                                 {
                                     alert("That token size isn't allowed for players");
                                 }
                             }   
-                            UpdateMapData();
+                            updateMapData();
                         }
                     }},
                     {text: "Change layer", callback: function() {
                         let newLayer = parseInt(prompt("Please enter the desired height level"));
                         if (!isNaN(newLayer) && newLayer>=0 && newLayer<50)
                         {
-                            RequestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: newLayer, group: token.group});
-                            UpdateMapData();
+                            requestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: newLayer, group: token.group});
+                            updateMapData();
                         }
                         else
                         {
@@ -737,7 +760,7 @@ function createToken(token)
                         }
                     }}
                 ];
-                DisplaySubMenu(e, subMenuOptions);
+                displaySubMenu(e, subMenuOptions);
             }},
             {text: "Change image", hasSubMenu: true, callback: function() {
                 let subMenu = [];
@@ -749,8 +772,8 @@ function createToken(token)
                     tmpElement.text = tokenList[i].substring(0, tokenList[i].length - 4);
                     tmpElement.callback = function() 
                     {
-                        RequestServer({c: "editToken", id: token.id, image: tokenList[i]});
-                        UpdateMapData();
+                        requestServer({c: "editToken", id: token.id, image: tokenList[i]});
+                        updateMapData();
                     }
                     subMenu.push(tmpElement);
                 }
@@ -762,13 +785,13 @@ function createToken(token)
                         tmpElement.text = dmTokenList[i].substring(0, dmTokenList[i].length - 4);
                         tmpElement.callback = function() 
                         {
-                            RequestServer({c: "editToken", id: token.id, image: dmTokenList[i]})
-                            UpdateMapData();
+                            requestServer({c: "editToken", id: token.id, image: dmTokenList[i]})
+                            updateMapData();
                         }
                         subMenu.push(tmpElement);
                     }
                 }
-                DisplaySubMenu(e, subMenu);
+                displaySubMenu(e, subMenu);
             }},
             {text: "Draw Shape", description: "Pick a shape to draw", hasSubMenu: true, callback: function() {
                 let subMenuOptions = [
@@ -777,10 +800,10 @@ function createToken(token)
                         if (!isNaN(radiusInput))
                         {
                             circleMarkers.radius = ((radiusInput + (feetPerSquare / 2) * token.size) / feetPerSquare) * gridSize;
-                            RequestServer({c: "addDrawing", shape: "circle", link: token.id,  x: token.x, y: token.y, radius: circleMarkers.radius, trueColor: shapeColor});
-                            UpdateMapData();
-                            CloseMenu();
-                            CloseSubMenu();
+                            requestServer({c: "addDrawing", shape: "circle", link: token.id, x: token.x, y: token.y, radius: circleMarkers.radius, trueColor: shapeColor});
+                            updateMapData();
+                            closeMenu();
+                            closeSubMenu();
                         }
                     }},
                     {text: "Draw Cone", callback: function() {
@@ -791,11 +814,12 @@ function createToken(token)
                             coneMarkers.y = token.y;
                             coneMarkers.range = rangeInput / feetPerSquare * gridSize;
                             coneMarkers.tokenSize = token.size;
+                            coneMarkers.linkId = token.id;
                             isPlacingCone = true;
                         }
                     }}
                 ];
-                DisplaySubMenu(e, subMenuOptions);
+                displaySubMenu(e, subMenuOptions);
             }}
         ];
         if (token.group != null)
@@ -803,42 +827,42 @@ function createToken(token)
             let groupOptions = {text: "Group options", hasSubMenu: true, callback: async function() {
                 let subMenuOptions = [
                     {text: "Rotate group left", callback: function() {
-                        RequestServer({c:"rotateLeft", id: token.id});
-                        UpdateMapData();
+                        requestServer({c:"rotateLeft", id: token.id});
+                        updateMapData();
                     }},
                     {text: "Rotate group right", callback: function() {
-                        RequestServer({c:"rotateRight", id: token.id});
-                        UpdateMapData();
+                        requestServer({c:"rotateRight", id: token.id});
+                        updateMapData();
                     }},
                     {text: "Unlink token", callback: function() {
-                        RequestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: token.layer, group: null})
-                        UpdateMapData();
+                        requestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: token.layer, group: ""})
+                        updateMapData();
                     }}
                 ];
-                DisplaySubMenu(e, subMenuOptions);
+                displaySubMenu(e, subMenuOptions);
             }}
             menuOptions.push(groupOptions);
         }
         if (isDM)
         {
-            if (token.hidden != null && token.hidden == true) //@change naar if (token.hidden) {
+            if (token.hidden) //@change naar if (token.hidden) {
             {
                 menuOptions.push({text: "Reveal token", hasSubMenu: false, callback: async function() {
-                    await RequestServer({c: "setTokenHidden", id: token.id, hidden: false});
-                    UpdateMapData();
+                    await requestServer({c: "setTokenHidden", id: token.id, hidden: false});
+                    updateMapData();
                 }})
             }
             else
             {
                 menuOptions.push({text: "Hide token", hasSubMenu: false, callback: async function() {
-                    await RequestServer({c: "setTokenHidden", id: token.id, hidden: true});
-                    UpdateMapData();
+                    await requestServer({c: "setTokenHidden", id: token.id, hidden: true});
+                    updateMapData();
                 }})
             }
             
         }
         
-        DisplayMenu(e, menuOptions);
+        displayMenu(e, menuOptions);
     })
     
     tokensDiv.appendChild(imageElement);
@@ -950,7 +974,7 @@ function createTracker(trackerData)
             { groupIdInput.value = ""; }
             else
             { groupIdInput.value = trackerData.group; }
-            UpdateMapData(true);
+            updateMapData(true);
         }
         if (!mapData.hideInit)
         {
@@ -1011,7 +1035,7 @@ function createTracker(trackerData)
                     {
                         if (trackerData.hp != null)
                         {
-                            RequestServer({c: "editToken", id: trackerData.id, hp: (trackerData.hp.split("/")[0] - damage).toString() + "/" + trackerData.hp.split("/")[1]});
+                            requestServer({c: "editToken", id: trackerData.id, hp: (trackerData.hp.split("/")[0] - damage).toString() + "/" + trackerData.hp.split("/")[1]});
                         }
                     }
                 }
@@ -1052,9 +1076,19 @@ function createTracker(trackerData)
             bottomRow.append(trackerHitpointsSection);
         tmpTrackerDiv.append(bottomRow);
         if (trackerData.id==selectedToken)
-            tmpTrackerDiv.style.backgroundColor = "#A0A0A0";
+        {
+            if (trackerData.dm || mapData.dmTokenList.includes(trackerData.image))
+                tmpTrackerDiv.style.backgroundColor = "#E0A0A0";
+            else
+                tmpTrackerDiv.style.backgroundColor = "#A0A0A0";
+        }
         else
-            tmpTrackerDiv.style.backgroundColor = "#C0C0C0";
+        {
+            if (trackerData.dm || mapData.dmTokenList.includes(trackerData.image))
+                tmpTrackerDiv.style.backgroundColor = "#E0C0C0";
+            else
+                tmpTrackerDiv.style.backgroundColor = "#C0C0C0";
+        }    
         initiativeTrackerDiv.append(tmpTrackerDiv);
         let trackerHR = document.createElement("hr");
         trackerHR.className = "initiativeHR";
@@ -1106,14 +1140,15 @@ document.body.ondrop = async function(e)
                 tX = Math.round(((e.pageX + board.scrollLeft) - offsetX + tokenDragOffset.x - 0.5 * gridX * mapData.tokens[draggingToken].size) / (gridX * mapData.tokens[draggingToken].size)) * (gridX * mapData.tokens[draggingToken].size) + 0.5 * gridX * mapData.tokens[draggingToken].size + offsetX + 1;
                 tY = Math.round(((e.pageY + board.scrollTop) - offsetY + tokenDragOffset.y - 0.5 * gridY * mapData.tokens[draggingToken].size) / (gridY * mapData.tokens[draggingToken].size)) * (gridY * mapData.tokens[draggingToken].size) + 0.5 * gridY * mapData.tokens[draggingToken].size + offsetY + 1;
             }
-            await RequestServer({c: "moveToken", id: draggingToken, x: tX, y: tY});
+            await requestServer({c: "moveToken", id: draggingToken, x: tX, y: tY, bypassLink: controlPressed});
         }
         else
         {
-            await RequestServer({c: "moveToken", id: draggingToken, x: (e.pageX + board.scrollLeft) + tokenDragOffset.x, y: (e.pageY + board.scrollTop) + tokenDragOffset.y});
+            await requestServer({c: "moveToken", id: draggingToken, x: (e.pageX + board.scrollLeft) + tokenDragOffset.x, y: (e.pageY + board.scrollTop) + tokenDragOffset.y, bypassLink: controlPressed});
         }
-        UpdateMapData();
+        updateMapData();
         isDraggingToken = false;
+        controlPressed = false;
         draggingToken = -1;
     }
     if (isDraggingBlocker)
@@ -1172,7 +1207,7 @@ noteArea.oninput = function() {
     updateSelectedTokenData();
     if (CheckTokenPermission(selectedTokenData))
     {
-        RequestServer({c: "editToken", id: selectedToken, notes: noteArea.value});
+        requestServer({c: "editToken", id: selectedToken, notes: noteArea.value});
     }
 }
 
@@ -1184,52 +1219,52 @@ initiativeInput.oninput = function() {
         console.log(newInit);
         if (newInit==null)
         {
-            RequestServer({c: "editToken", id: selectedToken, initiative: "reset"});
+            requestServer({c: "editToken", id: selectedToken, initiative: "reset"});
         }
         else
         {
-            RequestServer({c: "editToken", id: selectedToken, initiative: newInit});
+            requestServer({c: "editToken", id: selectedToken, initiative: newInit});
         }
     }   
-    UpdateMapData();
+    updateMapData();
 }
 
 nameInput.oninput = function() {
     updateSelectedTokenData();
     if (CheckTokenPermission(selectedTokenData)) {
-        RequestServer({c: "editToken", id: selectedToken, name: nameInput.value});
+        requestServer({c: "editToken", id: selectedToken, name: nameInput.value});
     }
-    UpdateMapData();
+    updateMapData();
 }
 
 acInput.oninput = function() {
     updateSelectedTokenData();
     if (CheckTokenPermission(selectedTokenData)) {
-        RequestServer({c: "editToken", id: selectedToken, ac: acInput.value});  
+        requestServer({c: "editToken", id: selectedToken, ac: acInput.value});  
     }
-    UpdateMapData();
+    updateMapData();
 }
 
 currentHpInput.oninput = function() {
     updateSelectedTokenData();
     if (CheckTokenPermission(selectedTokenData)) {
-        RequestServer({c: "editToken", id: selectedToken, hp: currentHpInput.value + "/" + maxHpInput.value});
+        requestServer({c: "editToken", id: selectedToken, hp: currentHpInput.value + "/" + maxHpInput.value});
     }
-    UpdateMapData();
+    updateMapData();
 }
 
 maxHpInput.oninput = function() {
     updateSelectedTokenData();
     if (CheckTokenPermission(selectedTokenData)) {
-        RequestServer({c: "editToken", id: selectedToken, hp: currentHpInput.value + "/" + maxHpInput.value});
+        requestServer({c: "editToken", id: selectedToken, hp: currentHpInput.value + "/" + maxHpInput.value});
     }
-    UpdateMapData();
+    updateMapData();
 }
 
 statusInput.oninput = function() {
     updateSelectedTokenData();
-    RequestServer({c:"editToken", id: selectedToken, status: statusInput.value});
-    UpdateMapData();
+    requestServer({c:"editToken", id: selectedToken, status: statusInput.value});
+    updateMapData();
 }
 
 groupIdInput.oninput = function() {
@@ -1238,14 +1273,14 @@ groupIdInput.oninput = function() {
     if (CheckTokenPermission(selectedTokenData)) {
         if (newGroupId)
         {
-            RequestServer({c:"editToken", id: selectedToken, group: newGroupId});
+            requestServer({c:"editToken", id: selectedToken, group: newGroupId});
         }
         else
         {
-            RequestServer({c:"editToken", id: selectedToken, group: "reset"});
+            requestServer({c:"editToken", id: selectedToken, group: "reset"});
         }
     }
-    UpdateMapData();
+    updateMapData();
 }
 
 document.body.addEventListener("mouseup", function(e) {
@@ -1282,8 +1317,8 @@ shapeMap.addEventListener("mousedown", function(e) {
             {
                 blockerMarkers.width = (e.pageX + board.scrollLeft) - blockerMarkers.x;
                 blockerMarkers.height = (e.pageY + board.scrollTop) - blockerMarkers.y;
-                RequestServer({c: "addBlocker", x: blockerMarkers.x, y: blockerMarkers.y, width: blockerMarkers.width, height: blockerMarkers.height});
-                UpdateMapData();
+                requestServer({c: "addBlocker", x: blockerMarkers.x, y: blockerMarkers.y, width: blockerMarkers.width, height: blockerMarkers.height});
+                updateMapData();
             }
             isPlacingBlocker = false;
             return;
@@ -1294,8 +1329,8 @@ shapeMap.addEventListener("mousedown", function(e) {
             squareMarkers.height = (e.pageY + board.scrollTop) - squareMarkers.y;
             if (squareMarkers.width >= -map.width && squareMarkers.width <= map.width && squareMarkers.height >= -map.height && squareMarkers.height <= map.height)
             {
-                RequestServer({c: "addDrawing", shape: "square", x: squareMarkers.x, y: squareMarkers.y, width: squareMarkers.width, height: squareMarkers.height, trueColor: shapeColor});
-                UpdateMapData();
+                requestServer({c: "addDrawing", shape: "square", x: squareMarkers.x, y: squareMarkers.y, width: squareMarkers.width, height: squareMarkers.height, trueColor: shapeColor});
+                updateMapData();
             }
             else
             {
@@ -1316,14 +1351,13 @@ shapeMap.addEventListener("mousedown", function(e) {
                 lineMarkers.destX = lineMarkers.x + dx / distance * lineMarkers.range;
                 lineMarkers.destY = lineMarkers.y + dy / distance * lineMarkers.range;
             }
-            RequestServer({c: "addDrawing", shape: "line", x: lineMarkers.x, y: lineMarkers.y, destX: lineMarkers.destX, destY: lineMarkers.destY, trueColor: shapeColor});
-            UpdateMapData();
+            requestServer({c: "addDrawing", shape: "line", x: lineMarkers.x, y: lineMarkers.y, destX: lineMarkers.destX, destY: lineMarkers.destY, trueColor: shapeColor});
+            updateMapData();
             isPlacingLine = false;
             return;
         }
         if (isPlacingCone)
         {
-            console.log(coneMarkers);
             let destX = e.pageX + board.scrollLeft;
             let destY = e.pageY + board.scrollTop;
 
@@ -1332,7 +1366,6 @@ shapeMap.addEventListener("mousedown", function(e) {
                 angle+=2*Math.PI;
             coneMarkers.x = coneMarkers.x + Math.cos(angle)*0.5*coneMarkers.tokenSize*gridSize;
             coneMarkers.y = coneMarkers.y +  Math.sin(angle)*0.5*coneMarkers.tokenSize*gridSize;
-            console.log(coneMarkers);
 
             let centerY = coneMarkers.y + Math.sin(angle) * coneMarkers.range;
             let centerX = coneMarkers.x + Math.cos(angle) * coneMarkers.range;
@@ -1343,8 +1376,8 @@ shapeMap.addEventListener("mousedown", function(e) {
             let sideX2 = 0.5*(centerY - coneMarkers.y) + centerX;
             let sideY2 = 0.5*(-centerX + coneMarkers.x) + centerY;
 
-            RequestServer({c: "addDrawing", shape: "cone", x: coneMarkers.x, y: coneMarkers.y, destX1: sideX1, destY1: sideY1, destX2: sideX2, destY2: sideY2, trueColor: shapeColor});
-            UpdateMapData();
+            requestServer({c: "addDrawing", shape: "cone", link: coneMarkers.linkId, x: coneMarkers.x, y: coneMarkers.y, destX1: sideX1, destY1: sideY1, destX2: sideX2, destY2: sideY2, trueColor: shapeColor});
+            updateMapData();
             isPlacingCone = false;
             return;
         }
@@ -1357,12 +1390,15 @@ shapeMap.addEventListener("mousedown", function(e) {
             if (shapeId%1 == 0)
             {
                 shapeId--;
-                console.log("Picked up: " + shapeId);
-                document.body.style.cursor = "pointer";
-                shapeDragOffset.x = mapData.drawings[shapeId].x - (e.pageX + board.scrollLeft);
-                shapeDragOffset.y = mapData.drawings[shapeId].y - (e.pageY + board.scrollTop);
-                movingShapeId = shapeId;
-                isMovingShape = true;
+                if (mapData.drawings[shapeId].link==null)
+                {
+                    console.log("Picked up: " + shapeId);
+                    document.body.style.cursor = "pointer";
+                    shapeDragOffset.x = mapData.drawings[shapeId].x - (e.pageX + board.scrollLeft);
+                    shapeDragOffset.y = mapData.drawings[shapeId].y - (e.pageY + board.scrollTop);
+                    movingShapeId = shapeId;
+                    isMovingShape = true;
+                }
             }
             return;
         }
@@ -1392,8 +1428,8 @@ shapeMap.addEventListener("mouseup", function(e) {
             isMovingShape = false;
             console.log("Dropped shape!");
             document.body.style.cursor = "default";
-            RequestServer({c: "editDrawing", id: movingShapeId, x: (e.pageX + board.scrollLeft) + shapeDragOffset.x, y: (e.pageY + board.scrollTop) + shapeDragOffset.y});
-            UpdateMapData();
+            requestServer({c: "editDrawing", id: movingShapeId, x: (e.pageX + board.scrollLeft) + shapeDragOffset.x, y: (e.pageY + board.scrollTop) + shapeDragOffset.y});
+            updateMapData();
         }    
     }
 })
@@ -1405,7 +1441,7 @@ shapeMap.addEventListener("dragstart", function(e) {
 
 map.addEventListener("contextmenu", function(e) {
     e.preventDefault();
-    DisplayContextMenu(e);
+    displayContextMenu(e);
 })
 
 shapeMap.addEventListener("contextmenu", function(e) {
@@ -1413,15 +1449,15 @@ shapeMap.addEventListener("contextmenu", function(e) {
     let pixel = hitboxCanvas.getImageData((e.pageX + board.scrollLeft), (e.pageY + board.scrollTop), 1, 1).data;
     if (pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0)
     {
-        DisplayContextMenu(e);
+        displayContextMenu(e);
     }
     else
     {
-        ShapeContextMenu(e, pixel);
+        shapeContextMenu(e, pixel);
     }
 })
 
-function ShapeContextMenu(e, pixel)
+function shapeContextMenu(e, pixel)
 {
     let testString = "#" + decToHex(pixel[0]) + decToHex(pixel[1]) + decToHex(pixel[2]);
     let shapeId = colorToSigned24Bit(testString) / 16;
@@ -1430,10 +1466,10 @@ function ShapeContextMenu(e, pixel)
         shapeId--;
         let menuOptions = [
             {text: "Erase shape", hasSubMenu: false, callback: async function() {
-                let result = await RequestServer({c: "removeDrawing", id: shapeId, removedDrawings: mapData.removedDrawings});
+                let result = await requestServer({c: "removeDrawing", id: shapeId, removedDrawings: mapData.removedDrawings});
                 if (result[0] == true)
                 {
-                    UpdateMapData();
+                    updateMapData();
                 }
                 else
                 {
@@ -1441,11 +1477,11 @@ function ShapeContextMenu(e, pixel)
                 }
             }}
         ];
-        DisplayMenu(e, menuOptions);
+        displayMenu(e, menuOptions);
     }
 }
 
-function DisplayContextMenu(e)
+function displayContextMenu(e)
 {
     let listOptions = [
         {text: "Place Token", hasSubMenu: true, callback: async function() {
@@ -1468,12 +1504,12 @@ function DisplayContextMenu(e)
                             if (tokenSize < 20 && tokenSize > 0)
                             {
                                 if (confirm("Make this a DM token?"))
-                                    RequestServer({c: "createToken", text: textToDisplay, x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), size: tokenSize, status: "", layer: 0, dm: true})
+                                    requestServer({c: "createToken", text: textToDisplay, x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), size: tokenSize, status: "", layer: 0, dm: true})
                                 else
-                                    RequestServer({c: "createToken", text: textToDisplay, x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), size: tokenSize, status: "", layer: 0})
+                                    requestServer({c: "createToken", text: textToDisplay, x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), size: tokenSize, status: "", layer: 0, dm: false})
                                 
                                 console.log("Placing text token with size" + tokenSize + " at " + (e.pageX + board.scrollLeft).toString() + ":" + (e.pageY + board.scrollTop).toString());
-                                UpdateMapData();
+                                updateMapData();
                             }
                             else
                             {
@@ -1484,9 +1520,9 @@ function DisplayContextMenu(e)
                         {
                             if (tokenSize < 6 && tokenSize > 0)
                             {
-                                RequestServer({c: "createToken", text: textToDisplay, x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), size: tokenSize, status: "", layer: 0})
+                                requestServer({c: "createToken", text: textToDisplay, x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), size: tokenSize, status: "", layer: 0, dm: false})
                                 console.log("Placing text token with size" + tokenSize + " at " + (e.pageX + board.scrollLeft).toString() + ":" + (e.pageY + board.scrollTop).toString());
-                                UpdateMapData();
+                                updateMapData();
                             }
                             else
                             {
@@ -1514,9 +1550,9 @@ function DisplayContextMenu(e)
                         {
                             if (tokenSize < 20 && tokenSize > 0)
                             {
-                                RequestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: tokenList[i], size: tokenSize, status: "", layer: 0})
+                                requestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: tokenList[i], size: tokenSize, status: "", layer: 0, dm: false})
                                 console.log("Placing " + tokenList[i] + " with size" + tokenSize + " at " + (e.pageX + board.scrollLeft).toString() + ":" + (e.pageY + board.scrollTop).toString());
-                                UpdateMapData();
+                                updateMapData();
                             }
                             else
                             {
@@ -1527,9 +1563,9 @@ function DisplayContextMenu(e)
                         {
                             if (tokenSize < 6 && tokenSize > 0)
                             {
-                                RequestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: tokenList[i], size: tokenSize, status: "", layer: 0})
+                                requestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: tokenList[i], size: tokenSize, status: "", layer: 0, dm: false})
                                 console.log("Placing " + tokenList[i] + " with size" + tokenSize + " at " + (e.pageX + board.scrollLeft).toString() + ":" + (e.pageY + board.scrollTop).toString());
-                                UpdateMapData();
+                                updateMapData();
                             }
                             else
                             {
@@ -1555,15 +1591,15 @@ function DisplayContextMenu(e)
                         }
                         else
                         {
-                            RequestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: dmTokenList[i], size: tokenSize, status: ""})
+                            requestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: dmTokenList[i], size: tokenSize, status: "", dm: true})
                             console.log("Placing " + dmTokenList[i] + " with size" + tokenSize + " at " + (e.pageX + board.scrollLeft).toString() + ":" + (e.pageY + board.scrollTop).toString());
-                            UpdateMapData();
+                            updateMapData();
                         }
                     }
                     subMenu.push(tmpElement);
                 }
             }
-            DisplaySubMenu(e, subMenu);
+            displaySubMenu(e, subMenu);
         }},
         {text: "Draw Shape", description: "Pick a shape to draw", hasSubMenu: true, callback: function() {
             let subMenuOptions = [
@@ -1574,10 +1610,10 @@ function DisplayContextMenu(e)
                         circleMarkers.radius = radiusInput / feetPerSquare * gridSize;
                         circleMarkers.x = e.pageX + board.scrollLeft;
                         circleMarkers.y = e.pageY + board.scrollTop;
-                        RequestServer({c: "addDrawing", shape: "circle", x: circleMarkers.x, y: circleMarkers.y, radius: circleMarkers.radius, trueColor: shapeColor});
-                        UpdateMapData();
-                        CloseMenu();
-                        CloseSubMenu();
+                        requestServer({c: "addDrawing", shape: "circle", x: circleMarkers.x, y: circleMarkers.y, radius: circleMarkers.radius, trueColor: shapeColor});
+                        updateMapData();
+                        closeMenu();
+                        closeSubMenu();
                     }    
                 }},
                 {text: "Draw Square", callback: function() {
@@ -1600,7 +1636,7 @@ function DisplayContextMenu(e)
                     isPlacingLine = true;
                 }}
             ];
-            DisplaySubMenu(e, subMenuOptions);
+            displaySubMenu(e, subMenuOptions);
         }}
     ]
     let DMoptions = [
@@ -1623,9 +1659,9 @@ function DisplayContextMenu(e)
                     {
                         if (tokenSize < 20 && tokenSize > 0)
                         {
-                            RequestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: tokenList[i], size: tokenSize, status: "", hidden: true})
+                            requestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: tokenList[i], size: tokenSize, status: "", hidden: true})
                             console.log("Placing hidden " + tokenList[i] + " with size " + tokenSize + " at " + (e.pageX + board.scrollLeft).toString() + ":" + (e.pageY + board.scrollTop).toString());
-                            UpdateMapData();
+                            updateMapData();
                         }
                         else
                         {
@@ -1650,15 +1686,15 @@ function DisplayContextMenu(e)
                         }
                         else
                         {
-                            RequestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: dmTokenList[i], size: tokenSize, status: "", hidden: true})
+                            requestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: dmTokenList[i], size: tokenSize, status: "", hidden: true})
                             console.log("Placing " + dmTokenList[i] + " with size" + tokenSize + " at " + (e.pageX + board.scrollLeft).toString() + ":" + (e.pageY + board.scrollTop).toString());
-                            UpdateMapData();
+                            updateMapData();
                         }
                     }
                     subMenu.push(tmpElement);
                 }
             }
-            DisplaySubMenu(e, subMenu);
+            displaySubMenu(e, subMenu);
         }},
         {text: "Place Blocker", description: "Upon clicking this button click somewhere else to define the bottom right corner", hasSubMenu: false, callback: async function() {
             blockerMarkers.x = (e.pageX + board.scrollLeft);
@@ -1670,8 +1706,8 @@ function DisplayContextMenu(e)
             for (let i = 0; i < mapData.maps.length; i++)
             {
                 let tmpSubOption = {text: mapData.maps[i], hasSubMenu: false, callback: async function() {
-                    RequestServer({c: "changeSelectedMap", selectedMap: mapData.maps[i]})
-                    await UpdateMapData();
+                    requestServer({c: "changeSelectedMap", selectedMap: mapData.maps[i]})
+                    await updateMapData();
                     mapSourceSelect.value = mapData.map;
                     mapYInput.value = mapData.y;
                     mapXInput.value = mapData.x;
@@ -1680,7 +1716,7 @@ function DisplayContextMenu(e)
                 }};
                 subOptions.push(tmpSubOption);
             }
-            DisplaySubMenu(e, subOptions);
+            displaySubMenu(e, subOptions);
         }}
     ]
     if (isDM)
@@ -1688,7 +1724,7 @@ function DisplayContextMenu(e)
         for (let f = 0; f < DMoptions.length; f++)
             listOptions.push(DMoptions[f]);
     }
-    DisplayMenu(e, listOptions);
+    displayMenu(e, listOptions);
 }
 
 window.onclick = function(event) 
@@ -1700,18 +1736,18 @@ window.onclick = function(event)
         if (ancestry[i].className.includes("custom-menu")) { shouldCloseMenus = false; }
     }
     if (shouldCloseMenus) { 
-        CloseMenu();
-        CloseSubMenu();
+        closeMenu();
+        closeSubMenu();
     }
 }
 //#endregion
 
 //#region Menu and Submenu
     let customMenu = document.getElementById("contextMenu");
-    function DisplayMenu(event, listData) 
+    function displayMenu(event, listData) 
     {
-        CloseMenu();
-        CloseSubMenu();
+        closeMenu();
+        closeSubMenu();
         customMenu.innerHTML = "";
         if (listData.length > 0)
         {
@@ -1745,8 +1781,8 @@ window.onclick = function(event)
                     listData[p].callback();
                     if (listData[p].hasSubMenu != true)
                     {
-                        CloseMenu();
-                        CloseSubMenu();
+                        closeMenu();
+                        closeSubMenu();
                     }
                 }
                 customMenu.appendChild(listItem);
@@ -1762,10 +1798,10 @@ window.onclick = function(event)
         }
     }
     
-    function CloseMenu() { customMenu.style.display = "none"; }
+    function closeMenu() { customMenu.style.display = "none"; }
 
     let customSubMenu = document.getElementById("subContextMenu");
-    function DisplaySubMenu(event, listData) 
+    function displaySubMenu(event, listData) 
     {
         customSubMenu.innerHTML = "";
         if (listData.length > 0)
@@ -1796,8 +1832,8 @@ window.onclick = function(event)
                 listItem.onclick = function() 
                 {
                     listData[p].callback();
-                    CloseMenu();
-                    CloseSubMenu();
+                    closeMenu();
+                    closeSubMenu();
                 }
                 customSubMenu.appendChild(listItem);
             }
@@ -1808,7 +1844,7 @@ window.onclick = function(event)
         }
     }
 
-    function CloseSubMenu() { customSubMenu.style.display = "none"; }
+    function closeSubMenu() { customSubMenu.style.display = "none"; }
 //#endregion
 
 //#region Low level functions
@@ -1836,7 +1872,7 @@ function getAncestry(el) {
     return elements;
 }
 
-async function RequestServer(data)
+async function requestServer(data)
 {
     const rawResponse = await fetch('/api', {
       method: 'POST',

@@ -14,13 +14,22 @@ app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
 app.use(fileUpload());
 loadCurrentMap();
+for (let i = 0; i<currentMap.tokens.length; i++)
+{
+    if (currentMap.tokens[i].dm==null)
+    {
+        if (currentMap.dmTokenList.includes(currentMap.tokens[i].image))
+            currentMap.tokens[i].dm = true;
+        else
+            currentMap.tokens[i].dm = false;
+    }
+}
+saveCurrentMap();
 let removedTokens = 0;
 let previousRemovedTokenId = -1;
 let removedDrawings = 0;
 let previousRemovedDrawingId = -1;
 let playerNameList = [];
-
-
 
 app.post("/api", function(request, response) {
     let playerName = GetCookie(request, "playerName");
@@ -69,7 +78,7 @@ app.post("/api", function(request, response) {
                 tmpToken.size = request.body.size;
                 tmpToken.status = request.body.status;
                 tmpToken.layer = request.body.layer;
-                if (request.body.text != null)
+                if (request.body.dm != null)
                     tmpToken.dm = request.body.dm;
                 if (request.body.text != null)
                     tmpToken.text = request.body.text;
@@ -180,24 +189,24 @@ app.post("/api", function(request, response) {
                 let currentToken = currentMap.tokens[i];
                 if (currentToken.id == request.body.id)
                 {
-                    if (currentMap.tokens[i].group != null)
+                    let dx = request.body.x - currentMap.tokens[i].x;
+                    let dy = request.body.y - currentMap.tokens[i].y;
+                    if (currentMap.tokens[i].group != null && !request.body.bypassLink)
                     {
-                        let dx = request.body.x - currentMap.tokens[i].x;
-                        let dy = request.body.y - currentMap.tokens[i].y;
                         for (let j in currentMap.tokens)
                         {
                             if (j != i && currentMap.tokens[j].group == currentMap.tokens[i].group)
                             {
                                 currentMap.tokens[j].x = currentMap.tokens[j].x + dx;
                                 currentMap.tokens[j].y = currentMap.tokens[j].y + dy;
-                                CheckLinkedShapes(currentMap.tokens[j]);
+                                CheckLinkedShapes(currentMap.tokens[j], dx, dy);
                             }
                             
                         }
                     }
                     currentMap.tokens[i].x = request.body.x;
                     currentMap.tokens[i].y = request.body.y;
-                    CheckLinkedShapes(currentMap.tokens[i]);
+                    CheckLinkedShapes(currentMap.tokens[i], dx, dy);
                 }
             }
             saveCurrentMap();
@@ -440,14 +449,26 @@ app.post('/upload', function(req, res) {
 app.use(express.static('client'));
 app.listen(port);
 
-function CheckLinkedShapes(tokenData) 
+function CheckLinkedShapes(tokenData, dx, dy) 
 {
     for (let i = 0; i < currentMap.drawings.length; i++)
     {
         if (currentMap.drawings[i].link == tokenData.id)
         {
-            currentMap.drawings[i].x = tokenData.x;
-            currentMap.drawings[i].y = tokenData.y;
+            if (currentMap.drawings[i].destX1!=null)
+            {
+                currentMap.drawings[i].x = currentMap.drawings[i].x + dx;
+                currentMap.drawings[i].y = currentMap.drawings[i].y + dy;
+                currentMap.drawings[i].destX1 = currentMap.drawings[i].destX1 + dx;
+                currentMap.drawings[i].destX2 = currentMap.drawings[i].destX2 + dx;
+                currentMap.drawings[i].destY1 = currentMap.drawings[i].destY1 + dy;
+                currentMap.drawings[i].destY2 = currentMap.drawings[i].destY2 + dy;
+            }
+            else
+            {
+                currentMap.drawings[i].x = tokenData.x;
+                currentMap.drawings[i].y = tokenData.y;
+            }
         }
     }
 }
