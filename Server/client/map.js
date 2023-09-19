@@ -298,7 +298,7 @@ async function updateMapData(force)
                 if (oldParsedData.offsetY != mapData.offsetY) { skipMapRedraw = false; }
                 if (oldParsedData.gridColor != mapData.gridColor) { skipMapRedraw = false; }
                 if (force) { skipMapRedraw = false; }
-                drawCanvas(skipMapRedraw);
+                drawCanvas(skipMapRedraw, force);
             }
             oldData = stringData;
             oldParsedData = oldData?JSON.parse(oldData):oldParsedData;
@@ -472,7 +472,7 @@ gridColorPicker.onchange = async function() {
 
 mapSelect.onchange = async function() {
     await requestServer({c: "changeSelectedMap", selectedMap: mapSelect.value})
-    await updateMapData();
+    await updateMapData(true);
     mapSourceSelect.value = mapData.map;
     mapYInput.value = mapData.y;
     mapXInput.value = mapData.x;
@@ -513,7 +513,7 @@ offsetYInput.onchange = async function() {
 //#endregion
 
 //#region Drawing functions
-function drawCanvas(skipMap)
+function drawCanvas(skipMap, force)
 {
     if (!skipMap) {
         map.width = loadedMap.naturalWidth;
@@ -541,7 +541,7 @@ function drawCanvas(skipMap)
     }
     drawTokens();
     drawShapes();
-    updateTracker();
+    updateTracker(force);
 }
 
 function drawShapes()
@@ -1302,8 +1302,8 @@ function drawTokens()
             imageElement.className = "token";
             imageElement.style.top = token.y - (gridSize.y * token.size) / 2 + 0.5*GridLineWidth + "px";
             imageElement.style.left = token.x - (gridSize.x * token.size) / 2 + 0.5*GridLineWidth + "px";
-            imageElement.style.width = (token.size * gridSize.x).toString() + "px";
-            imageElement.style.height = (token.size * gridSize.y).toString() + "px";
+            imageElement.style.width = (token.size * gridSize.x-2*GridLineWidth).toString() + "px";
+            imageElement.style.height = (token.size * gridSize.y-2*GridLineWidth).toString() + "px";
     
             imageElement.style.zIndex = (token.layer + baseTokenIndex).toString();
             imageElement.title = token.status;
@@ -1313,8 +1313,8 @@ function drawTokens()
                 let hiddenImage = document.createElement("img");
                 hiddenImage.src = "images/hidden.png";
                 hiddenImage.className = "hiddenToken";
-                hiddenImage.style.width = (token.size * gridSize.x / 3).toString() + "px";
-                hiddenImage.style.height = (token.size * gridSize.y / 3).toString() + "px";
+                hiddenImage.style.width = ((token.size * gridSize.x-2*GridLineWidth) / 3).toString() + "px";
+                hiddenImage.style.height = ((token.size * gridSize.y-2*GridLineWidth) / 3).toString() + "px";
                 hiddenImage.style.top = token.y - (gridSize.y * token.size) / 2 + "px";
                 hiddenImage.style.left = token.x - (gridSize.x * token.size) / 2  + "px";
                 hiddenImage.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
@@ -1355,8 +1355,8 @@ function drawTokens()
                             
                         linkImage.className = "linkImage";
                         tokensDiv.appendChild(linkImage);
-                        linkImage.style.width = (token.size * gridSize.x / 3).toString() + "px";
-                        linkImage.style.height = (token.size * gridSize.y / 3).toString() + "px";
+                        linkImage.style.width = ((token.size * gridSize.x-2*GridLineWidth) / 3).toString() + "px";
+                        linkImage.style.height = ((token.size * gridSize.y-2*GridLineWidth) / 3).toString() + "px";
                         linkImage.style.top = token.y - (gridSize.y * token.size) / 2 + "px";
                         linkImage.style.left = token.x + (gridSize.x * token.size) / 2 - linkImage.offsetWidth + "px";
                         linkImage.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
@@ -1372,8 +1372,8 @@ function drawTokens()
                     concentratingIcon.className = "concentratingText";
                     concentratingIcon.src = "images/literally_copyright.png";
                     tokensDiv.appendChild(concentratingIcon);
-                    concentratingIcon.style.width = (token.size * gridSize.x / 3).toString() + "px";
-                    concentratingIcon.style.height = (token.size * gridSize.y / 3).toString() + "px";
+                    concentratingIcon.style.width = ((token.size * gridSize.x-2*GridLineWidth) / 3).toString() + "px";
+                    concentratingIcon.style.height = ((token.size * gridSize.y-2*GridLineWidth) / 3).toString() + "px";
                     concentratingIcon.style.top = token.y + (gridSize.y * token.size) / 2 - concentratingIcon.offsetHeight + "px";
                     concentratingIcon.style.left = token.x - (gridSize.x * token.size) / 2 + "px";
                     concentratingIcon.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
@@ -1752,9 +1752,9 @@ function drawTokens()
                 textHolder.style.zIndex = parseInt(imageElement.style.zIndex);
                 textHolder.style.left = (token.x - 0.4*token.size*gridSize.x + 0.5*GridLineWidth).toString() + "px";
                 textHolder.style.top = (token.y - 0.25*token.size*gridSize.y + 0.5*GridLineWidth).toString() + "px";
-                textHolder.style.width = (token.size*gridSize.x*0.8).toString() + "px";
-                textHolder.style.height = (token.size*gridSize.y*0.5).toString() + "px";
-                textHolder.style.lineHeight = (token.size*gridSize.y*0.5).toString() + "px";
+                textHolder.style.width = ((token.size*gridSize.x-2*GridLineWidth)*0.8).toString() + "px";
+                textHolder.style.height = ((token.size*gridSize.y-2*GridLineWidth)*0.5).toString() + "px";
+                textHolder.style.lineHeight = ((token.size*gridSize.y-2*GridLineWidth)*0.5).toString() + "px";
                 let textElement = document.createElement("a");
                 textElement.innerText = token.text;
                 textElement.style.height = "100%";
@@ -3489,13 +3489,13 @@ document.body.ondrop = async function(e)
             let tY;
             if (draggingTokenData.size >= 1)
             {
-                tX = Math.round(Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridSize.x * draggingTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * draggingTokenData.size + offsetX);
-                tY = Math.round(Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridSize.y * draggingTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * draggingTokenData.size + offsetY);
+                tX = Math.round(Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridSize.x * draggingTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * draggingTokenData.size + offsetX) + GridLineWidth;
+                tY = Math.round(Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridSize.y * draggingTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * draggingTokenData.size + offsetY) + GridLineWidth;
             }
             else
             {
-                tX = Math.round(Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridSize.x * draggingTokenData.size) / (gridSize.x * draggingTokenData.size)) * (gridSize.x * draggingTokenData.size) + 0.5 * gridSize.x * draggingTokenData.size + offsetX);
-                tY = Math.round(Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridSize.y * draggingTokenData.size) / (gridSize.y * draggingTokenData.size)) * (gridSize.y * draggingTokenData.size) + 0.5 * gridSize.y * draggingTokenData.size + offsetY);
+                tX = Math.round(Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridSize.x * draggingTokenData.size) / (gridSize.x * draggingTokenData.size)) * (gridSize.x * draggingTokenData.size) + 0.5 * gridSize.x * draggingTokenData.size + offsetX) + GridLineWidth;
+                tY = Math.round(Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridSize.y * draggingTokenData.size) / (gridSize.y * draggingTokenData.size)) * (gridSize.y * draggingTokenData.size) + 0.5 * gridSize.y * draggingTokenData.size + offsetY) + GridLineWidth;
             }
             if (tX!= draggingTokenData.x || tY != draggingTokenData.y)
                 await requestServer({c: "moveToken", id: draggingToken, x: tX, y: tY, bypassLink: !controlPressed});
