@@ -14,12 +14,18 @@ document.getElementById("enterButton").onclick = function() {
 
 window.onload = function() {
     playerNameInput.value = getCookie("playerName");
-    if (getCookie("isDM") == 1)
+    if (getCookie("isDM") == 1) {
+        document.body.style.backgroundImage = "url(images/Dungeonmaster.jpg)";
         isDMInput.checked = true;
-    else if (getCookie("isDM") == 0)
+    }
+    else if (getCookie("isDM") == 0) {
+        document.body.style.backgroundImage = "url(images/Player.jpg)";
         isDMInput.checked = false;
-    else
+    }
+    else {
+        document.body.style.backgroundImage = "url(images/Player.jpg)";
         setCookie("isDM", 0);
+    }
 }
 
 playerNameInput.onchange = function() {
@@ -27,10 +33,15 @@ playerNameInput.onchange = function() {
 }
 
 isDMInput.onchange = function() {
-    if (isDMInput.checked)
+    if (isDMInput.checked) {
+        document.body.style.backgroundImage = "url(images/Dungeonmaster.jpg)";
         setCookie("isDM", 1);
-    else
+    }
+    else {
+        document.body.style.backgroundImage = "url(images/Player.jpg)";
         setCookie("isDM", 0);
+    }
+        
 }
 
 //#region cookies

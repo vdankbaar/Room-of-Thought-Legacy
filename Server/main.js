@@ -744,9 +744,9 @@ function loadCurrentMap()
     if (currentMap.polyBlockers == null)
         currentMap.polyBlockers = [];
     currentMap.mapName = selectedMap;
-    currentMap.tokenList = readDirectory(publicFolder + "tokens", "jpg|png");
-    currentMap.dmTokenList = readDirectory(publicFolder + "dmTokens", "jpg|png");
-    currentMap.mapSourceList = readDirectory(publicFolder + "maps", "jpg|png");
+    currentMap.tokenList = readDirectory(publicFolder + "tokens", "jpg|png|jpeg|gif");
+    currentMap.dmTokenList = readDirectory(publicFolder + "dmTokens", "jpg|png|jpeg|gif");
+    currentMap.mapSourceList = readDirectory(publicFolder + "maps", "jpg|png|jpeg|gif");
     currentMap.maps = returnMaps();
     if (currentMap.tokens.length>0)
     {
