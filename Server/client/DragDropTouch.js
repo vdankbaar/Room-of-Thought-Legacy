@@ -307,7 +307,7 @@ var DragDropTouch;
         };
         // get point for a touch event
         DragDropTouch.prototype._getPoint = function (e, page) {
-            if (e && e.touches) {
+            if (e.touches) {
                 e = e.touches[0];
             }
             return { x: page ? e.pageX : e.clientX, y: page ? e.pageY : e.clientY };

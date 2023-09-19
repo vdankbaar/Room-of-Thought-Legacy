@@ -108,6 +108,11 @@ body h3 {user-select: none;}
 }
 
 #map {
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-drag: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
     position: absolute;
     margin: 0px;
     padding: 0px;
@@ -805,6 +810,7 @@ body h3 {user-select: none;}
 }
 
 #tokens div {
+    -webkit-user-drag: none;
     pointer-events: none;
     position: absolute;
     display: flex;
@@ -819,6 +825,7 @@ body h3 {user-select: none;}
 
 .token {
     position: absolute;
+    user-select: none;
 }
 
 .hiddenToken {

@@ -47,15 +47,19 @@
                     <label for="offsetX">X offset:<input type="number" id="offsetX"></label>
                     <label for="offsetY">Y offset:<input type="number" id="offsetY"></label>
                 </div>
-                <input id="startAlignTool" class="dmOnly" type="button" value="Start Align Tool">
-                <input id="importMap" class="dmOnly" type="button" value="Upload JSON file">
-                <input id="exportMap" class="dmOnly" type="button" value="Export JSON file">
-                <input id="hideInits" class="dmOnly" type="button" value="Hide/Reveal initiatives">
                 <input id="clearTokensButton" class="dmOnly" type="button" value="Clear all tokens">
                 <input id="clearDrawingsButton" class="dmOnly" type="button" value="Clear all drawings">
                 <input id="clearBlockersButton" class="dmOnly" type="button" value="Clear all blockers">
                 <input id="switchBlockerTypeButton" class="dmOnly" type="button" value="Switch blocker type">
                 <input id="invertBlockerButton" class="dmOnly" type="button" value="Invert blockers">
+                <input id="togglePlayerMode" class="dmOnly" type="button" value="Toggle player mode (M)">
+                <input id="toggleExtraOptions" class="dmOnly" type="button" value="Toggle extra options">
+                <!--
+                OLD options: these have proven to be less useful than expected so they have been disabled by default to reduce clutter and make space for newer options -->
+                <input id="startAlignTool" class="dmOnly" type="button" value="Start Align Tool" style="display: none">
+                <input id="importMap" class="dmOnly" type="button" value="Upload JSON file" style="display: none">
+                <input id="exportMap" class="dmOnly" type="button" value="Export JSON file" style="display: none">
+                <input id="hideInits" class="dmOnly" type="button" value="Hide/Reveal initiatives"  style="display: none">
             </div>
             <div id="notesEditor">
                 <textarea placeholder="Enter your notes here..."></textarea>

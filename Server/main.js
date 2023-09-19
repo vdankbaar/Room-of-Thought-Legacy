@@ -439,12 +439,19 @@ app.post("/api", function(request, response) {
                 {
                     if (currentDrawing.shape == "vertexLine" && request.body.both)
                     {
-                        let dx = request.body.x - currentDrawing.points[0].x;
-                        let dy = request.body.y - currentDrawing.points[0].y;
-                        for (let i = 0; i < currentDrawing.points.length; i++)
+                        if (request.body.x != null || request.body.y != null)
                         {
-                            currentDrawing.points[i].x = currentDrawing.points[i].x + dx;
-                            currentDrawing.points[i].y = currentDrawing.points[i].y + dy;
+                            let dx = request.body.x - currentDrawing.points[0].x;
+                            let dy = request.body.y - currentDrawing.points[0].y;
+                            if (request.body.moveShapeGroup)
+                            {
+                                moveShapeGroup(currentDrawing.id, dx, dy, currentDrawing.shapeGroup);
+                            }
+                            for (let i = 0; i < currentDrawing.points.length; i++)
+                            {
+                                currentDrawing.points[i].x = currentDrawing.points[i].x + dx;
+                                currentDrawing.points[i].y = currentDrawing.points[i].y + dy;
+                            }   
                         }
                     }
                     else
@@ -868,12 +875,23 @@ function moveShapeGroup(moveShapeOriginId, dx, dy, targetShapeGroup)
 {
     if (targetShapeGroup!=null)
     {
-        for (let i = 0; i < currentMap.drawings.length; i++)
+        for (let drawing of currentMap.drawings)
         {
-            if (currentMap.drawings[i].shapeGroup == targetShapeGroup && currentMap.drawings[i].id != moveShapeOriginId && currentMap.drawings[i].link == null)
+            if (drawing.shapeGroup == targetShapeGroup && drawing.id != moveShapeOriginId)
             {
-                currentMap.drawings[i].x = currentMap.drawings[i].x + dx;
-                currentMap.drawings[i].y = currentMap.drawings[i].y + dy;
+                if (drawing.shape == "vertexLine")
+                {
+                    for (let point of drawing.points)
+                    {
+                        point.x = point.x + dx;
+                        point.y = point.y + dy;
+                    }
+                }
+                else
+                {
+                    drawing.x = drawing.x + dx;
+                    drawing.y = drawing.y + dy;
+                }
             }
         }
     }
@@ -961,7 +979,7 @@ function saveCurrentMap()
 function returnMaps() 
 {
     let tmpMaps = readDirectory("data/", "json");
-    for (i in tmpMaps)
+    for (let i in tmpMaps)
     {
         tmpMaps[i] = tmpMaps[i].split(".")[0];
     }
@@ -999,7 +1017,7 @@ function readFile(file)
     {
         try
         { 
-            data = fs.readFileSync(file, 'utf-8');
+            let data = fs.readFileSync(file, 'utf-8');
             fileReadSuccess = true;
             return data;
         }
