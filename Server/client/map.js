@@ -942,6 +942,8 @@ function drawBlockers()
                     
                     tmpBlocker.addEventListener("contextmenu", function(e) {
                         e.preventDefault();
+                        selectedBlocker = currentBlocker.id;
+                        updateHighlightedBlocker()
                         let menuOptions = [
                             {text: "Remove blocker", hasSubMenu: false, callback: function() {
                                 selectedBlocker=-1;
@@ -952,17 +954,23 @@ function drawBlockers()
                         displayMenu(e, menuOptions);
                     });
     
+                    tmpBlocker.addEventListener("dblclick", function(e) {
+                        updateHighlightedBlocker(true);
+                        selectedBlocker = currentBlocker.id;
+                    })
+
                     tmpBlocker.addEventListener("mousedown", function(e) {
                         if (e.button == 0)
                         {
+                            selectedBlocker = currentBlocker.id;
                             selectedToken = -1;
                             selectedShapeId = -1;
-                            selectedBlocker = currentBlocker.id;
-                            updateHighlightedBlocker();
                             updateHighlightedToken();
                             drawShapes();
+                            updateHighlightedBlocker();
                         }
                     });
+
                     tmpBlocker.addEventListener("mouseup", function(e) {
                         if (e.button == 0)
                         {
@@ -975,7 +983,7 @@ function drawBlockers()
                                 updateMapData();
                             }
                         }
-                    })
+                    });
 
                     extraBlocker.addEventListener("dragstart", function(e) {
                         isDraggingBlocker = true;
@@ -983,6 +991,7 @@ function drawBlockers()
                         blockerDragOffset.x = currentBlocker.x - (e.pageX + board.scrollLeft);
                         blockerDragOffset.y = currentBlocker.y - (e.pageY + board.scrollTop);
                     })
+
                     extraBlocker.addEventListener("dragend", function(e) {
                         e.preventDefault();
                         if (isDraggingBlocker)
@@ -1050,15 +1059,33 @@ function drawBlockers()
     }
 }
 
-function updateHighlightedBlocker() {
+function updateHighlightedBlocker(reverse) {
     for (let p = 0; p < blockersDiv.children.length; p++)
     {
-        if (blockersDiv.children[p].getAttribute("blockerid")==selectedBlocker)
-        {
-            blockersDiv.children[p].style.outline = "0.3vh dashed "+blockerOutlineColor;
+        if (blockerEditMode) {
+            if (blockersDiv.children[p].getAttribute("blockerid")==selectedBlocker)
+            {
+                blockersDiv.children[p].style.outline = "0.3vh dashed "+blockerOutlineColor;
+                if (reverse) {
+                    blockersDiv.children[p].style.zIndex = 101;
+                } else {
+                    blockersDiv.children[p].style.zIndex = 102;
+                }
+                
+            }
+            else
+            {
+                blockersDiv.children[p].style.outline = "";
+                if (reverse) {
+                    blockersDiv.children[p].style.zIndex = 102;
+                } else {
+                    blockersDiv.children[p].style.zIndex = 101;
+                }
+            }   
         }
         else
         {
+            blockersDiv.children[p].style.zIndex = null;
             blockersDiv.children[p].style.outline = "";
         }
     }
@@ -1297,7 +1324,7 @@ function createToken(token)
             document.body.style.cursor = "grabbing";
             drawCanvas();
         }
-    })
+    });
 
     imageElement.addEventListener("mousedown", function(e) {
         if (CheckAntiBlockerPixel(e) || isDM)
@@ -1348,6 +1375,10 @@ function createToken(token)
     imageElement.addEventListener("dragover", function(e) {
         e.preventDefault();
     })
+
+    imageElement.addEventListener("dragend", function(e) {
+        e.preventDefault();
+    });
 
     imageElement.addEventListener("contextmenu", function(e) {
         closeMenu();
@@ -1956,12 +1987,6 @@ document.body.ondrop = async function(e)
         controlPressed = false;
         draggingToken = -1;
     }
-    else
-    {
-        isDraggingToken = false;
-        draggingToken = -1;
-        updateMapData();
-    }
     if (isDraggingBlocker)
     {
         draggedBlocker.x = (e.pageX + board.scrollLeft);
@@ -2559,7 +2584,7 @@ shapeMap.addEventListener("mousedown", function(e) {
     }
 })
 
-shapeMap.addEventListener("mousemove", function(e) {
+window.addEventListener("mousemove", function(e) {
     if (isPanning)
     {
         board.scrollLeft = oldScrollPos.x - (e.pageX - oldMousePos.x);
@@ -2986,6 +3011,7 @@ window.onclick = function(event)
                 customMenu.style.overflowY = "hidden";
             }
             customMenu.style.display = "block";
+            
             let testx = (event.pageX + board.scrollLeft);
             let testy = (event.pageY + board.scrollTop);
             customMenu.style.top = testy + "px";
@@ -3012,13 +3038,16 @@ window.onclick = function(event)
                 }
                 customMenu.appendChild(listItem);
             }
-            if ((event.pageX + board.scrollLeft) + customMenu.offsetWidth > (window.innerWidth + window.pageXOffset))
+            let customMenuPos;
+            if (event.pageX + customMenu.offsetWidth > window.innerWidth + window.pageXOffset - sideMenu.offsetWidth)
             {
-                scrollBy((((event.pageX + board.scrollLeft) + customMenu.offsetWidth + 10) - (window.innerWidth + window.pageXOffset)), 0);
+                customMenuPos = parseInt(customMenu.style.left.substr(0, customMenu.style.left.length-2));
+                customMenu.style.left = "calc("+(customMenuPos - (event.pageX + customMenu.offsetWidth - (window.innerWidth + window.pageXOffset - sideMenu.offsetWidth))).toString()+"px - 0.9vw)";
             }
-            if ((event.pageY + board.scrollTop) + customMenu.offsetHeight > (window.innerHeight + window.pageYOffset))
+            if (event.pageY + customMenu.offsetHeight > window.innerHeight + window.pageYOffset)
             {
-                scrollBy(0, (((event.pageY + board.scrollTop) + customMenu.offsetHeight + 10) - (window.innerHeight + window.pageYOffset)));
+                customMenuPos = parseInt(customMenu.style.top.substr(0, customMenu.style.top.length-2));
+                customMenu.style.top = "calc("+(customMenuPos - (event.pageY + customMenu.offsetHeight - window.innerHeight - window.pageYOffset)).toString()+"px - 1.5vh)";
             }
         }
     }
