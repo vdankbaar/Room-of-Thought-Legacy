@@ -1,0 +1,23 @@
+<html>
+    <head>
+        <link rel="stylesheet" type="text/css" href="map.css">
+    </head>
+    
+    <body>
+        <div id="tokens">
+        </div>
+        <div id="blockers">
+            <canvas class="blocker" width="100" height="100"></canvas>
+        </div>
+        <div id="testBlocker">
+            <div></div>
+        </div>
+        <img id="hiddenMapLoader" width="0" height="0" src="public/current.jpg">
+        <canvas id="shapeMap" width="1280" height="720"></canvas>
+        <canvas id="map" width="1280" height="720"></canvas>
+        <canvas id="hitboxMap" width="1280" height="720"></canvas>
+        <ul id="contextMenu" class='custom-menu' oncontextmenu="event.preventDefault();"></ul>
+        <ul id="subContextMenu" class='custom-menu' oncontextmenu="event.preventDefault();"></ul>
+    </body>
+    <script type="module" src="map.js"></script>
+</html>

@@ -1,0 +1,85 @@
+:root {
+    --blocker-color: rgb(0, 0, 0);
+    --token-index: 4;
+}
+
+body {
+    margin: 0px;
+    background-color: rgb(53, 53, 53);
+    z-index: -2;
+}
+
+#shapeMap {
+    position: absolute;
+    margin: 0px;
+    padding: 0px;
+    z-index: 1;
+}
+
+#map {
+    position: absolute;
+    margin: 0px;
+    padding: 0px;
+    z-index: 0;
+}
+
+#hitboxMap {
+    position: absolute;
+    margin: 0px;
+    padding: 0px;
+    z-index: -1;
+}
+
+.blocker {
+    position: absolute;
+    margin: 0px;
+    padding: 0px;
+    z-index: 3;
+    background-color: var(--blocker-color);
+    resize: both;
+    overflow: hidden;
+}
+
+.blocker div:not(.blocker){
+    z-index: inherit;
+    background-color: #00000000;
+}
+
+.token {
+    position: absolute;
+    z-index: var(--token-index);
+}
+
+.custom-menu {
+    width: 100px;
+    display: none;
+    z-index: 1000;
+    position: absolute;
+    overflow: hidden;
+    border: 1px solid rgb(100, 100, 100);
+    white-space: nowrap;
+    font-family: sans-serif;
+    background: rgb(50, 50, 50);
+    color: rgb(128, 128, 128);
+    border-radius: 5px;
+    list-style: none;
+    padding: 0px;
+}
+
+.custom-menu li {
+    font-size: 0.75em;
+    padding: 8px 6px;
+    padding-left: 2px;
+    cursor: pointer;
+}
+
+.custom-menu li:hover {
+    background-color: rgb(75, 75, 75);
+}
+
+.custom-menu-element {
+    align-content: center;
+    text-align: left;
+    width: auto;
+    height: auto;
+}
