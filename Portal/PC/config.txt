@@ -1,0 +1,4 @@
+x=9
+y=9
+PortalOriginText=Portal-Origin
+ip={Enter ROT ip HERE}
