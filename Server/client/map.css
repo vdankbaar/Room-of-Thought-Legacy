@@ -116,7 +116,7 @@ body h3 {
     right: 12.5vw;
     width: 0.3vw;
     background-color: rgb(145, 164, 185);
-    height: 100vh;
+    height: 100%;
 }
 
 #bulkInitGeneratorScreen {

@@ -332,8 +332,8 @@ window.addEventListener("wheel", function(e) {
             {
                 extraZoom+=1;
                 board.style.transform = "scale("+(1+extraZoom/20).toString()+")";
-                viewport.scrollLeft = viewport.scrollLeft*((1+extraZoom/20)/(1+(extraZoom-1)/20));
-                viewport.scrollTop = viewport.scrollTop*((1+extraZoom/20)/(1+(extraZoom-1)/20));
+                viewport.scrollLeft = viewport.scrollLeft*((20+extraZoom)/(20+extraZoom-1));
+                viewport.scrollTop = viewport.scrollTop*((20+extraZoom)/(20+extraZoom-1));
                 e.preventDefault();
                 e.stopImmediatePropagation();
             }
@@ -1014,8 +1014,8 @@ function drawPolyBlockers() {
                                 isDraggingBlocker = true;
                                 drawTokens();
                                 draggedPolygonId = currentPolyBlocker.id;
-                                polyDragOffset.x = (e.pageX + viewport.scrollLeft)/(1+extraZoom/20);
-                                polyDragOffset.y = (e.pageY + viewport.scrollTop)/(1+extraZoom/20);
+                                polyDragOffset.x = ((e.pageX+ viewport.scrollLeft)/(1+extraZoom/20));
+                                polyDragOffset.y = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
                                 polyBlockerHandles.style.visibility = "hidden";
                             }
                         });
@@ -1025,7 +1025,7 @@ function drawPolyBlockers() {
                             {
                                 if (currentPolyBlocker.id == draggedPolygonId)
                                 {
-                                    newPolygon.setAttribute("transform", "matrix(1,0,0,1,"+(-polyDragOffset.x + ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20))).toString()+", "+(-polyDragOffset.y + ((e.pageY + viewport.scrollTop)/(1+extraZoom/20))).toString()+")");
+                                    newPolygon.setAttribute("transform", "matrix(1,0,0,1,"+(-polyDragOffset.x + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20))).toString()+", "+(-polyDragOffset.y + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20))).toString()+")");
                                 }
                             }
                         })
@@ -1048,8 +1048,8 @@ function drawPolyBlockers() {
                         if (e.button==0)
                         {
                             isPanning = true;
-                            oldMousePos.x = e.pageX;
-                            oldMousePos.y = e.pageY;
+                            oldMousePos.x = (e.pageX/(1+extraZoom/20));
+                            oldMousePos.y = (e.pageY/(1+extraZoom/20));
                             oldScrollPos.x = viewport.scrollLeft;
                             oldScrollPos.y = viewport.scrollTop;
                             document.body.style.cursor = "grabbing";
@@ -1059,8 +1059,8 @@ function drawPolyBlockers() {
                     newPolygon.addEventListener("mousemove", function(e) {
                         if (isPanning)
                         {
-                            viewport.scrollLeft = oldScrollPos.x - (e.pageX - oldMousePos.x);
-                            viewport.scrollTop = oldScrollPos.y - (e.pageY - oldMousePos.y);
+                            viewport.scrollLeft = oldScrollPos.x - ((e.pageX/(1+extraZoom/20)) - oldMousePos.x);
+                            viewport.scrollTop = oldScrollPos.y - ((e.pageY/(1+extraZoom/20)) - oldMousePos.y);
                         }
                     });
                 }
@@ -1153,8 +1153,8 @@ function drawBlockers()
                     extraBlocker.addEventListener("dragstart", function(e) {
                         isDraggingBlocker = true;
                         extraBlocker.style.backgroundColor = "#000000AA";
-                        blockerDragOffset.x = currentBlocker.x - ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
-                        blockerDragOffset.y = currentBlocker.y - ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
+                        blockerDragOffset.x = currentBlocker.x - ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20));
+                        blockerDragOffset.y = currentBlocker.y - ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
                     })
 
                     extraBlocker.addEventListener("dragend", function(e) {
@@ -1187,8 +1187,8 @@ function drawBlockers()
                     if (e.button==0)
                     {
                         isPanning = true;
-                        oldMousePos.x = e.pageX;
-                        oldMousePos.y = e.pageY;
+                        oldMousePos.x = (e.pageX/(1+extraZoom/20));
+                        oldMousePos.y = (e.pageY/(1+extraZoom/20));
                         oldScrollPos.x = viewport.scrollLeft;
                         oldScrollPos.y = viewport.scrollTop;
                         document.body.style.cursor = "grabbing";
@@ -1198,8 +1198,8 @@ function drawBlockers()
                 tmpBlocker.addEventListener("mousemove", function(e) {
                     if (isPanning)
                     {
-                        viewport.scrollLeft = oldScrollPos.x - (e.pageX - oldMousePos.x);
-                        viewport.scrollTop = oldScrollPos.y - (e.pageY - oldMousePos.y);
+                        viewport.scrollLeft = oldScrollPos.x - ((e.pageX/(1+extraZoom/20)) - oldMousePos.x);
+                        viewport.scrollTop = oldScrollPos.y - ((e.pageY/(1+extraZoom/20)) - oldMousePos.y);
                     }
                 });
                 if (mapData.antiBlockerOn)
@@ -1462,8 +1462,8 @@ function createToken(token)
     imageElement.addEventListener("mousemove", function(e) {
         if (isPanning)
         {
-            viewport.scrollLeft = oldScrollPos.x - (e.pageX - oldMousePos.x);
-            viewport.scrollTop = oldScrollPos.y - (e.pageY - oldMousePos.y);
+            viewport.scrollLeft = oldScrollPos.x - ((e.pageX/(1+extraZoom/20)) - oldMousePos.x);
+            viewport.scrollTop = oldScrollPos.y - ((e.pageY/(1+extraZoom/20)) - oldMousePos.y);
         }
     })
     
@@ -1475,8 +1475,8 @@ function createToken(token)
         }
         if (CheckAntiBlockerPixel(e) || isDM)
         {
-            tokenDragOffset.x = token.x - ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
-            tokenDragOffset.y = token.y - ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
+            tokenDragOffset.x = token.x - (e.pageX + viewport.scrollLeft)/(1+extraZoom/20);
+            tokenDragOffset.y = token.y - (e.pageY + viewport.scrollTop)/(1+extraZoom/20);
             draggingToken = token.id;
             isDraggingToken = true;
             if (e.ctrlKey || event.metaKey)
@@ -2173,13 +2173,13 @@ document.body.ondrop = async function(e)
             let tY;
             if (draggingTokenData.size >= 1)
             {
-                tX = Math.round(((e.pageX + viewport.scrollLeft)/(1+extraZoom/20) + tokenDragOffset.x - mapData.offsetX - 0.5 * gridX * draggingTokenData.size)/gridX) * gridX + 0.5 * gridX * draggingTokenData.size + 1 + offsetX;
-                tY = Math.round(((e.pageY + viewport.scrollTop)/(1+extraZoom/20) + tokenDragOffset.y - mapData.offsetY - 0.5 * gridY * draggingTokenData.size)/gridY) * gridY + 0.5 * gridY * draggingTokenData.size + 1 + offsetY;
+                tX = Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridX * draggingTokenData.size)/gridX) * gridX + 0.5 * gridX * draggingTokenData.size + 1 + offsetX;
+                tY = Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridY * draggingTokenData.size)/gridY) * gridY + 0.5 * gridY * draggingTokenData.size + 1 + offsetY;
             }
             else
             {
-                tX = Math.round((((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) - offsetX + tokenDragOffset.x - 0.5 * gridX * draggingTokenData.size) / (gridX * draggingTokenData.size)) * (gridX * draggingTokenData.size) + 0.5 * gridX * draggingTokenData.size + offsetX + 1;
-                tY = Math.round((((e.pageY + viewport.scrollTop)/(1+extraZoom/20)) - offsetY + tokenDragOffset.y - 0.5 * gridY * draggingTokenData.size) / (gridY * draggingTokenData.size)) * (gridY * draggingTokenData.size) + 0.5 * gridY * draggingTokenData.size + offsetY + 1;
+                tX = Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridX * draggingTokenData.size) / (gridX * draggingTokenData.size)) * (gridX * draggingTokenData.size) + 0.5 * gridX * draggingTokenData.size + offsetX + 1;
+                tY = Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridY * draggingTokenData.size) / (gridY * draggingTokenData.size)) * (gridY * draggingTokenData.size) + 0.5 * gridY * draggingTokenData.size + offsetY + 1;
             }
             if (tX != draggingTokenData.x || tY != draggingTokenData.y)
             {
@@ -2189,9 +2189,11 @@ document.body.ondrop = async function(e)
         }
         else
         {
-            if (((e.pageX + viewport.scrollLeft)/(1+extraZoom/20) + tokenDragOffset.x) != draggingTokenData.x || ((e.pageY + viewport.scrollTop)/(1+extraZoom/20) + tokenDragOffset.y) != draggingTokenData.y)
+            let tempx = (e.pageX + viewport.scrollLeft)/(1+extraZoom/20) + tokenDragOffset.x;
+            let tempy = (e.pageY + viewport.scrollTop)/(1+extraZoom/20) + tokenDragOffset.y;
+            if (tempx != draggingTokenData.x || tempy != draggingTokenData.y)
             {
-                await requestServer({c: "moveToken", id: draggingToken, x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) + tokenDragOffset.x, y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)) + tokenDragOffset.y, bypassLink: !controlPressed});
+                await requestServer({c: "moveToken", id: draggingToken, x: tempx, y: tempy, bypassLink: !controlPressed});
             }
         }
         updateMapData(true);
@@ -2201,8 +2203,8 @@ document.body.ondrop = async function(e)
     }
     if (isDraggingBlocker)
     {
-        draggedBlocker.x = ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
-        draggedBlocker.y = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
+        draggedBlocker.x = ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20));
+        draggedBlocker.y = ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
     }
 }
 //#endregion
@@ -2258,17 +2260,20 @@ document.getElementById("clearBlockersButton").onclick = function() {
 
 document.getElementById("switchBlockerTypeButton").onclick = async function() {
     if (isDM) {
-        if(mapData.usePolyBlockers)
+        if (confirm("Are you sure you want to switch blocker types?"))
         {
-            quickPolyBlockerMode = false;
-            buttonList.removeChild(document.getElementById("quickPolyButton"));
+            if(mapData.usePolyBlockers)
+            {
+                quickPolyBlockerMode = false;
+                buttonList.removeChild(document.getElementById("quickPolyButton"));
+            }
+            else
+            {
+                quickPolyBlockerMode = false;
+                addQuickPolyBlockerButton();
+            }
+            requestServer({c:"switchBlockerType"});
         }
-        else
-        {
-            quickPolyBlockerMode = false;
-            addQuickPolyBlockerButton();
-        }
-        requestServer({c:"switchBlockerType"});
     }
     await updateMapData(true);
 }
@@ -2393,7 +2398,7 @@ groupIdInput.oninput = function() {
 function CheckAntiBlockerPixel(e) {
     if (mapData.antiBlockerOn)
     {
-        let pixel = antiBlockerCanvas.getImageData(((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), 1, 1).data;
+        let pixel = antiBlockerCanvas.getImageData(((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), 1, 1).data;
         if (pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0 && pixel[3] == 0)
         {
             return true;
@@ -2535,14 +2540,14 @@ window.addEventListener("mouseup", async function(e) {
 
         if (resizingSideMenu && !menuIsHidden && e.target != resizer)
         {
-            let calcWidth = (window.innerWidth - 3 * resizer.offsetWidth - e.pageX) / window.innerWidth * 100;
+            let calcWidth = (window.innerWidth - 3 * resizer.offsetWidth - (e.pageX/(1+extraZoom/20))) / window.innerWidth * 100;
             if (calcWidth < 12)
                 calcWidth = 12;
             let newWidth = calcWidth.toString() + "vw";
             document.body.style.setProperty("--sidemenu-width", newWidth);
             resizer.style.right = (calcWidth + 0.5).toString() + "vw";
             resizingSideMenu = false;
-            board.style.width = (100 - (calcWidth + 0.8)).toString() + "vw";
+            viewport.style.width = (100 - (calcWidth + 0.8)).toString() + "vw";
             bulkInitGeneratorScreen.style.right = (calcWidth + 2).toString() + "vw";
             mapOptionsMenu.style.right = (calcWidth + 2).toString() + "vw";
         }
@@ -2550,8 +2555,8 @@ window.addEventListener("mouseup", async function(e) {
         if (isDraggingBlocker && mapData.usePolyBlockers)
         {
             polyBlockerHandles.style.visibility = "";
-            let moveX = -polyDragOffset.x + ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
-            let moveY = -polyDragOffset.y + ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
+            let moveX = -polyDragOffset.x + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20));
+            let moveY = -polyDragOffset.y + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
             if (moveX!=0 && moveY!=0)
             {
                 requestServer({c: "movePolyBlocker", id: draggedPolygonId, offsetX: moveX, offsetY: moveY});
@@ -2566,7 +2571,7 @@ window.addEventListener("mouseup", async function(e) {
             selectedVertHandle=-1;
         }
 
-        if (((e.pageX + viewport.scrollLeft)/(1+extraZoom/20))>0 && ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20))<map.width && ((e.pageY + viewport.scrollTop)/(1+extraZoom/20))>0 && ((e.pageY + viewport.scrollTop)/(1+extraZoom/20))<map.height)
+        if (((e.pageX+viewport.scrollLeft)/(1+extraZoom/20))>0 && ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20))<map.width && ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20))>0 && ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20))<map.height)
         {
             if (isMovingShape)
             {
@@ -2574,7 +2579,7 @@ window.addEventListener("mouseup", async function(e) {
                 document.body.style.cursor = "default";
                 if (CheckAntiBlockerPixel(e) || isDM)
                 {
-                    requestServer({c: "editDrawing", id: movingShapeId, x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) + shapeDragOffset.x, y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)) + shapeDragOffset.y, both: true});
+                    requestServer({c: "editDrawing", id: movingShapeId, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + shapeDragOffset.x, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)) + shapeDragOffset.y, both: true});
                 }
                 updateMapData();
             }
@@ -2583,7 +2588,7 @@ window.addEventListener("mouseup", async function(e) {
             {
                 isMovingCone = false;
                 document.body.style.cursor = "default";
-                let angle = mapData.drawings[movingShapeId].angle + (Math.atan2((((e.pageY + viewport.scrollTop)/(1+extraZoom/20)) - shapeDragOffset.y), (((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) - shapeDragOffset.x)) - shapeDragStartAngle);
+                let angle = mapData.drawings[movingShapeId].angle + (Math.atan2((((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)) - shapeDragOffset.y), (((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) - shapeDragOffset.x)) - shapeDragStartAngle);
                 if (angle<0)
                     angle+=2*Math.PI;
                 requestServer({c: "editDrawing", id: movingShapeId, angle: angle});
@@ -2594,7 +2599,7 @@ window.addEventListener("mouseup", async function(e) {
             {
                 isMoving5ftLine = false;
                 document.body.style.cursor = "default";
-                let angle = mapData.drawings[movingShapeId].angle + (Math.atan2((((e.pageY + viewport.scrollTop)/(1+extraZoom/20)) - shapeDragOffset.y), (((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) - shapeDragOffset.x)) - shapeDragStartAngle);
+                let angle = mapData.drawings[movingShapeId].angle + (Math.atan2((((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)) - shapeDragOffset.y), (((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) - shapeDragOffset.x)) - shapeDragStartAngle);
                 if (angle<0)
                     angle+=2*Math.PI;
                 requestServer({c: "editDrawing", id: movingShapeId, angle: angle});
@@ -2690,24 +2695,24 @@ shapeMap.addEventListener("mousedown", function(e) {
         noteEditor.style.display = "none";
         hideDetailsScreen();
         if (alignToolStep == 1) {
-            gridToolData.startX = ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
-            gridToolData.startY = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
+            gridToolData.startX = ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20));
+            gridToolData.startY = ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
             alert("Now click on the intersection to the bottom right of that one. (2;2)")
             alignToolStep = 2;
             return;
         }
 
         if (alignToolStep == 2) {
-            gridToolData.gridX = ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) - gridToolData.startX;
-            gridToolData.gridY = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)) - gridToolData.startY;
+            gridToolData.gridX = ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) - gridToolData.startX;
+            gridToolData.gridY = ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)) - gridToolData.startY;
             alert("Now click on last visible intersection in the bottom right of the pre-existing grid.");
             alignToolStep = 3;
             return;
         }
 
         if (alignToolStep == 3) {
-            gridToolData.endX = ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
-            gridToolData.endY = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
+            gridToolData.endX = ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20));
+            gridToolData.endY = ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
             let Xcount = Math.round((gridToolData.endX - gridToolData.startX)/gridToolData.gridX) + 1;
             let Ycount = Math.round((gridToolData.endY - gridToolData.startY)/gridToolData.gridY) + 1;
             if (gridToolData.startX/gridToolData.gridX>1) {
@@ -2802,17 +2807,17 @@ shapeMap.addEventListener("mousedown", function(e) {
                         tokenText = f.toString();
                     }
                     if (newHP!=null) {
-                        requestServer({c: "createToken", text: tokenText, x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
+                        requestServer({c: "createToken", text: tokenText, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
                     } else {
-                        requestServer({c: "createToken", text: tokenText, x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum});
+                        requestServer({c: "createToken", text: tokenText, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum});
                     }
                 }
                 else
                 {
                     if (newHP!=null) {
-                        requestServer({c: "createToken", x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
+                        requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
                     } else {
-                        requestServer({c: "createToken", x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum});
+                        requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum});
                     }
                     
                 }
@@ -2823,15 +2828,15 @@ shapeMap.addEventListener("mousedown", function(e) {
         }
 
         if (quickPolyBlockerMode) {
-            newPolyBlockerVerts.push({x: e.pageX+viewport.scrollLeft, y: (e.pageY + viewport.scrollTop)/(1+extraZoom/20)});
+            newPolyBlockerVerts.push({x: (e.pageX/(1+extraZoom/20))+viewport.scrollLeft, y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20))});
             DrawNewPolyMarkers(true);
             return;
         }
 
         if (isPlacingSquare)
         {
-            squareMarkers.width = ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) - squareMarkers.x;
-            squareMarkers.height = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)) - squareMarkers.y;
+            squareMarkers.width = ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) - squareMarkers.x;
+            squareMarkers.height = ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)) - squareMarkers.y;
             if (squareMarkers.width >= -map.width && squareMarkers.width <= map.width && squareMarkers.height >= -map.height && squareMarkers.height <= map.height)
             {
                 if (isDM || CheckAntiBlockerPixel(e))
@@ -2856,8 +2861,8 @@ shapeMap.addEventListener("mousedown", function(e) {
         {
             if (isDM)
             {
-                blockerMarkers.width = ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) - blockerMarkers.x;
-                blockerMarkers.height = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)) - blockerMarkers.y;
+                blockerMarkers.width = ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) - blockerMarkers.x;
+                blockerMarkers.height = ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)) - blockerMarkers.y;
                 requestServer({c: "addBlocker", x: blockerMarkers.x, y: blockerMarkers.y, width: blockerMarkers.width, height: blockerMarkers.height});
             }
             isPlacingBlocker = false;
@@ -2868,8 +2873,8 @@ shapeMap.addEventListener("mousedown", function(e) {
 
         if (isPlacingLine)
         {
-            lineMarkers.destX = ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
-            lineMarkers.destY = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
+            lineMarkers.destX = ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20));
+            lineMarkers.destY = ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
             let dy = lineMarkers.destY - lineMarkers.y;
             let dx = lineMarkers.destX - lineMarkers.x;
             let distance = Math.sqrt(Math.pow((dx), 2) + Math.pow((dy), 2));
@@ -2892,8 +2897,8 @@ shapeMap.addEventListener("mousedown", function(e) {
         }
         if (isPlacing5ftLine)
         {
-            let destX = ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
-            let destY = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
+            let destX = ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20));
+            let destY = ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
             let angle = Math.atan2((destY - thickLineMarkers.y), (destX - thickLineMarkers.x));
             if (angle<0) { angle+=2*Math.PI; }
             let shapeIsVisible = true;
@@ -2907,8 +2912,8 @@ shapeMap.addEventListener("mousedown", function(e) {
         }
         if (isPlacingCone)
         {
-            let destX = (e.pageX + viewport.scrollLeft)/(1+extraZoom/20);
-            let destY = (e.pageY + viewport.scrollTop)/(1+extraZoom/20);
+            let destX = ((e.pageX+ viewport.scrollLeft)/(1+extraZoom/20));
+            let destY = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
             let angle = Math.atan2((destY - coneMarkers.y), (destX - coneMarkers.x));
             if (angle<0) { angle+=2*Math.PI; }
             let shapeIsVisible = true;
@@ -2921,7 +2926,7 @@ shapeMap.addEventListener("mousedown", function(e) {
             return;
         }
 
-        let pixel = hitboxCanvas.getImageData(((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), 1, 1).data;
+        let pixel = hitboxCanvas.getImageData(((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), 1, 1).data;
         if (!(pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0) && CheckAntiBlockerPixel(e))
         {
             let testString = "#" + decToHex(pixel[0]) + decToHex(pixel[1]) + decToHex(pixel[2]);
@@ -2947,8 +2952,8 @@ shapeMap.addEventListener("mousedown", function(e) {
                         drawCanvas();
                     }
                     document.body.style.cursor = "pointer";
-                    shapeDragOffset.x = clickedShape.x - ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
-                    shapeDragOffset.y = clickedShape.y - ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
+                    shapeDragOffset.x = clickedShape.x - ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20));
+                    shapeDragOffset.y = clickedShape.y - ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
                     movingShapeId = shapeId;
                     isMovingShape = true;
                 }
@@ -2960,7 +2965,7 @@ shapeMap.addEventListener("mousedown", function(e) {
                         document.body.style.cursor = "pointer";
                         shapeDragOffset.x = clickedShape.x;
                         shapeDragOffset.y = clickedShape.y;
-                        shapeDragStartAngle = Math.atan2((((e.pageY + viewport.scrollTop)/(1+extraZoom/20)) - shapeDragOffset.y), (((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) - shapeDragOffset.x));
+                        shapeDragStartAngle = Math.atan2((((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)) - shapeDragOffset.y), (((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) - shapeDragOffset.x));
                         movingShapeId = shapeId;
                         isMovingCone = true;
                         return;
@@ -2970,14 +2975,14 @@ shapeMap.addEventListener("mousedown", function(e) {
                         document.body.style.cursor = "pointer";
                         shapeDragOffset.x = clickedShape.x;
                         shapeDragOffset.y = clickedShape.y;
-                        shapeDragStartAngle = Math.atan2((((e.pageY + viewport.scrollTop)/(1+extraZoom/20)) - shapeDragOffset.y), (((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) - shapeDragOffset.x));
+                        shapeDragStartAngle = Math.atan2((((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)) - shapeDragOffset.y), (((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) - shapeDragOffset.x));
                         movingShapeId = shapeId;
                         isMoving5ftLine = true;
                         return;
                     }
                     isPanning = true;
-                    oldMousePos.x = e.pageX;
-                    oldMousePos.y = e.pageY;
+                    oldMousePos.x = (e.pageX/(1+extraZoom/20));
+                    oldMousePos.y = (e.pageY/(1+extraZoom/20));
                     oldScrollPos.x = viewport.scrollLeft;
                     oldScrollPos.y = viewport.scrollTop;
                     document.body.style.cursor = "grabbing";
@@ -2987,8 +2992,8 @@ shapeMap.addEventListener("mousedown", function(e) {
             return;
         }
         isPanning = true;
-        oldMousePos.x = e.pageX;
-        oldMousePos.y = e.pageY;
+        oldMousePos.x = (e.pageX/(1+extraZoom/20));
+        oldMousePos.y = (e.pageY/(1+extraZoom/20));
         oldScrollPos.x = viewport.scrollLeft;
         oldScrollPos.y = viewport.scrollTop;
         document.body.style.cursor = "grabbing";
@@ -2999,8 +3004,8 @@ shapeMap.addEventListener("mousedown", function(e) {
 window.addEventListener("mousemove", function(e) {
     if (isPanning)
     {
-        viewport.scrollLeft = oldScrollPos.x - (e.pageX - oldMousePos.x);
-        viewport.scrollTop = oldScrollPos.y - (e.pageY - oldMousePos.y);
+        viewport.scrollLeft = oldScrollPos.x - ((e.pageX/(1+extraZoom/20)) - oldMousePos.x);
+        viewport.scrollTop = oldScrollPos.y - ((e.pageY/(1+extraZoom/20)) - oldMousePos.y);
     }
 })
 
@@ -3015,7 +3020,7 @@ shapeMap.addEventListener("contextmenu", function(e) {
     {
         if (CheckAntiBlockerPixel(e) || isDM)
         {
-            let pixel = hitboxCanvas.getImageData(((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), 1, 1).data;
+            let pixel = hitboxCanvas.getImageData(((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), 1, 1).data;
             if (pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0)
             {
                 displayContextMenu(e);
@@ -3135,11 +3140,11 @@ function displayContextMenu(e)
                             if (tokenSize < 20 && tokenSize > 0)
                             {
                                 if (confirm("Make this a DM token?"))
-                                    requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 0, dm: true})
+                                    requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 0, dm: true})
                                 else
-                                    requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 0, dm: false})
+                                    requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 0, dm: false})
                                 
-                                console.log("Placing text token with size" + tokenSize + " at " + ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)).toString());
+                                console.log("Placing text token with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                                 updateMapData();
                             }
                             else
@@ -3151,8 +3156,8 @@ function displayContextMenu(e)
                         {
                             if (tokenSize < 6 && tokenSize > 0)
                             {
-                                requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 0, dm: false})
-                                console.log("Placing text token with size" + tokenSize + " at " + ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)).toString());
+                                requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 0, dm: false})
+                                console.log("Placing text token with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                                 updateMapData();
                             }
                             else
@@ -3181,8 +3186,8 @@ function displayContextMenu(e)
                         {
                             if (tokenSize < 20 && tokenSize > 0)
                             {
-                                requestServer({c: "createToken", x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", layer: 0, dm: false})
-                                console.log("Placing " + tokenList[i] + " with size" + tokenSize + " at " + ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)).toString());
+                                requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", layer: 0, dm: false})
+                                console.log("Placing " + tokenList[i] + " with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                                 updateMapData();
                             }
                             else
@@ -3194,8 +3199,8 @@ function displayContextMenu(e)
                         {
                             if (tokenSize < 6 && tokenSize > 0)
                             {
-                                requestServer({c: "createToken", x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", layer: 0, dm: false})
-                                console.log("Placing " + tokenList[i] + " with size" + tokenSize + " at " + ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)).toString());
+                                requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", layer: 0, dm: false})
+                                console.log("Placing " + tokenList[i] + " with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                                 updateMapData();
                             }
                             else
@@ -3222,8 +3227,8 @@ function displayContextMenu(e)
                         }
                         else
                         {
-                            requestServer({c: "createToken", x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), image: dmTokenList[i], size: tokenSize, status: "", layer: 0, dm: true})
-                            console.log("Placing " + dmTokenList[i] + " with size" + tokenSize + " at " + ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)).toString());
+                            requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: dmTokenList[i], size: tokenSize, status: "", layer: 0, dm: true})
+                            console.log("Placing " + dmTokenList[i] + " with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                             updateMapData();
                         }
                     }
@@ -3239,8 +3244,8 @@ function displayContextMenu(e)
                     if (!isNaN(radiusInput))
                     {
                         circleMarkers.radius = radiusInput / feetPerSquare;
-                        circleMarkers.x = (e.pageX + viewport.scrollLeft)/(1+extraZoom/20);
-                        circleMarkers.y = (e.pageY + viewport.scrollTop)/(1+extraZoom/20);
+                        circleMarkers.x = ((e.pageX+ viewport.scrollLeft)/(1+extraZoom/20));
+                        circleMarkers.y = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
                         let shapeIsVisible = true;
                         if (isDM) {
                             shapeIsVisible = confirm("Should the shape be visible?");
@@ -3250,8 +3255,8 @@ function displayContextMenu(e)
                     }    
                 }},
                 {text: "Draw Square", callback: function() {
-                    squareMarkers.x = (e.pageX + viewport.scrollLeft)/(1+extraZoom/20);
-                    squareMarkers.y = (e.pageY + viewport.scrollTop)/(1+extraZoom/20);
+                    squareMarkers.x = ((e.pageX+ viewport.scrollLeft)/(1+extraZoom/20));
+                    squareMarkers.y = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
                     isPlacingSquare = true;
                     drawCanvas();
                 }},
@@ -3268,8 +3273,8 @@ function displayContextMenu(e)
                         {
                             lineMarkers.range = 999999;
                         }
-                        lineMarkers.x = (e.pageX + viewport.scrollLeft)/(1+extraZoom/20);
-                        lineMarkers.y = (e.pageY + viewport.scrollTop)/(1+extraZoom/20);
+                        lineMarkers.x = ((e.pageX+ viewport.scrollLeft)/(1+extraZoom/20));
+                        lineMarkers.y = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
                         isPlacingLine = true;
                         drawCanvas();
                     }
@@ -3295,11 +3300,11 @@ function displayContextMenu(e)
                         if (tokenSize < 20 && tokenSize > 0)
                         {
                             if (confirm("Make this a DM token?"))
-                                requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 0, dm: true, hidden: true})
+                                requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 0, dm: true, hidden: true})
                             else
-                                requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 0, dm: false, hidden: true})
+                                requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 0, dm: false, hidden: true})
                             
-                            console.log("Placing text token with size" + tokenSize + " at " + ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)).toString());
+                            console.log("Placing text token with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                             updateMapData();
                         }
                         else
@@ -3327,8 +3332,8 @@ function displayContextMenu(e)
                     {
                         if (tokenSize < 20 && tokenSize > 0)
                         {
-                            requestServer({c: "createToken", x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", hidden: true, layer: 0, dm: true})
-                            console.log("Placing hidden " + tokenList[i] + " with size " + tokenSize + " at " + ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)).toString());
+                            requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", hidden: true, layer: 0, dm: true})
+                            console.log("Placing hidden " + tokenList[i] + " with size " + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                             updateMapData();
                         }
                         else
@@ -3352,8 +3357,8 @@ function displayContextMenu(e)
                     }
                     else
                     {
-                        requestServer({c: "createToken", x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), image: dmTokenList[i], size: tokenSize, status: "", hidden: true, layer: 0, dm: true})
-                        console.log("Placing " + dmTokenList[i] + " with size" + tokenSize + " at " + ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)).toString());
+                        requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: dmTokenList[i], size: tokenSize, status: "", hidden: true, layer: 0, dm: true})
+                        console.log("Placing " + dmTokenList[i] + " with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                         updateMapData();
                     }
                 }
@@ -3370,7 +3375,7 @@ function displayContextMenu(e)
             titleText = "Create Anti Blocker";
         }
         DMoptions.push({text: titleText, description: "Creates a blockers with 3 verts at the current position", hasSubMenu: false, callback: async function() {
-            requestServer({c: "addPolyBlocker", x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), offset: gridSize});
+            requestServer({c: "addPolyBlocker", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), offset: gridSize});
             updateMapData();
         }})
     }
@@ -3382,8 +3387,8 @@ function displayContextMenu(e)
             titleText = "Place Anti Blocker";
         }
         DMoptions.push({text: titleText, description: "Upon clicking this button click somewhere else to define the bottom right corner", hasSubMenu: false, callback: async function() {
-            blockerMarkers.x = ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
-            blockerMarkers.y = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
+            blockerMarkers.x = ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20));
+            blockerMarkers.y = ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
             isPlacingBlocker = true;
             drawCanvas();
         }});
@@ -3439,11 +3444,14 @@ window.onclick = function(event)
             }
             customMenu.style.display = "block";
             
-            let testx = (event.pageX + viewport.scrollLeft);
-            let testy = (event.pageY + viewport.scrollTop);
-            customMenu.style.top = testy + "px";
-            customMenu.style.left = testx + "px";
+            let posx = (event.pageX + viewport.scrollLeft)/(1+extraZoom/20);
+            let posy = (event.pageY + viewport.scrollTop)/(1+extraZoom/20);
+            customMenu.style.transform = "scale("+1/(1+extraZoom/20)+")";
+            customMenu.style.transformOrigin = "top left";
+            customMenu.style.top = posy + "px";
+            customMenu.style.left = posx + "px";
             customMenu.style.height = tmpHeight + "vh";
+            
             for (let p in listData)
             {
                 let listItem = document.createElement('li');
@@ -3465,15 +3473,13 @@ window.onclick = function(event)
                 }
                 customMenu.appendChild(listItem);
             }
-            if (event.pageX + customMenu.offsetWidth > window.innerWidth + window.pageXOffset - sideMenu.offsetWidth)
+            if (event.pageX + customMenu.offsetWidth >= window.innerWidth + window.pageXOffset - sideMenu.offsetWidth)
             {
-                customMenuPos = parseInt(customMenu.style.left.substr(0, customMenu.style.left.length-2));
-                customMenu.style.left = "calc("+(customMenuPos - (event.pageX + customMenu.offsetWidth - (window.innerWidth + window.pageXOffset - sideMenu.offsetWidth))).toString()+"px - 0.9vw)";
+                customMenu.style.left = ((window.innerWidth + viewport.scrollLeft - customMenu.offsetWidth - sideMenu.offsetWidth - 5)/(1+extraZoom/20)).toString()+"px";
             }
             if (event.pageY + customMenu.offsetHeight > window.innerHeight + window.pageYOffset)
             {
-                customMenuPos = parseInt(customMenu.style.top.substr(0, customMenu.style.top.length-2));
-                customMenu.style.top = "calc("+(customMenuPos - (event.pageY + customMenu.offsetHeight - window.innerHeight - window.pageYOffset)).toString()+"px - 1.5vh)";
+                customMenu.style.top = ((window.innerHeight + viewport.scrollTop - customMenu.offsetHeight - 4)/(1+extraZoom/20)).toString()+"px";
             }
         }
     }
@@ -3497,9 +3503,11 @@ window.onclick = function(event)
                 customSubMenu.style.overflowY = "hidden";
             }
             customSubMenu.style.display = "block";
+            customSubMenu.style.transform = "scale("+1/(1+extraZoom/20)+")";
+            customSubMenu.style.transformOrigin = "top left";
             customSubMenu.style.height = tmpHeight + "vh";
-            customSubMenu.style.top = (event.pageY + viewport.scrollTop).toString() + "px";
-            customSubMenu.style.left = ((event.pageX + viewport.scrollLeft) + customMenu.offsetWidth).toString() + "px";
+            customSubMenu.style.top = ((event.pageY + viewport.scrollTop)/(1+extraZoom/20)).toString() + "px";
+            customSubMenu.style.left = (customMenu.offsetLeft + customSubMenu.offsetWidth/(1+extraZoom/20) + 1/(1+extraZoom/20)).toString()+"px";
             for (let p in listData) 
             {
                 let listItem = document.createElement('li');
@@ -3518,15 +3526,15 @@ window.onclick = function(event)
                 }
                 customSubMenu.appendChild(listItem);
             }
-            let customSubMenuPos;
+
             if (event.pageY + customSubMenu.offsetHeight > window.innerHeight + window.pageYOffset)
             {
-                customSubMenuPos = parseInt(customSubMenu.style.top.substr(0, customMenu.style.top.length-2));
-                customSubMenu.style.top = "calc("+(customSubMenuPos - (event.pageY + customSubMenu.offsetHeight - window.innerHeight - window.pageYOffset)).toString()+"px - 1.5vh)";
+                customSubMenu.style.top = ((window.innerHeight + viewport.scrollTop - customSubMenu.offsetHeight - 4)/(1+extraZoom/20)).toString()+"px";
             }
-            if (customMenu.offsetLeft + 2*customSubMenu.offsetWidth - viewport.scrollLeft > window.innerWidth + window.pageXOffset - sideMenu.offsetWidth)
+            
+            if (event.pageX + customMenu.offsetWidth + customSubMenu.offsetWidth >= window.innerWidth + window.pageXOffset - sideMenu.offsetWidth)
             {
-                customSubMenu.style.left = (customMenu.offsetLeft - customSubMenu.offsetWidth).toString()+"px";
+                customSubMenu.style.left = (customMenu.offsetLeft - customSubMenu.offsetWidth/(1+extraZoom/20) - 1/(1+extraZoom/20)).toString()+"px";
             }
         }
     }
@@ -3615,7 +3623,7 @@ resizer.addEventListener("dblclick", function(e) {
         let newWidth = calcWidth.toString() + "vw";
         document.body.style.setProperty("--sidemenu-width", newWidth);
         resizer.style.right = (calcWidth + 0.5).toString() + "vw";
-        board.style.width = (100 - (calcWidth + 0.8)).toString() + "vw";
+        viewport.style.width = (100 - (calcWidth + 0.8)).toString() + "vw";
         resizer.style.width = "0.3vw";
     }
     else
@@ -3623,7 +3631,7 @@ resizer.addEventListener("dblclick", function(e) {
         resizer.style.width = "0.5vw";
         sideMenu.style.display = "none";
         resizer.style.right = "0vw";
-        board.style.width = "99.7vw";
+        viewport.style.width = "99.7vw";
     }
     e.stopPropagation();
     resizingSideMenu = false;

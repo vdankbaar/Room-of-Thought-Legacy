@@ -195,7 +195,11 @@ app.post("/api", function(request, response) {
                         currentMap.tokens[i].status = request.body.status;
                     if (request.body.size != null)
                         if (minMax(request.body.size, 0, 20))
+                        {
+                            updateTokenCircleRange(currentMap.tokens[i], request.body.size);
                             currentMap.tokens[i].size = request.body.size;
+                        }
+                            
                     if (request.body.layer != null)
                         currentMap.tokens[i].layer = request.body.layer;
                     if (request.body.group != null)
@@ -314,7 +318,6 @@ app.post("/api", function(request, response) {
                             let radius = Math.sqrt(Math.pow(oldY, 2)+Math.pow(oldX, 2));
 
                             let currentAngle = Math.atan2(oldY, oldX);
-                            console.log(currentAngle);
                             let newX = Math.cos(currentAngle + inputAngle) * radius;
                             let newY = Math.sin(currentAngle + inputAngle) * radius;
                             currentMap.tokens[j].x = newX + currentToken.x;
@@ -715,6 +718,16 @@ function moveLinkedShapes(tokenData)
             currentMap.drawings[i].y = tokenData.y;
         }
     }
+}
+
+function updateTokenCircleRange(tokenData, newSize) {
+    for (let i = 0; i < currentMap.drawings.length; i++)
+    {
+        if (currentMap.drawings[i].link == tokenData.id && currentMap.drawings[i].shape == "circle")
+        {
+            currentMap.drawings[i].radius += (newSize-tokenData.size)*0.5;
+        }
+    } 
 }
 
 function removeDrawingById(targetId) {
