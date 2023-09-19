@@ -1483,7 +1483,7 @@ function createToken(token)
             }
             else
             {
-                e.preventDefault();
+                console.log("Did this!");
                 isPanning = true;
                 oldMousePos.x = e.pageX;
                 oldMousePos.y = e.pageY;
@@ -1491,6 +1491,7 @@ function createToken(token)
                 oldScrollPos.y = viewport.scrollTop;
                 document.body.style.cursor = "grabbing";
                 drawCanvas();
+                return;
             }
         }
         else
@@ -1876,6 +1877,7 @@ function createToken(token)
         textElement.style.fontSize = "10px";
         textElement.style.transform = "translate(-50%, -50%);";
         textElement.style.userSelect = "none";
+        textElement.style.textAlign = "center";
         textHolder.appendChild(textElement);
         tokensDiv.appendChild(textHolder);
         let autoCalcSize = parseInt(textElement.style.fontSize.substr(0, textElement.style.fontSize.length-2)) * (textHolder.getBoundingClientRect().width/textElement.getBoundingClientRect().width);
@@ -2171,74 +2173,6 @@ function hideDetailsScreen()
 {
 
     detailsScreen.style.display = "none";
-}
-//#endregion
-
-//#region misc Drag/Drop handlers
-let isDraggingToken = false;
-
-map.addEventListener("dragover", function(e) {
-    e.preventDefault();
-})
-
-map.addEventListener("dragend", function(e) {
-    e.preventDefault();
-})
-
-document.body.ondrop = async function(e) 
-{
-    e.preventDefault();
-    if (isDraggingToken && (CheckAntiBlockerPixel(e) || isDM))
-    {
-        let gridX = map.width / mapData.x;
-        let gridY = map.height / mapData.y;
-        let draggingTokenData;
-        for (let b = 0; b < mapData.tokens.length; b++)
-        {
-            if (mapData.tokens[b].id == draggingToken)
-            {
-                draggingTokenData = mapData.tokens[b];
-            }
-        }
-        if (GridSnap)
-        {
-            let tX;
-            let tY;
-            if (draggingTokenData.size >= 1)
-            {
-                tX = Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridX * draggingTokenData.size)/gridX) * gridX + 0.5 * gridX * draggingTokenData.size + 1 + offsetX;
-                tY = Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridY * draggingTokenData.size)/gridY) * gridY + 0.5 * gridY * draggingTokenData.size + 1 + offsetY;
-            }
-            else
-            {
-                tX = Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridX * draggingTokenData.size) / (gridX * draggingTokenData.size)) * (gridX * draggingTokenData.size) + 0.5 * gridX * draggingTokenData.size + offsetX + 1;
-                tY = Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridY * draggingTokenData.size) / (gridY * draggingTokenData.size)) * (gridY * draggingTokenData.size) + 0.5 * gridY * draggingTokenData.size + offsetY + 1;
-            }
-            if (tX != draggingTokenData.x || tY != draggingTokenData.y)
-            {
-                await requestServer({c: "moveToken", id: draggingToken, x: tX, y: tY, bypassLink: !controlPressed});
-            }
-                
-        }
-        else
-        {
-            let tempx = (e.pageX + viewport.scrollLeft)/(1+extraZoom/20) + tokenDragOffset.x;
-            let tempy = (e.pageY + viewport.scrollTop)/(1+extraZoom/20) + tokenDragOffset.y;
-            if (tempx != draggingTokenData.x || tempy != draggingTokenData.y)
-            {
-                await requestServer({c: "moveToken", id: draggingToken, x: tempx, y: tempy, bypassLink: !controlPressed});
-            }
-        }
-        updateMapData(true);
-        isDraggingToken = false;
-        controlPressed = false;
-        draggingToken = -1;
-    }
-    if (isDraggingBlocker)
-    {
-        draggedBlocker.x = ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20));
-        draggedBlocker.y = ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
-    }
 }
 //#endregion
 
@@ -2578,10 +2512,7 @@ function CheckAntiBlockerPixel(e) {
             return false;
         }
     }
-    else
-    {
-        return true;
-    }
+    return true;
 }
 
 function updateSelectedTokenData()
@@ -3621,6 +3552,72 @@ window.onclick = function(event)
     if (shouldCloseMenus) { 
         closeMenu();
         closeSubMenu();
+    }
+}
+
+let isDraggingToken = false;
+
+map.addEventListener("dragover", function(e) {
+    e.preventDefault();
+})
+
+map.addEventListener("dragend", function(e) {
+    e.preventDefault();
+})
+
+document.body.ondrop = async function(e) 
+{
+    e.preventDefault();
+    if (isDraggingToken && (CheckAntiBlockerPixel(e) || isDM))
+    {
+        let gridX = map.width / mapData.x;
+        let gridY = map.height / mapData.y;
+        let draggingTokenData;
+        for (let b = 0; b < mapData.tokens.length; b++)
+        {
+            if (mapData.tokens[b].id == draggingToken)
+            {
+                draggingTokenData = mapData.tokens[b];
+            }
+        }
+        if (GridSnap)
+        {
+            let tX;
+            let tY;
+            if (draggingTokenData.size >= 1)
+            {
+                tX = Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridX * draggingTokenData.size)/gridX) * gridX + 0.5 * gridX * draggingTokenData.size + 1 + offsetX;
+                tY = Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridY * draggingTokenData.size)/gridY) * gridY + 0.5 * gridY * draggingTokenData.size + 1 + offsetY;
+            }
+            else
+            {
+                tX = Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridX * draggingTokenData.size) / (gridX * draggingTokenData.size)) * (gridX * draggingTokenData.size) + 0.5 * gridX * draggingTokenData.size + offsetX + 1;
+                tY = Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridY * draggingTokenData.size) / (gridY * draggingTokenData.size)) * (gridY * draggingTokenData.size) + 0.5 * gridY * draggingTokenData.size + offsetY + 1;
+            }
+            if (tX != draggingTokenData.x || tY != draggingTokenData.y)
+            {
+                await requestServer({c: "moveToken", id: draggingToken, x: tX, y: tY, bypassLink: !controlPressed});
+            }
+                
+        }
+        else
+        {
+            let tempx = (e.pageX + viewport.scrollLeft)/(1+extraZoom/20) + tokenDragOffset.x;
+            let tempy = (e.pageY + viewport.scrollTop)/(1+extraZoom/20) + tokenDragOffset.y;
+            if (tempx != draggingTokenData.x || tempy != draggingTokenData.y)
+            {
+                await requestServer({c: "moveToken", id: draggingToken, x: tempx, y: tempy, bypassLink: !controlPressed});
+            }
+        }
+        updateMapData(true);
+        isDraggingToken = false;
+        controlPressed = false;
+        draggingToken = -1;
+    }
+    if (isDraggingBlocker)
+    {
+        draggedBlocker.x = ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20));
+        draggedBlocker.y = ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
     }
 }
 //#endregion
