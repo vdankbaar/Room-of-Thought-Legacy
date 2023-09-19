@@ -576,6 +576,7 @@ function drawBlockers()
                 
                 if (blockerEditMode)
                 {
+                    tmpBlocker.style.resize = "both";
                     tmpBlocker.addEventListener("dragover", function(e) {
                         e.preventDefault();
                     })
