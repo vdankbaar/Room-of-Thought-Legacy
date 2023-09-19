@@ -4,7 +4,7 @@ let autoUpdate = true;
 let minUpdateTime = 500;
 let blockerOutlineColor = "violet";
 let shapeWidth = 2;
-let GridLineWidth = 2;
+let GridLineWidth = 1;
 let feetPerSquare = 5.0;
 
 let offsetX = 0;
@@ -181,9 +181,9 @@ async function Setup() {
     updateMapData(true);
 }
 
-
 async function updateMapData(force) 
 {
+    //Retrieve the map data from the server and dynamically change the refreshrate
     let startTime = Date.now();
     mapData = await requestServer({c: "currentMapData", x: loadedMap.naturalWidth, y: loadedMap.naturalHeight});
     deltaTimes.splice(0, 0, Date.now()-startTime)
@@ -191,7 +191,8 @@ async function updateMapData(force)
     let newInterval = deltaTimes.reduce((a, b) => a + b, 0)/deltaTimes.length;
     if (newInterval!=mapUpdateIntervalTime) {
         mapUpdateIntervalTime = newInterval>minUpdateTime?newInterval:minUpdateTime;
-        clearInterval(mapUpdateInterval);
+        if (mapUpdateInterval)
+            clearInterval(mapUpdateInterval);
         mapUpdateInterval = setInterval(function() {updateMapData();}, mapUpdateIntervalTime);
     }
 
@@ -200,29 +201,11 @@ async function updateMapData(force)
     {
         console.log("Data is not identical or update has been forced, updating map!");
         GridColor = mapData.gridColor;
+        document.body.style.setProperty("--antiBlocker-color", (isDM && !playerMode)?"#00000080":"#000000FF");
         if (mapData.antiBlockerOn)
-        {
             document.body.style.setProperty("--blocker-color", "#00000000");
-            if (isDM && !playerMode)
-            {
-                document.body.style.setProperty("--antiBlocker-color", "#00000080");
-            }
-            else
-            {
-                document.body.style.setProperty("--antiBlocker-color", "#000000FF");
-            }
-        }
         else
-        {
-            if (isDM && !playerMode)
-            {
-                document.body.style.setProperty("--blocker-color", "#00000080");    
-            }
-            else
-            {
-                document.body.style.setProperty("--blocker-color", "#000000FF");
-            }
-        }
+            document.body.style.setProperty("--blocker-color", (isDM && !playerMode)?"#00000080":"#000000FF");
 
         mapSelect.innerHTML = "";
         for (let map of mapData.maps)
@@ -277,41 +260,44 @@ async function updateMapData(force)
         if (document.activeElement!=gridColorPicker) {gridColorPicker.value = mapData.gridColor;}
         offsetX = mapData.offsetX;
         offsetY = mapData.offsetY;
-
-        if (oldParsedData) {
-            if (oldParsedData.map!=mapData.map) {
-                mapCanvas.clearRect(0, 0, map.width, map.height);
-                loadedMap.src = "/public/maps/" + mapData.map;
-                selectedToken = -1;
-                selectedBlocker = -1;
-                selectedShapeId = -1;
-                selectedVertHandle = -1;
-                detailsScreen.style.display = "none";
-                loadedMap.onload = function() {
-                    drawCanvas(false, force);
-                }
-            } else {
-                let skipMapRedraw = true;
-                if (oldParsedData.x != mapData.x) { skipMapRedraw = false; }
-                if (oldParsedData.y != mapData.y) { skipMapRedraw = false; }
-                if (oldParsedData.offsetX != mapData.offsetX) { skipMapRedraw = false; }
-                if (oldParsedData.offsetY != mapData.offsetY) { skipMapRedraw = false; }
-                if (oldParsedData.gridColor != mapData.gridColor) { skipMapRedraw = false; }
-                if (force) { skipMapRedraw = false; }
-                drawCanvas(skipMapRedraw, force);
-            }
-            oldData = stringData;
-            oldParsedData = oldData?JSON.parse(oldData):oldParsedData;
-        } else {
-            mapCanvas.clearRect(0, 0, map.width, map.height);
+        if (mapData.map!=(oldParsedData?oldParsedData.map:"") || force)
+        {
+            console.log("Switching/Redrawing map!");
+            if (mapUpdateInterval)
+                clearInterval(mapUpdateInterval);
+            selectedToken = -1;
+            selectedBlocker = -1;
+            selectedShapeId = -1;
+            selectedVertHandle = -1;
+            detailsScreen.style.display = "none";
             loadedMap.src = "/public/maps/" + mapData.map;
-            loadedMap.onload = function() {
-                drawCanvas();
+            loadedMap.onload = function()
+            {
+                drawCanvas(false, true);
+                mapSourceSelect.value = mapData.map;
+                mapYInput.value = mapData.y;
+                mapXInput.value = mapData.x;
+                offsetXInput.value = mapData.offsetX;
+                offsetYInput.value = mapData.offsetY;
+                quickPolyBlockerMode = false;
+                updateButtonColors();
+                quickPolyButton.style.display = mapData.usePolyBlockers?"":"none";
                 oldData = stringData;
                 oldParsedData = oldData?JSON.parse(oldData):oldParsedData;
-                if (autoUpdate)
-                    mapUpdateInterval = setInterval(function() {updateMapData();}, mapUpdateIntervalTime);
+                mapUpdateInterval = setInterval(function() {updateMapData();}, mapUpdateIntervalTime);
             }
+        }
+        else
+        {
+            let skipMapRedraw = true;
+            if (oldParsedData.x != mapData.x) { skipMapRedraw = false; }
+            if (oldParsedData.y != mapData.y) { skipMapRedraw = false; }
+            if (oldParsedData.offsetX != mapData.offsetX) { skipMapRedraw = false; }
+            if (oldParsedData.offsetY != mapData.offsetY) { skipMapRedraw = false; }
+            if (oldParsedData.gridColor != mapData.gridColor) { skipMapRedraw = false; }
+            drawCanvas(skipMapRedraw);
+            oldData = stringData;
+            oldParsedData = oldData?JSON.parse(oldData):oldParsedData;
         }
     }
     else
@@ -472,18 +458,7 @@ gridColorPicker.onchange = async function() {
 
 mapSelect.onchange = async function() {
     await requestServer({c: "changeSelectedMap", selectedMap: mapSelect.value})
-    await updateMapData(true);
-    mapSourceSelect.value = mapData.map;
-    mapYInput.value = mapData.y;
-    mapXInput.value = mapData.x;
-    offsetXInput.value = mapData.offsetX;
-    offsetYInput.value = mapData.offsetY;
-    quickPolyBlockerMode = false;
-    updateButtonColors();
-    if(mapData.usePolyBlockers)
-        quickPolyButton.style.display = "";
-    else
-        quickPolyButton.style.display = "none";
+    updateMapData();
 }
 
 mapSourceSelect.onchange = async function() {
@@ -515,7 +490,7 @@ offsetYInput.onchange = async function() {
 //#region Drawing functions
 function drawCanvas(skipMap, force)
 {
-    if (!skipMap) {
+    if (!skipMap || force) {
         map.width = loadedMap.naturalWidth;
         map.height = loadedMap.naturalHeight;
         mapCanvas.strokeStyle = GridColor;
@@ -528,10 +503,11 @@ function drawCanvas(skipMap, force)
         hitboxMap.height = loadedMap.naturalHeight;
         antiBlockerMap.width = loadedMap.naturalWidth;
         antiBlockerMap.height = loadedMap.naturalHeight;
-        gridSize = {x: (map.width-mapData.offsetX)/mapData.x, y: (map.height-mapData.offsetY)/mapData.y, min:Math.min((map.width-mapData.offsetX)/mapData.x, (map.height-mapData.offsetY)/mapData.y)}
+        gridSize = {x: (map.width-mapData.offsetX)/mapData.x, y: (map.height-mapData.offsetY)/mapData.y, min:Math.min((map.width-mapData.offsetX)/mapData.x, (map.height-mapData.offsetY)/mapData.y)};
+        mapCanvas.clearRect(0, 0, map.width, map.height);
     }
     mapData.usePolyBlockers ? drawPolyBlockers() : drawBlockers();
-    if (!skipMap) {
+    if (!skipMap || force) {
         drawMap();
         if (GridActive)
             drawGrid();
@@ -1683,7 +1659,7 @@ function drawTokens()
                                 {
                                     subMenuOptions.push({text: "(Un)lock group", callback: async function() {
                                         await requestServer({c:"toggleGroupLock", group: token.group});
-                                        updateMapData(true);
+                                        updateMapData();
                                     }});
                                     subMenuOptions.push({text: "Hide tokens", callback: async function() {
                                         for (let a = 0; a < mapData.tokens.length; a++)
@@ -1692,7 +1668,7 @@ function drawTokens()
                                                 await requestServer({c:"setTokenHidden", id: mapData.tokens[a].id, hidden: true});
                                             }
                                         }
-                                        updateMapData(true);
+                                        updateMapData();
                                     }})
                                     subMenuOptions.push({text: "Reveal tokens", callback: async function() {
                                         for (let a = 0; a < mapData.tokens.length; a++)
@@ -1701,7 +1677,7 @@ function drawTokens()
                                                 await requestServer({c:"setTokenHidden", id: mapData.tokens[a].id, hidden: false});
                                             }
                                         }
-                                        updateMapData(true);
+                                        updateMapData();
                                     }})
                                     subMenuOptions.push({text: "Toggle DM only", callback: async function() {
                                         for (let a = 0; a < mapData.tokens.length; a++)
@@ -1709,7 +1685,7 @@ function drawTokens()
                                             if (mapData.tokens[a].group == token.group)
                                                 await requestServer({c:"editToken", id: mapData.tokens[a].id, dm: !token.dm});
                                         }
-                                        updateMapData(true);
+                                        updateMapData();
                                     }})
                                 }
                                 displaySubMenu(e, subMenuOptions);
@@ -1777,15 +1753,21 @@ function drawTokens()
 function updateHighlightedToken() {
     if (selectedToken!=null)
         for (let token of tokensDiv.children)
-            token.style.outline = token.getAttribute("tokenid")==selectedToken?(0.004*gridSize.x).toString()+"vw dashed aqua":"";
+            token.style.outline = token.getAttribute("tokenid")==selectedToken?"0.15vw dashed aqua":"";
 } 
 
 let previousInitiativeTrackerScrollPosition = 0;
 function updateTracker(force)
 {
-    if (oldParsedData)
+    if (oldParsedData && !force)
+    {
         if (JSON.stringify(oldParsedData.tokens) == JSON.stringify(mapData.tokens) && oldParsedData.hideInit == mapData.hideInit && !force)
             return;
+    }
+    else
+    {
+        console.log("No old data or forced update!");
+    }
     previousInitiativeTrackerScrollPosition = initiativeTrackerDiv.scrollTop;
     initiativeTrackerDiv.innerHTML = "";
     for (let [i, token] of mapData.tokens.entries())
@@ -2044,7 +2026,7 @@ colorPickerButton.onclick = function() {
 
 document.getElementById("toggleBlockerEditing").onclick = function() {
     blockerEditMode = !blockerEditMode;
-    updateMapData(true);
+    updateMapData();
     updateButtonColors();
 }
 
@@ -2229,7 +2211,7 @@ document.getElementById("clearTokensButton").onclick = async function() {
     if (confirm("Do you really want to remove all the tokens?") && isDM)
     {
         await requestServer({c:"clearTokens"});
-        updateMapData(true);
+        updateMapData();
     }
 }
 
@@ -2237,7 +2219,7 @@ document.getElementById("clearDrawingsButton").onclick = async function() {
     if (confirm("Do you really want to remove all the drawings?") && isDM)
     {
         await requestServer({c:"clearDrawings"});
-        updateMapData(true);
+        updateMapData();
     }
 }
 
@@ -2245,7 +2227,7 @@ document.getElementById("clearBlockersButton").onclick = async function() {
     if (confirm("Do you really want to remove all the blockers?") && isDM)
     {
         await requestServer({c:"clearBlockers"});
-        updateMapData(true);
+        updateMapData();
     }
 }
 
@@ -2293,7 +2275,7 @@ document.getElementById("togglePlayerMode").onclick = async function() {
 
 document.getElementById("clearPortals").onclick = async function() {
     await requestServer({c: "clearPortals"});
-    updateMapData(true);
+    updateMapData();
 }
 
 let extraOptions = [
@@ -2332,7 +2314,7 @@ document.getElementById("importMap").onclick = function() {
 
 document.getElementById("fileImport").onchange = function() {
     document.getElementById("submitMap").click();
-    updateMapData(true);
+    updateMapData();
 }
 
 document.getElementById("exportMap").onclick = async function() {
@@ -2347,6 +2329,15 @@ function CheckAntiBlockerPixel(e) {
     if (mapData.antiBlockerOn)
     {
         let pixel = antiBlockerCanvas.getImageData(((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), 1, 1).data;
+        return (pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0 && pixel[3] == 0);
+    }
+    return true;
+}
+
+function CheckAntiBlockerPixelPosition(x, y) {
+    if (mapData.antiBlockerOn)
+    {
+        let pixel = antiBlockerCanvas.getImageData(x, y, 1, 1).data;
         return (pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0 && pixel[3] == 0);
     }
     return true;
@@ -2554,15 +2545,15 @@ document.body.addEventListener("keyup", async function(e) {
                 updateSelectedTokenData();
                 if (selectedTokenData.size >= 1)
                 {
-                    tX = Math.round(Math.round((selectedTokenData.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
-                    tY = Math.round(Math.round((selectedTokenData.y - gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                    tX = Math.round((selectedTokenData.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX + GridLineWidth;
+                    tY = Math.round((selectedTokenData.y - gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY + GridLineWidth;
                 }
                 else
                 {
-                    tX = Math.round(Math.round((selectedTokenData.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
-                    tY = Math.round(Math.round((selectedTokenData.x - gridSize.y * selectedTokenData.size - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                    tX = Math.round((selectedTokenData.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX + GridLineWidth;
+                    tY = Math.round((selectedTokenData.x - gridSize.y * selectedTokenData.size - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY + GridLineWidth;
                 }
-                if (tY>0)
+                if (tY>0 && (CheckAntiBlockerPixelPosition(tX, tY)||isDM))
                     await requestServer({c: "moveToken", id: selectedToken, x: tX, y: tY, bypassLink: !(e.ctrlKey || e.metaKey)});
                 updateMapData();
                 break;
@@ -2571,15 +2562,15 @@ document.body.addEventListener("keyup", async function(e) {
                 updateSelectedTokenData();
                 if (selectedTokenData.size >= 1)
                 {
-                    tX = Math.round(Math.round((selectedTokenData.x - gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
-                    tY = Math.round(Math.round((selectedTokenData.y - gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                    tX = Math.round((selectedTokenData.x - gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX + GridLineWidth;
+                    tY = Math.round((selectedTokenData.y - gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY + GridLineWidth;
                 }
                 else
                 {
-                    tX = Math.round(Math.round((selectedTokenData.x - gridSize.x * selectedTokenData.size - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
-                    tY = Math.round(Math.round((selectedTokenData.x - gridSize.y * selectedTokenData.size - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                    tX = Math.round((selectedTokenData.x - gridSize.x * selectedTokenData.size - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX + GridLineWidth;
+                    tY = Math.round((selectedTokenData.x - gridSize.y * selectedTokenData.size - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY + GridLineWidth;
                 }
-                if (tY>0 && tX>0)
+                if (tY>0 && tX>0 && (CheckAntiBlockerPixelPosition(tX, tY)||isDM))
                     await requestServer({c: "moveToken", id: selectedToken, x: tX, y: tY, bypassLink: !(e.ctrlKey || e.metaKey)});
                 updateMapData();
                 break;
@@ -2588,15 +2579,15 @@ document.body.addEventListener("keyup", async function(e) {
                 updateSelectedTokenData();
                 if (selectedTokenData.size >= 1)
                 {
-                    tX = Math.round(Math.round((selectedTokenData.x + gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
-                    tY = Math.round(Math.round((selectedTokenData.y - gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                    tX = Math.round((selectedTokenData.x + gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX + GridLineWidth;
+                    tY = Math.round((selectedTokenData.y - gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY + GridLineWidth;
                 }
                 else
                 {
-                    tX = Math.round(Math.round((selectedTokenData.x + gridSize.x * selectedTokenData.size - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
-                    tY = Math.round(Math.round((selectedTokenData.x - gridSize.y * selectedTokenData.size - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                    tX = Math.round((selectedTokenData.x + gridSize.x * selectedTokenData.size - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX + GridLineWidth;
+                    tY = Math.round((selectedTokenData.x - gridSize.y * selectedTokenData.size - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY + GridLineWidth;
                 }
-                if (tY>0 && tX < map.width)
+                if (tY>0 && tX < map.width && (CheckAntiBlockerPixelPosition(tX, tY)||isDM))
                     await requestServer({c: "moveToken", id: selectedToken, x: tX, y: tY, bypassLink: !(e.ctrlKey || e.metaKey)});
                 updateMapData();
                 break;
@@ -2605,15 +2596,15 @@ document.body.addEventListener("keyup", async function(e) {
                 updateSelectedTokenData();
                 if (selectedTokenData.size >= 1)
                 {
-                    tX = Math.round(Math.round((selectedTokenData.x - gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
-                    tY = Math.round(Math.round((selectedTokenData.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                    tX = Math.round((selectedTokenData.x - gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX + GridLineWidth;
+                    tY = Math.round((selectedTokenData.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY + GridLineWidth;
                 }
                 else
                 {
-                    tX = Math.round(Math.round((selectedTokenData.x - gridSize.x * selectedTokenData.size - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
-                    tY = Math.round(Math.round((selectedTokenData.x - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                    tX = Math.round((selectedTokenData.x - gridSize.x * selectedTokenData.size - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX + GridLineWidth;
+                    tY = Math.round((selectedTokenData.x - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY + GridLineWidth;
                 }
-                if (tX>0)
+                if (tX>0 && (CheckAntiBlockerPixelPosition(tX, tY)||isDM))
                     await requestServer({c: "moveToken", id: selectedToken, x: tX, y: tY, bypassLink: !(e.ctrlKey || e.metaKey)});
                 updateMapData();
                 break;
@@ -2622,15 +2613,15 @@ document.body.addEventListener("keyup", async function(e) {
                 updateSelectedTokenData();
                 if (selectedTokenData.size >= 1)
                 {
-                    tX = Math.round(Math.round((selectedTokenData.x + gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
-                    tY = Math.round(Math.round((selectedTokenData.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                    tX = Math.round((selectedTokenData.x + gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX + GridLineWidth;
+                    tY = Math.round((selectedTokenData.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY + GridLineWidth;
                 }
                 else
                 {
-                    tX = Math.round(Math.round((selectedTokenData.x + gridSize.x * selectedTokenData.size - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
-                    tY = Math.round(Math.round((selectedTokenData.x - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                    tX = Math.round((selectedTokenData.x + gridSize.x * selectedTokenData.size - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX + GridLineWidth;
+                    tY = Math.round((selectedTokenData.x - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY + GridLineWidth;
                 }
-                if (tX < map.width)
+                if (tX < map.width && (CheckAntiBlockerPixelPosition(tX, tY)||isDM))
                     await requestServer({c: "moveToken", id: selectedToken, x: tX, y: tY, bypassLink: !(e.ctrlKey || e.metaKey)});
                 updateMapData();
                 break;
@@ -2639,15 +2630,15 @@ document.body.addEventListener("keyup", async function(e) {
                 updateSelectedTokenData();
                 if (selectedTokenData.size >= 1)
                 {
-                    tX = Math.round(Math.round((selectedTokenData.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
-                    tY = Math.round(Math.round((selectedTokenData.y + gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                    tX = Math.round((selectedTokenData.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX + GridLineWidth;
+                    tY = Math.round((selectedTokenData.y + gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY + GridLineWidth;
                 }
                 else
                 {
-                    tX = Math.round(Math.round((selectedTokenData.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
-                    tY = Math.round(Math.round((selectedTokenData.x + gridSize.y * selectedTokenData.size - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                    tX = Math.round((selectedTokenData.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX + GridLineWidth;
+                    tY = Math.round((selectedTokenData.x + gridSize.y * selectedTokenData.size - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY + GridLineWidth;
                 }
-                if (tY<map.height)
+                if (tY<map.height && (CheckAntiBlockerPixelPosition(tX, tY)||isDM))
                     await requestServer({c: "moveToken", id: selectedToken, x: tX, y: tY, bypassLink: !(e.ctrlKey || e.metaKey)});
                 updateMapData();
                 break;
@@ -2656,15 +2647,15 @@ document.body.addEventListener("keyup", async function(e) {
                 updateSelectedTokenData();
                 if (selectedTokenData.size >= 1)
                 {
-                    tX = Math.round(Math.round((selectedTokenData.x - gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
-                    tY = Math.round(Math.round((selectedTokenData.y + gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                    tX = Math.round((selectedTokenData.x - gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX + GridLineWidth;
+                    tY = Math.round((selectedTokenData.y + gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY + GridLineWidth;
                 }
                 else
                 {
-                    tX = Math.round(Math.round((selectedTokenData.x - gridSize.x * selectedTokenData.size - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
-                    tY = Math.round(Math.round((selectedTokenData.x + gridSize.y * selectedTokenData.size - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                    tX = Math.round((selectedTokenData.x - gridSize.x * selectedTokenData.size - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX + GridLineWidth;
+                    tY = Math.round((selectedTokenData.x + gridSize.y * selectedTokenData.size - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY + GridLineWidth;
                 }
-                if (tY<map.height && tX>0)
+                if (tY<map.height && tX>0 && (CheckAntiBlockerPixelPosition(tX, tY)||isDM))
                     await requestServer({c: "moveToken", id: selectedToken, x: tX, y: tY, bypassLink: !(e.ctrlKey || e.metaKey)});
                 updateMapData();
                 break;
@@ -2673,15 +2664,15 @@ document.body.addEventListener("keyup", async function(e) {
                 updateSelectedTokenData();
                 if (selectedTokenData.size >= 1)
                 {
-                    tX = Math.round(Math.round((selectedTokenData.x + gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
-                    tY = Math.round(Math.round((selectedTokenData.y + gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                    tX = Math.round((selectedTokenData.x + gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX + GridLineWidth;
+                    tY = Math.round((selectedTokenData.y + gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY + GridLineWidth;
                 }
                 else
                 {
-                    tX = Math.round(Math.round((selectedTokenData.x + gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
-                    tY = Math.round(Math.round((selectedTokenData.x + gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                    tX = Math.round((selectedTokenData.x + gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX + GridLineWidth;
+                    tY = Math.round((selectedTokenData.x + gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY + GridLineWidth;
                 }
-                if (tY<map.height && tX < map.width)
+                if (tY<map.height && tX < map.width && (CheckAntiBlockerPixelPosition(tX, tY)||isDM))
                     await requestServer({c: "moveToken", id: selectedToken, x: tX, y: tY, bypassLink: !(e.ctrlKey || e.metaKey)});
                 updateMapData();
                 break;
@@ -2693,7 +2684,7 @@ document.body.addEventListener("keyup", async function(e) {
             case "Digit0":
                 if (mapData.portalData.length>0)
                     setPortal(parseInt(prompt("Enter your desired portal ID (0-"+(mapData.portalData.length-1).toString()+"):")));
-                    updateMapData(true);
+                    updateMapData();
                 break;
 
             case "KeyG":
@@ -2910,7 +2901,7 @@ map.addEventListener("mousedown", async function(e) {
                     await requestServer({c: "addBlocker", x: blockerMarkers.x, y: blockerMarkers.y, width: blockerMarkers.width, height: blockerMarkers.height});
                 }
                 isPlacingBlocker = false;
-                updateMapData(true);
+                updateMapData();
                 drawCanvas();
                 return;
             }
@@ -3486,13 +3477,13 @@ document.body.ondrop = async function(e)
             let tY;
             if (draggingTokenData.size >= 1)
             {
-                tX = Math.round(Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridSize.x * draggingTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * draggingTokenData.size + offsetX) + GridLineWidth;
-                tY = Math.round(Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridSize.y * draggingTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * draggingTokenData.size + offsetY) + GridLineWidth;
+                tX = Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridSize.x * draggingTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * draggingTokenData.size + offsetX + GridLineWidth;
+                tY = Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridSize.y * draggingTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * draggingTokenData.size + offsetY + GridLineWidth;
             }
             else
             {
-                tX = Math.round(Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridSize.x * draggingTokenData.size) / (gridSize.x * draggingTokenData.size)) * (gridSize.x * draggingTokenData.size) + 0.5 * gridSize.x * draggingTokenData.size + offsetX) + GridLineWidth;
-                tY = Math.round(Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridSize.y * draggingTokenData.size) / (gridSize.y * draggingTokenData.size)) * (gridSize.y * draggingTokenData.size) + 0.5 * gridSize.y * draggingTokenData.size + offsetY) + GridLineWidth;
+                tX = Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridSize.x * draggingTokenData.size) / (gridSize.x * draggingTokenData.size)) * (gridSize.x * draggingTokenData.size) + 0.5 * gridSize.x * draggingTokenData.size + offsetX + GridLineWidth;
+                tY = Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridSize.y * draggingTokenData.size) / (gridSize.y * draggingTokenData.size)) * (gridSize.y * draggingTokenData.size) + 0.5 * gridSize.y * draggingTokenData.size + offsetY + GridLineWidth;
             }
             if (tX!= draggingTokenData.x || tY != draggingTokenData.y)
                 await requestServer({c: "moveToken", id: draggingToken, x: tX, y: tY, bypassLink: !controlPressed});
@@ -3506,7 +3497,7 @@ document.body.ondrop = async function(e)
                 await requestServer({c: "moveToken", id: draggingToken, x: tempx, y: tempy, bypassLink: !controlPressed});
             }
         }
-        updateMapData(true);
+        updateMapData();
         isDraggingToken = false;
         controlPressed = false;
         draggingToken = -1;
