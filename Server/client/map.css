@@ -58,6 +58,16 @@ body h3 {
     background-color: violet;
 }
 
+.newPolyBlockerHandle {
+    z-index: 501;
+    border-radius: 50%;
+    cursor: grab;
+    position: absolute;
+    width: 0.7vw;
+    height: 0.7vw;
+    background-color: red;
+}
+
 .shapeHandle {
     z-index: 501;
     border-radius: 50%;
@@ -206,6 +216,20 @@ body h3 {
     display: flex;
     flex-direction: row;
 }
+
+#quickPolyButton {
+    width: 1.8vw;
+    height: 1.8vw;
+    border: none;
+    padding: 0px;
+    margin-right: 0.5vh;
+    text-align: center;
+    line-height: 50%;
+    border-radius: 0.3vw;
+}
+
+#quickPolyButton:focus {outline: none;}
+#quickPolyButton object {pointer-events: none; width: 80%; height: 80%;}
 
 #toggleGridButton {
     width: 1.8vw;

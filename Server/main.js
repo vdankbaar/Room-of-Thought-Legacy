@@ -517,9 +517,10 @@ app.post("/api", function(request, response) {
         case "addPolyBlocker":
             loadCurrentMap();
             let tmpPoly = {id: currentMap.polyBlockers.length, verts: []};
-            tmpPoly.verts.push({x: request.body.x, y: request.body.y+request.body.offset});
-            tmpPoly.verts.push({x: request.body.x+request.body.offset, y: request.body.y});
-            tmpPoly.verts.push({x: request.body.x-request.body.offset, y: request.body.y});
+            tmpPoly.verts.push({x: request.body.x-request.body.offset, y: request.body.y+request.body.offset});
+            tmpPoly.verts.push({x: request.body.x+request.body.offset, y: request.body.y+request.body.offset});
+            tmpPoly.verts.push({x: request.body.x+request.body.offset, y: request.body.y-request.body.offset});
+            tmpPoly.verts.push({x: request.body.x-request.body.offset, y: request.body.y-request.body.offset});
             currentMap.polyBlockers.push(tmpPoly);
             saveCurrentMap();
             response.send("[true]");
@@ -558,6 +559,14 @@ app.post("/api", function(request, response) {
             response.send("[true]");
             break;
 
+        case "addCustomPolyBlocker":
+            loadCurrentMap();
+            let newPolyBlocker = {id: currentMap.polyBlockers.length, verts: JSON.parse(request.body.newPolyBlockerVerts)};
+            currentMap.polyBlockers.push(newPolyBlocker);
+            saveCurrentMap();
+            response.send("[true]");
+            break;
+            
         case "addVert":
             loadCurrentMap();
             for (let i in currentMap.polyBlockers)

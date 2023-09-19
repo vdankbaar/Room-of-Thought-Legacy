@@ -43,9 +43,11 @@ let bulkTokenConfirm = document.getElementById("bulkTokenConfirm");
 let bulkInitGeneratorScreen = document.getElementById("bulkInitGeneratorScreen");
 let polyBlockers = document.getElementById("polyBlockers");
 let polyBlockerHandles = document.getElementById("polyBlockerHandles");
+let newPolyBlockerHandles = document.getElementById("newPolyBlockerHandles");
 let shapeHandles = document.getElementById("shapeHandles");
 let antiBlockerMap = document.getElementById("antiBlockerMap");
 let initSearch = document.getElementById("initSearch");
+let buttonList = document.getElementById("toggleButtons");
 let noteArea = noteEditor.children[0];
 let mapCanvas;
 let shapeCanvas;
@@ -107,6 +109,9 @@ let draggedPolygonId;
 let selectedVertHandle = -1;
 let alignToolStep = 0;
 let gridToolData = {startX: 0, startY: 0, gridX: 0, gridY: 0, endX: 0, endY: 0, }
+let quickPolyBlockerMode = false;
+let newPolyBlockerVerts = [];
+let selectedNewVertHandle = -1;
 
 window.onload = function() {
     if (getCookie("isDM") == 1)
@@ -136,6 +141,10 @@ async function Setup() {
     antiBlockerCanvas = antiBlockerMap.getContext("2d");
     colorPicker.value = shapeColor.substr(0, shapeColor.length-2);
     await updateMapData(true);
+    if(mapData.usePolyBlockers && isDM)
+    {
+        addQuickPolyBlockerButton();
+    }
     if (autoUpdate)
     {
         setInterval(function() {updateMapData();}, mapUpdateInterval);
@@ -2159,9 +2168,19 @@ document.getElementById("clearBlockersButton").onclick = function() {
     }
 }
 
-document.getElementById("switchBlockerTypeButton").onclick = function() {
-    requestServer({c:"switchBlockerType"});
-    updateMapData(true);
+document.getElementById("switchBlockerTypeButton").onclick = async function() {
+    if (isDM) {
+        if(mapData.usePolyBlockers)
+        {
+            buttonList.removeChild(document.getElementById("quickPolyButton"));
+        }
+        else
+        {
+            addQuickPolyBlockerButton();
+        }
+        requestServer({c:"switchBlockerType"});
+    }
+    await updateMapData(true);
 }
 
 document.getElementById("hitpointsIcon").onclick = async function() {
@@ -2355,6 +2374,51 @@ function CheckTokenPermission(token) {
     }
 }
 
+function DrawNewPolyMarkers() {
+    console.log(newPolyBlockerVerts);
+    newPolyBlockerHandles.innerHTML = "";
+    for (let j = 0; j < newPolyBlockerVerts.length; j++)
+    {
+        let vert = newPolyBlockerVerts[j];
+        let editHandleContainer = document.createElement("div");
+        editHandleContainer.style.position = "absolute";
+        editHandleContainer.style.left = vert.x;
+        editHandleContainer.style.top = vert.y;
+        let editHandle = document.createElement("div");
+        editHandle.className = "newPolyBlockerHandle";
+        editHandle.draggable = true;
+        editHandle.style.left = "-0.35vw";
+        editHandle.style.top = "-0.35vw";
+        editHandle.title = (j+1).toString();
+        
+        editHandle.addEventListener("contextmenu", function(e) {
+            e.preventDefault();
+            let menuOptions = [
+                {text: "Remove vert", hasSubMenu: false, callback: function() {
+                    newPolyBlockerVerts.splice(j, 1);
+                    DrawNewPolyMarkers();
+                }}
+            ];
+            displayMenu(e, menuOptions);
+        });
+
+        editHandle.addEventListener("dragover", function(e) {
+            e.preventDefault();
+        });
+
+        editHandle.addEventListener("dragend", function(e) {
+            if ((e.clientX + board.scrollLeft)!=vert.x && (e.clientY + board.scrollTop)!=vert.y)
+            {
+                vert.x = e.clientX + board.scrollLeft;
+                vert.y = e.clientY + board.scrollTop;
+                DrawNewPolyMarkers();
+            }
+        });
+        editHandleContainer.appendChild(editHandle);
+        newPolyBlockerHandles.appendChild(editHandleContainer);
+    }
+}
+
 window.addEventListener("mouseup", async function(e) {
     if (e.button == 0)
     {
@@ -2467,7 +2531,17 @@ document.body.addEventListener("keyup", async function(e) {
                     drawCanvas();
                 }
                 break;
-            
+
+            case "KeyP":
+                if (isDM)
+                {
+                    if (mapData.usePolyBlockers)
+                    {
+                        document.getElementById("quickPolyButton").click();
+                    }
+                }
+            break;
+
             case "Delete":
                 if (isDM)
                 {
@@ -2631,6 +2705,12 @@ shapeMap.addEventListener("mousedown", function(e) {
             updateMapData();
             return;
         }
+
+        if (quickPolyBlockerMode) {
+            newPolyBlockerVerts.push({x: e.pageX+board.scrollLeft, y: e.pageY + board.scrollTop});
+            DrawNewPolyMarkers();
+        }
+
         if (isPlacingSquare)
         {
             squareMarkers.width = (e.pageX + board.scrollLeft) - squareMarkers.x;
@@ -2654,6 +2734,7 @@ shapeMap.addEventListener("mousedown", function(e) {
             isPlacingSquare = false;
             return;
         }
+
         if (isPlacingBlocker)
         {
             if (isDM)
@@ -2667,6 +2748,7 @@ shapeMap.addEventListener("mousedown", function(e) {
             drawCanvas();
             return;
         }
+
         if (isPlacingLine)
         {
             lineMarkers.destX = (e.pageX + board.scrollLeft);
@@ -3424,6 +3506,34 @@ resizer.addEventListener("mousedown", function(e) {
     }
 })
 
+function addQuickPolyBlockerButton() {
+    let quickPolyButton = document.createElement("Button");
+    let quickPolyButtonSVG = document.createElement("object");
+    quickPolyButtonSVG.type = "image/svg+xml";
+    quickPolyButtonSVG.data = "images/group_work-24px.svg";
+    quickPolyButtonSVG.style.pointerEvents = "none";
+    quickPolyButton.appendChild(quickPolyButtonSVG);
+    quickPolyButton.id = "quickPolyButton"
+    quickPolyButton.title = "Quick add polyblocker (P)";
+    quickPolyButton.className = "dmOnly";
+    quickPolyButton.onclick = function() {
+        if (quickPolyBlockerMode) {
+            if(confirm("Add the new blocker?")) {
+                if (newPolyBlockerVerts.length>2) {
+                    requestServer({c: "addCustomPolyBlocker", newPolyBlockerVerts: JSON.stringify(newPolyBlockerVerts)});
+                }
+            }
+            quickPolyBlockerMode = false;
+            newPolyBlockerVerts = [];
+            DrawNewPolyMarkers();
+        }
+        else {
+            quickPolyBlockerMode = true;
+        }
+        updateButtonColors();
+    }
+    buttonList.appendChild(quickPolyButton)
+}
 
 function updateButtonColors()
 {
@@ -3445,7 +3555,6 @@ function updateButtonColors()
         document.getElementById("toggleSnapButton").style.backgroundColor = "rgb(240, 240, 240)";
     }
         
-
     if (isDM)
     {
         if (displayMapSettings)
@@ -3464,6 +3573,23 @@ function updateButtonColors()
         else
         {
             document.getElementById("toggleBlockerEditing").style.backgroundColor = "rgb(240, 240, 240)";
+        }
+
+        if (quickPolyBlockerMode)
+        {
+            let qpb = document.getElementById("quickPolyButton");
+            if (qpb!=null)
+            {
+                qpb.style.backgroundColor = "aquamarine";
+            }
+        }
+        else
+        {
+            let qpb = document.getElementById("quickPolyButton");
+            if (qpb!=null)
+            {
+                qpb.style.backgroundColor = "rgb(240, 240, 240)";
+            }
         }
     }
 }
