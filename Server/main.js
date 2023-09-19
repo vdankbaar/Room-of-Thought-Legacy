@@ -237,17 +237,16 @@ app.post("/api", function(request, response) {
 
         case "setTokenHidden":
             loadCurrentMap();
-            for (let i in currentMap.tokens)
+            for (let currentToken of currentMap.tokens)
             {
-                let currentToken = currentMap.tokens[i];
                 if (currentToken.id == request.body.id)
                 {
                     currentToken.hidden = request.body.hidden;
-                    for (let i = 0; i < currentMap.drawings.length; i++)
+                    for (let currentDrawing of currentMap.drawings)
                     {
-                        if (currentMap.drawings[i].link == currentToken.id)
+                        if (currentDrawing.link == currentToken.id)
                         {
-                            currentMap.drawings[i].visible = !request.body.hidden;
+                            currentDrawing.visible = !currentToken.hidden;
                         }
                     }
                 }

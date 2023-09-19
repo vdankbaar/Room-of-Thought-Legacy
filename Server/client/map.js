@@ -1291,489 +1291,492 @@ function drawTokens()
     tokensDiv.innerHTML = "";
     for (let token of mapData.tokens)
     {
-        let imageElement = document.createElement("img");
-        if (token.id == selectedToken)
-            LoadTokenData(token);
-
-        imageElement.setAttribute("tokenid", token.id);
-        imageElement.src = mapData.tokenList.includes(token.image)?"public/tokens/" + token.image:mapData.dmTokenList.includes(token.image)?"public/dmTokens/" + token.image:"public/blankToken.png";
-        
-        if (isPlacingCone || isPlacingLine || isPlacingSquare)
-            imageElement.style.pointerEvents = "none";
-
-        imageElement.className = "token";
-        imageElement.style.top = token.y - (gridSize * token.size) / 2 + 0.5*GridLineWidth + "px";
-        imageElement.style.left = token.x - (gridSize * token.size) / 2 + 0.5*GridLineWidth + "px";
-        imageElement.style.width = (token.size * gridSize).toString() + "px";
-        imageElement.style.height = (token.size * gridSize).toString() + "px";
-
-        imageElement.style.zIndex = (token.layer + baseTokenIndex).toString();
-        imageElement.title = token.status;
-        imageElement.draggable = true;
-        if (isDM && !playerMode && token.hidden)
+        if (!token.hidden || (isDM && !playerMode))
         {
-            let hiddenImage = document.createElement("img");
-            hiddenImage.src = "images/hidden.png";
-            hiddenImage.className = "hiddenToken";
-            hiddenImage.style.width = (token.size * gridSize / 3).toString() + "px";
-            hiddenImage.style.height = (token.size * gridSize / 3).toString() + "px";
-            hiddenImage.style.top = token.y - (gridSize * token.size) / 2 + "px";
-            hiddenImage.style.left = token.x - (gridSize * token.size) / 2  + "px";
-            hiddenImage.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
-            tokensDiv.appendChild(hiddenImage);
-        }
-
-        if (mapData.portalData!={} && mapData.portalData[selectedPortal]!=null)
-        {
-            for (let link of mapData.portalData[selectedPortal].links)
+            let imageElement = document.createElement("img");
+            if (token.id == selectedToken)
+                LoadTokenData(token);
+    
+            imageElement.setAttribute("tokenid", token.id);
+            imageElement.src = mapData.tokenList.includes(token.image)?"public/tokens/" + token.image:mapData.dmTokenList.includes(token.image)?"public/dmTokens/" + token.image:"public/blankToken.png";
+            
+            if (isPlacingCone || isPlacingLine || isPlacingSquare)
+                imageElement.style.pointerEvents = "none";
+    
+            imageElement.className = "token";
+            imageElement.style.top = token.y - (gridSize * token.size) / 2 + 0.5*GridLineWidth + "px";
+            imageElement.style.left = token.x - (gridSize * token.size) / 2 + 0.5*GridLineWidth + "px";
+            imageElement.style.width = (token.size * gridSize).toString() + "px";
+            imageElement.style.height = (token.size * gridSize).toString() + "px";
+    
+            imageElement.style.zIndex = (token.layer + baseTokenIndex).toString();
+            imageElement.title = token.status;
+            imageElement.draggable = true;
+            if (token.hidden)
             {
-                if (link.id == token.id)
+                let hiddenImage = document.createElement("img");
+                hiddenImage.src = "images/hidden.png";
+                hiddenImage.className = "hiddenToken";
+                hiddenImage.style.width = (token.size * gridSize / 3).toString() + "px";
+                hiddenImage.style.height = (token.size * gridSize / 3).toString() + "px";
+                hiddenImage.style.top = token.y - (gridSize * token.size) / 2 + "px";
+                hiddenImage.style.left = token.x - (gridSize * token.size) / 2  + "px";
+                hiddenImage.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
+                tokensDiv.appendChild(hiddenImage);
+            }
+    
+            if (mapData.portalData!={} && mapData.portalData[selectedPortal]!=null)
+            {
+                for (let link of mapData.portalData[selectedPortal].links)
                 {
-                    let linkImage = document.createElement("img");
-                    let tokenX = Math.round((token.x-mapData.offsetX)/gridSize-0.5*token.size);
-                    let tokenY = Math.round((token.y-mapData.offsetY)/gridSize-0.5*token.size);
-                    if (tokenX == (mapData.portalData[selectedPortal].originX+link.x) && tokenY == (mapData.portalData[selectedPortal].originY+link.y))
+                    if (link.id == token.id)
                     {
-                        linkImage.src = "images/link.png";
-                        linkImage.style.filter = "invert(98%) sepia(29%) saturate(3387%) hue-rotate(49deg) brightness(95%) contrast(81%)";
+                        let linkImage = document.createElement("img");
+                        let tokenX = Math.round((token.x-mapData.offsetX)/gridSize-0.5*token.size);
+                        let tokenY = Math.round((token.y-mapData.offsetY)/gridSize-0.5*token.size);
+                        if (tokenX == (mapData.portalData[selectedPortal].originX+link.x) && tokenY == (mapData.portalData[selectedPortal].originY+link.y))
+                        {
+                            linkImage.src = "images/link.png";
+                            linkImage.style.filter = "invert(98%) sepia(29%) saturate(3387%) hue-rotate(49deg) brightness(95%) contrast(81%)";
+                        }
+                        else
+                        {
+                            linkImage.src = "images/unlink.png";
+                            linkImage.style.filter = "invert(47%) sepia(71%) saturate(6403%) hue-rotate(341deg) brightness(101%) contrast(87%)";
+    
+                            let ghostElement = document.createElement("img");
+                            ghostElement.className = "token";
+                            ghostElement.style.top = (link.y+mapData.portalData[selectedPortal].originY)*gridSize + "px";
+                            ghostElement.style.left = (link.x+mapData.portalData[selectedPortal].originX)*gridSize + "px";
+                            ghostElement.style.width = (token.size * gridSize).toString() + "px";
+                            ghostElement.style.height = (token.size * gridSize).toString() + "px";
+                            ghostElement.style.opacity = "0.5";
+                            ghostElement.style.pointerEvents = "none";
+                            ghostElement.style.zIndex = (token.layer + baseTokenIndex).toString();
+                            ghostElement.src = mapData.tokenList.includes(token.image)?"public/tokens/" + token.image:mapData.dmTokenList.includes(token.image)?"public/dmTokens/" + token.image:"public/blankToken.png";
+                            tokensDiv.appendChild(ghostElement);
+                        }
+                            
+                        linkImage.className = "linkImage";
+                        tokensDiv.appendChild(linkImage);
+                        linkImage.style.width = (token.size * gridSize / 3).toString() + "px";
+                        linkImage.style.height = (token.size * gridSize / 3).toString() + "px";
+                        linkImage.style.top = token.y - (gridSize * token.size) / 2 + "px";
+                        linkImage.style.left = token.x + (gridSize * token.size) / 2 - linkImage.offsetWidth + "px";
+                        linkImage.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
+                    }
+                }
+            }
+                
+            if (token.concentrating)
+            {
+                if (!token.dm || (isDM&&!playerMode))
+                {
+                    let concentratingIcon = document.createElement("img");
+                    concentratingIcon.className = "concentratingText";
+                    concentratingIcon.src = "images/literally_copyright.png";
+                    tokensDiv.appendChild(concentratingIcon);
+                    concentratingIcon.style.width = (token.size * gridSize / 3).toString() + "px";
+                    concentratingIcon.style.height = (token.size * gridSize / 3).toString() + "px";
+                    concentratingIcon.style.top = token.y + (gridSize * token.size) / 2 - concentratingIcon.offsetHeight + "px";
+                    concentratingIcon.style.left = token.x - (gridSize * token.size) / 2 + "px";
+                    concentratingIcon.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
+                }
+            }
+    
+            imageElement.addEventListener("mousemove", function(e) {
+                if (isPanning)
+                {
+                    viewport.scrollLeft = oldScrollPos.x - ((e.pageX/(1+extraZoom/20)) - oldMousePos.x);
+                    viewport.scrollTop = oldScrollPos.y - ((e.pageY/(1+extraZoom/20)) - oldMousePos.y);
+                }
+            })
+            
+            imageElement.addEventListener("dragstart", function(e) {
+                if (!isPanning && (!mapData.groupLock.includes(token.group) || e.ctrlKey))
+                {
+                    if (CheckAntiBlockerPixel(e) || (isDM&&!playerMode))
+                    {
+                        e.dataTransfer.effectAllowed = "pointer";
+                        tokenDragOffset.x = token.x - (e.pageX + viewport.scrollLeft)/(1+extraZoom/20);
+                        tokenDragOffset.y = token.y - (e.pageY + viewport.scrollTop)/(1+extraZoom/20);
+                        draggingToken = token.id;
+                        isDraggingToken = true;
+                        if (e.ctrlKey || e.metaKey)
+                            controlPressed = true;
                     }
                     else
                     {
-                        linkImage.src = "images/unlink.png";
-                        linkImage.style.filter = "invert(47%) sepia(71%) saturate(6403%) hue-rotate(341deg) brightness(101%) contrast(87%)";
-
-                        let ghostElement = document.createElement("img");
-                        ghostElement.className = "token";
-                        ghostElement.style.top = (link.y+mapData.portalData[selectedPortal].originY)*gridSize + "px";
-                        ghostElement.style.left = (link.x+mapData.portalData[selectedPortal].originX)*gridSize + "px";
-                        ghostElement.style.width = (token.size * gridSize).toString() + "px";
-                        ghostElement.style.height = (token.size * gridSize).toString() + "px";
-                        ghostElement.style.opacity = "0.5";
-                        ghostElement.style.pointerEvents = "none";
-                        ghostElement.style.zIndex = (token.layer + baseTokenIndex).toString();
-                        ghostElement.src = mapData.tokenList.includes(token.image)?"public/tokens/" + token.image:mapData.dmTokenList.includes(token.image)?"public/dmTokens/" + token.image:"public/blankToken.png";
-                        tokensDiv.appendChild(ghostElement);
+                        e.preventDefault();
+                        isPanning = true;
+                        oldMousePos.x = e.pageX;
+                        oldMousePos.y = e.pageY;
+                        oldScrollPos.x = viewport.scrollLeft;
+                        oldScrollPos.y = viewport.scrollTop;
+                        document.body.style.cursor = "grabbing";
+                        updateMapData();
+                        return;
                     }
-                        
-                    linkImage.className = "linkImage";
-                    tokensDiv.appendChild(linkImage);
-                    linkImage.style.width = (token.size * gridSize / 3).toString() + "px";
-                    linkImage.style.height = (token.size * gridSize / 3).toString() + "px";
-                    linkImage.style.top = token.y - (gridSize * token.size) / 2 + "px";
-                    linkImage.style.left = token.x + (gridSize * token.size) / 2 - linkImage.offsetWidth + "px";
-                    linkImage.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
-                }
-            }
-        }
-            
-        if (token.concentrating)
-        {
-            if (!token.dm || (isDM&&!playerMode))
-            {
-                let concentratingIcon = document.createElement("img");
-                concentratingIcon.className = "concentratingText";
-                concentratingIcon.src = "images/literally_copyright.png";
-                tokensDiv.appendChild(concentratingIcon);
-                concentratingIcon.style.width = (token.size * gridSize / 3).toString() + "px";
-                concentratingIcon.style.height = (token.size * gridSize / 3).toString() + "px";
-                concentratingIcon.style.top = token.y + (gridSize * token.size) / 2 - concentratingIcon.offsetHeight + "px";
-                concentratingIcon.style.left = token.x - (gridSize * token.size) / 2 + "px";
-                concentratingIcon.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
-            }
-        }
-
-        imageElement.addEventListener("mousemove", function(e) {
-            if (isPanning)
-            {
-                viewport.scrollLeft = oldScrollPos.x - ((e.pageX/(1+extraZoom/20)) - oldMousePos.x);
-                viewport.scrollTop = oldScrollPos.y - ((e.pageY/(1+extraZoom/20)) - oldMousePos.y);
-            }
-        })
-        
-        imageElement.addEventListener("dragstart", function(e) {
-            if (!isPanning && (!mapData.groupLock.includes(token.group) || e.ctrlKey))
-            {
-                if (CheckAntiBlockerPixel(e) || (isDM&&!playerMode))
-                {
-                    e.dataTransfer.effectAllowed = "pointer";
-                    tokenDragOffset.x = token.x - (e.pageX + viewport.scrollLeft)/(1+extraZoom/20);
-                    tokenDragOffset.y = token.y - (e.pageY + viewport.scrollTop)/(1+extraZoom/20);
-                    draggingToken = token.id;
-                    isDraggingToken = true;
-                    if (e.ctrlKey || e.metaKey)
-                        controlPressed = true;
                 }
                 else
                 {
                     e.preventDefault();
-                    isPanning = true;
-                    oldMousePos.x = e.pageX;
-                    oldMousePos.y = e.pageY;
-                    oldScrollPos.x = viewport.scrollLeft;
-                    oldScrollPos.y = viewport.scrollTop;
-                    document.body.style.cursor = "grabbing";
-                    updateMapData();
-                    return;
+                    document.body.style.cursor = "";
                 }
-            }
-            else
-            {
-                e.preventDefault();
-                document.body.style.cursor = "";
-            }
-            isPanning = false;
-        });
-
-        imageElement.addEventListener("mousedown", function(e) {
-            if (e.button==0)
-            {
-                if (CheckAntiBlockerPixel(e) || (isDM&&!playerMode)&&!playerMode)
+                isPanning = false;
+            });
+    
+            imageElement.addEventListener("mousedown", function(e) {
+                if (e.button==0)
                 {
-                    detailsScreen.style.display = "grid";
-                    selectedToken = token.id;
-                    selectedBlocker = -1;
-                    selectedShapeId = -1;
-                    updateTrackerHighlight();
-                    if (mapData.usePolyBlockers)
+                    if (CheckAntiBlockerPixel(e) || (isDM&&!playerMode)&&!playerMode)
                     {
-                        drawPolyBlockers()
+                        detailsScreen.style.display = "grid";
+                        selectedToken = token.id;
+                        selectedBlocker = -1;
+                        selectedShapeId = -1;
+                        updateTrackerHighlight();
+                        if (mapData.usePolyBlockers)
+                        {
+                            drawPolyBlockers()
+                        }
+                        else
+                        {
+                            drawBlockers();
+                        }
+                        LoadTokenData(token, true);
+                        updateTracker();
+                        updateHighlightedToken();
+                        updateHighlightedBlocker();
+                        drawShapes();
                     }
-                    else
-                    {
-                        drawBlockers();
-                    }
-                    LoadTokenData(token, true);
-                    updateTracker();
-                    updateHighlightedToken();
-                    updateHighlightedBlocker();
-                    drawShapes();
                 }
-            }
-        });
-
-        imageElement.addEventListener("dragover", function(e) {
-            e.preventDefault();
-        })
-
-        imageElement.addEventListener("dragend", function(e) {
-            e.preventDefault();
-        });
-
-        imageElement.addEventListener("contextmenu", function(e) {
-            closeMenu();
-            closeSubMenu();
-            e.preventDefault();
-            if (CheckAntiBlockerPixel(e) || (isDM&&!playerMode))
-            {
-                let menuOptions = [
-                    {text: "Draw Shape", description: "Pick a shape to draw", hasSubMenu: true, callback: function() {
-                        let subMenuOptions = [
-                            {text: "Draw Circle", callback: function() {
-                                let radiusInput = parseFloat(prompt("Please enter the desired radius in feet for your circle(s)"));
-                                if (!isNaN(radiusInput))
-                                {
-                                    let shapeIsVisible = true;
-                                    if (isDM) {
-                                        shapeIsVisible = confirm("Should the shape be visible?");
+            });
+    
+            imageElement.addEventListener("dragover", function(e) {
+                e.preventDefault();
+            })
+    
+            imageElement.addEventListener("dragend", function(e) {
+                e.preventDefault();
+            });
+    
+            imageElement.addEventListener("contextmenu", function(e) {
+                closeMenu();
+                closeSubMenu();
+                e.preventDefault();
+                if (CheckAntiBlockerPixel(e) || (isDM&&!playerMode))
+                {
+                    let menuOptions = [
+                        {text: "Draw Shape", description: "Pick a shape to draw", hasSubMenu: true, callback: function() {
+                            let subMenuOptions = [
+                                {text: "Draw Circle", callback: function() {
+                                    let radiusInput = parseFloat(prompt("Please enter the desired radius in feet for your circle(s)"));
+                                    if (!isNaN(radiusInput))
+                                    {
+                                        let shapeIsVisible = true;
+                                        if (isDM) {
+                                            shapeIsVisible = confirm("Should the shape be visible?");
+                                        }
+                                        circleMarkers.radius = (radiusInput + (feetPerSquare / 2) * token.size) / feetPerSquare;
+                                        requestServer({c: "addDrawing", shape: "circle", link: token.id, x: token.x, y: token.y, radius: circleMarkers.radius, trueColor: shapeColor, visible: shapeIsVisible});
+                                        updateMapData();
+                                        closeMenu();
+                                        closeSubMenu();
                                     }
-                                    circleMarkers.radius = (radiusInput + (feetPerSquare / 2) * token.size) / feetPerSquare;
-                                    requestServer({c: "addDrawing", shape: "circle", link: token.id, x: token.x, y: token.y, radius: circleMarkers.radius, trueColor: shapeColor, visible: shapeIsVisible});
-                                    updateMapData();
-                                    closeMenu();
-                                    closeSubMenu();
-                                }
-                            }},
-                            {text: "Draw Cone", callback: function() {
-                                let rangeInput = parseFloat(prompt("Please enter the desired range in feet for your cone"));
-                                if (!isNaN(rangeInput))
-                                {
-                                    coneMarkers.is90Deg = false;
-                                    coneMarkers.x = token.x;
-                                    coneMarkers.y = token.y;
-                                    coneMarkers.range = rangeInput / feetPerSquare;
-                                    coneMarkers.linkId = token.id;
-                                    isPlacingCone = true;
-                                    drawCanvas();
-                                }
-                            }},
-                            {text: "Draw 90° Cone", callback: function() {
-                                let rangeInput = parseFloat(prompt("Please enter the desired range in feet for your cone"));
-                                if (!isNaN(rangeInput))
-                                {
-                                    coneMarkers.is90Deg = true;
-                                    coneMarkers.x = token.x;
-                                    coneMarkers.y = token.y;
-                                    coneMarkers.range = rangeInput / feetPerSquare;
-                                    coneMarkers.linkId = token.id;
-                                    isPlacingCone = true;
-                                    drawCanvas();
-                                }
-                            }},
-                            {text: "Draw 5ft wide Line", callback: function() {
-                                let rangeTextInput = prompt("Please enter the desired range of the line in feet.\nThen click where you want to aim.");
-                                if (rangeTextInput!=null)
-                                {
-                                    let rangeInput = parseFloat(rangeTextInput);
+                                }},
+                                {text: "Draw Cone", callback: function() {
+                                    let rangeInput = parseFloat(prompt("Please enter the desired range in feet for your cone"));
                                     if (!isNaN(rangeInput))
                                     {
-                                        thickLineMarkers.range = rangeInput / feetPerSquare;
-                                        thickLineMarkers.x = token.x;
-                                        thickLineMarkers.y = token.y;
-                                        thickLineMarkers.linkId = token.id;
-                                        isPlacing5ftLine = true;
+                                        coneMarkers.is90Deg = false;
+                                        coneMarkers.x = token.x;
+                                        coneMarkers.y = token.y;
+                                        coneMarkers.range = rangeInput / feetPerSquare;
+                                        coneMarkers.linkId = token.id;
+                                        isPlacingCone = true;
                                         drawCanvas();
                                     }
-                                }
-                            }}
-                        ];
-                        displaySubMenu(e, subMenuOptions);
-                    }}
-                ];
-                if ((token.dm && isDM) || !token.dm)
-                {
-                    menuOptions.splice(0, 0,
-                        {text: "Delete token", hasSubMenu: false, callback: async function() {
-                            if (selectedToken > token.id)
-                            {
-                                selectedToken -= 1;
-                            }
-                            if (token.id == selectedToken)
-                            {
-                                initiativeInput.value = "";
-                                nameInput.value = "";
-                                acInput.value = "";
-                                currentHpInput.value = "";
-                                maxHpInput.value = "";
-                                statusInput.value = "";
-                                groupIdInput.value = "";
-                                selectedToken = -1;
-                                DetailsToggleButtonsUpdate(false, false);
-                            }
-                            let result = await requestServer({c: "removeToken", id: token.id, tokensRemoved: mapData.removedTokens});
-                            if(result[0] == true)
-                                updateMapData();
-                            else
-                                alert("That token has already been removed by someone else");
-                        }}
-                    );
-
-                    menuOptions.push({text: "Edit token", hasSubMenu: true, callback: function() {
-                        let subMenuOptions = [
-                            {text: "Change size", callback: function() {
-                                let tokenSize = parseFloat(prompt("Please enter the new size of the token"));
-                                if (!isNaN(tokenSize))
-                                {
-                                    if (isDM)
+                                }},
+                                {text: "Draw 90° Cone", callback: function() {
+                                    let rangeInput = parseFloat(prompt("Please enter the desired range in feet for your cone"));
+                                    if (!isNaN(rangeInput))
                                     {
-                                        if (tokenSize < 20 && tokenSize > 0)
-                                            requestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, group: token.group});
+                                        coneMarkers.is90Deg = true;
+                                        coneMarkers.x = token.x;
+                                        coneMarkers.y = token.y;
+                                        coneMarkers.range = rangeInput / feetPerSquare;
+                                        coneMarkers.linkId = token.id;
+                                        isPlacingCone = true;
+                                        drawCanvas();
+                                    }
+                                }},
+                                {text: "Draw 5ft wide Line", callback: function() {
+                                    let rangeTextInput = prompt("Please enter the desired range of the line in feet.\nThen click where you want to aim.");
+                                    if (rangeTextInput!=null)
+                                    {
+                                        let rangeInput = parseFloat(rangeTextInput);
+                                        if (!isNaN(rangeInput))
+                                        {
+                                            thickLineMarkers.range = rangeInput / feetPerSquare;
+                                            thickLineMarkers.x = token.x;
+                                            thickLineMarkers.y = token.y;
+                                            thickLineMarkers.linkId = token.id;
+                                            isPlacing5ftLine = true;
+                                            drawCanvas();
+                                        }
+                                    }
+                                }}
+                            ];
+                            displaySubMenu(e, subMenuOptions);
+                        }}
+                    ];
+                    if ((token.dm && isDM) || !token.dm)
+                    {
+                        menuOptions.splice(0, 0,
+                            {text: "Delete token", hasSubMenu: false, callback: async function() {
+                                if (selectedToken > token.id)
+                                {
+                                    selectedToken -= 1;
+                                }
+                                if (token.id == selectedToken)
+                                {
+                                    initiativeInput.value = "";
+                                    nameInput.value = "";
+                                    acInput.value = "";
+                                    currentHpInput.value = "";
+                                    maxHpInput.value = "";
+                                    statusInput.value = "";
+                                    groupIdInput.value = "";
+                                    selectedToken = -1;
+                                    DetailsToggleButtonsUpdate(false, false);
+                                }
+                                let result = await requestServer({c: "removeToken", id: token.id, tokensRemoved: mapData.removedTokens});
+                                if(result[0] == true)
+                                    updateMapData();
+                                else
+                                    alert("That token has already been removed by someone else");
+                            }}
+                        );
+    
+                        menuOptions.push({text: "Edit token", hasSubMenu: true, callback: function() {
+                            let subMenuOptions = [
+                                {text: "Change size", callback: function() {
+                                    let tokenSize = parseFloat(prompt("Please enter the new size of the token"));
+                                    if (!isNaN(tokenSize))
+                                    {
+                                        if (isDM)
+                                        {
+                                            if (tokenSize < 20 && tokenSize > 0)
+                                                requestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, group: token.group});
+                                            else
+                                                alert("The desired size is too large or invalid");
+                                        }
                                         else
-                                            alert("The desired size is too large or invalid");
+                                        {
+                                            if (tokenSize < 6 && tokenSize > 0)
+                                                requestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, group: token.group});
+                                            else
+                                                alert("That token size isn't allowed for players");
+                                        }   
+                                        updateMapData();
+                                    }
+                                }},
+                                {text: "Change layer", callback: function() {
+                                    let newLayer = parseInt(prompt("Please enter the new layer"));
+                                    if (!isNaN(newLayer) && newLayer>=0 && newLayer<50)
+                                    {
+                                        requestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: newLayer, group: token.group});
+                                        updateMapData();
                                     }
                                     else
                                     {
-                                        if (tokenSize < 6 && tokenSize > 0)
-                                            requestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, group: token.group});
-                                        else
-                                            alert("That token size isn't allowed for players");
-                                    }   
-                                    updateMapData();
-                                }
-                            }},
-                            {text: "Change layer", callback: function() {
-                                let newLayer = parseInt(prompt("Please enter the new layer"));
-                                if (!isNaN(newLayer) && newLayer>=0 && newLayer<50)
-                                {
-                                    requestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: newLayer, group: token.group});
-                                    updateMapData();
-                                }
-                                else
-                                {
-                                    alert("Layer must be > -1 and < 50 ");
-                                }
-                            }}
-                        ];
-                        if (token.text != null)
-                        {
-                            subMenuOptions.push({text: "Edit text", callback: function() {
-                                let newText = prompt("Please enter the new text for the token:", token.text);
-                                if (newText!=null)
-                                {
-                                    requestServer({c:"editToken", id: token.id, text: newText});
-                                    updateMapData();
-                                }
-                            }});
-                        }
-                        if (isDM)
-                        {
-                            subMenuOptions.push({text: "Toggle DM only", callback: function() {
-                                requestServer({c:"editToken", id: token.id, dm: !token.dm});
-                            }});
-                        }
-                        displaySubMenu(e, subMenuOptions);
-                    }});
-
-                    menuOptions.push({text: "Change image", hasSubMenu: true, callback: function() {
-                        let subMenu = [];
-                        subMenu.push({text: "Text", callback: function() {
-                            requestServer({c: "editToken", id: token.id, image: "reset", text: token.text?token.text:"Text"});
-                            updateMapData();
+                                        alert("Layer must be > -1 and < 50 ");
+                                    }
+                                }}
+                            ];
+                            if (token.text != null)
+                            {
+                                subMenuOptions.push({text: "Edit text", callback: function() {
+                                    let newText = prompt("Please enter the new text for the token:", token.text);
+                                    if (newText!=null)
+                                    {
+                                        requestServer({c:"editToken", id: token.id, text: newText});
+                                        updateMapData();
+                                    }
+                                }});
+                            }
+                            if (isDM)
+                            {
+                                subMenuOptions.push({text: "Toggle DM only", callback: function() {
+                                    requestServer({c:"editToken", id: token.id, dm: !token.dm});
+                                }});
+                            }
+                            displaySubMenu(e, subMenuOptions);
                         }});
-                        for (let image of mapData.tokenList)
-                        {
-                            subMenu.push({text: image.substring(0, image.length - 4), callback: function() {
-                                requestServer({c: "editToken", id: token.id, image: image});
+    
+                        menuOptions.push({text: "Change image", hasSubMenu: true, callback: function() {
+                            let subMenu = [];
+                            subMenu.push({text: "Text", callback: function() {
+                                requestServer({c: "editToken", id: token.id, image: "reset", text: token.text?token.text:"Text"});
                                 updateMapData();
                             }});
-                        }
-                        if (isDM)
-                        {
-                            for (let image of mapData.dmTokenList)
+                            for (let image of mapData.tokenList)
                             {
                                 subMenu.push({text: image.substring(0, image.length - 4), callback: function() {
                                     requestServer({c: "editToken", id: token.id, image: image});
                                     updateMapData();
                                 }});
                             }
-                        }
-                        displaySubMenu(e, subMenu);
-                    }});
-                    
-                    menuOptions.push({text: "Duplicate token", hasSubMenu: false, callback: async function() {
-                        let tokenDupeCommand = JSON.parse(JSON.stringify(token));
-                        delete tokenDupeCommand.id;
-                        tokenDupeCommand.c = 'createToken';
-                        tokenDupeCommand.x += 10;
-                        let newId = parseInt(await requestServer(tokenDupeCommand));
-                        for (let drawing of mapData.drawings)
-                        {
-                            if (drawing.link == token.id)
-                            {
-                                let drawingDupeCommand = JSON.parse(JSON.stringify(drawing));
-                                delete drawingDupeCommand.id;
-                                drawingDupeCommand.c = 'addDrawing';
-                                drawingDupeCommand.link = newId;
-                                await requestServer(drawingDupeCommand);
-                            }
-                        }
-                        updateMapData();
-                    }});
-
-                    if (token.group != null)
-                    {
-                        menuOptions.push({text: "Group options", hasSubMenu: true, callback: async function() {
-                            let subMenuOptions = [
-                                {text: "Rotate left 90°", callback: function() {
-                                    requestServer({c:"rotateDeg", id: token.id, angle: 90});
-                                    updateMapData();
-                                }},
-                                {text: "Rotate right 90°", callback: function() {
-                                    requestServer({c:"rotateDeg", id: token.id, angle: -90});
-                                    updateMapData();
-                                }},
-                                {text: "Rotate 180°", callback: function() {
-                                    requestServer({c:"rotateDeg", id: token.id, angle: 180});
-                                    updateMapData();
-                                }},
-                                {text: "Rotate by °", callback: function() {
-                                    let Angle = parseFloat(prompt("Enter the amount of degrees to rotate the group by:"));
-                                    if (!isNaN(Angle))
-                                    {
-                                        requestServer({c:"rotateDeg", id: token.id, angle: Angle});
-                                        updateMapData();
-                                    }
-                                }}
-                            ];
                             if (isDM)
                             {
-                                subMenuOptions.push({text: "(Un)lock group", callback: async function() {
-                                    await requestServer({c:"toggleGroupLock", group: token.group});
-                                    updateMapData(true);
-                                }});
-                                subMenuOptions.push({text: "Hide tokens", callback: async function() {
-                                    for (let a = 0; a < mapData.tokens.length; a++)
-                                    {
-                                        if (mapData.tokens[a].group == token.group) {
-                                            await requestServer({c:"setTokenHidden", id: mapData.tokens[a].id, hidden: true});
-                                        }
-                                    }
-                                    updateMapData(true);
-                                }})
-                                subMenuOptions.push({text: "Reveal tokens", callback: async function() {
-                                    for (let a = 0; a < mapData.tokens.length; a++)
-                                    {
-                                        if (mapData.tokens[a].group == token.group) {
-                                            await requestServer({c:"setTokenHidden", id: mapData.tokens[a].id, hidden: false});
-                                        }
-                                    }
-                                    updateMapData(true);
-                                }})
-                                subMenuOptions.push({text: "Toggle DM only", callback: function() {
-                                    for (let a = 0; a < mapData.tokens.length; a++)
-                                    {
-                                        if (mapData.tokens[a].group == token.group) {
-                                            requestServer({c:"editToken", id: mapData.tokens[a].id, dm: !token.dm});
-                                        }
-                                    }
-                                    updateMapData(true);
-                                }})
+                                for (let image of mapData.dmTokenList)
+                                {
+                                    subMenu.push({text: image.substring(0, image.length - 4), callback: function() {
+                                        requestServer({c: "editToken", id: token.id, image: image});
+                                        updateMapData();
+                                    }});
+                                }
                             }
-                            displaySubMenu(e, subMenuOptions);
+                            displaySubMenu(e, subMenu);
                         }});
-                    }
-                }
-                
-                if (isDM)
-                {
-                    if (token.hidden)
-                    {
-                        menuOptions.push({text: "Reveal token", hasSubMenu: false, callback: async function() {
-                            await requestServer({c: "setTokenHidden", id: token.id, hidden: false});
+                        
+                        menuOptions.push({text: "Duplicate token", hasSubMenu: false, callback: async function() {
+                            let tokenDupeCommand = JSON.parse(JSON.stringify(token));
+                            delete tokenDupeCommand.id;
+                            tokenDupeCommand.c = 'createToken';
+                            tokenDupeCommand.x += 10;
+                            let newId = parseInt(await requestServer(tokenDupeCommand));
+                            for (let drawing of mapData.drawings)
+                            {
+                                if (drawing.link == token.id)
+                                {
+                                    let drawingDupeCommand = JSON.parse(JSON.stringify(drawing));
+                                    delete drawingDupeCommand.id;
+                                    drawingDupeCommand.c = 'addDrawing';
+                                    drawingDupeCommand.link = newId;
+                                    await requestServer(drawingDupeCommand);
+                                }
+                            }
                             updateMapData();
-                        }})
+                        }});
+    
+                        if (token.group != null)
+                        {
+                            menuOptions.push({text: "Group options", hasSubMenu: true, callback: async function() {
+                                let subMenuOptions = [
+                                    {text: "Rotate left 90°", callback: function() {
+                                        requestServer({c:"rotateDeg", id: token.id, angle: 90});
+                                        updateMapData();
+                                    }},
+                                    {text: "Rotate right 90°", callback: function() {
+                                        requestServer({c:"rotateDeg", id: token.id, angle: -90});
+                                        updateMapData();
+                                    }},
+                                    {text: "Rotate 180°", callback: function() {
+                                        requestServer({c:"rotateDeg", id: token.id, angle: 180});
+                                        updateMapData();
+                                    }},
+                                    {text: "Rotate by °", callback: function() {
+                                        let Angle = parseFloat(prompt("Enter the amount of degrees to rotate the group by:"));
+                                        if (!isNaN(Angle))
+                                        {
+                                            requestServer({c:"rotateDeg", id: token.id, angle: Angle});
+                                            updateMapData();
+                                        }
+                                    }}
+                                ];
+                                if (isDM)
+                                {
+                                    subMenuOptions.push({text: "(Un)lock group", callback: async function() {
+                                        await requestServer({c:"toggleGroupLock", group: token.group});
+                                        updateMapData(true);
+                                    }});
+                                    subMenuOptions.push({text: "Hide tokens", callback: async function() {
+                                        for (let a = 0; a < mapData.tokens.length; a++)
+                                        {
+                                            if (mapData.tokens[a].group == token.group) {
+                                                await requestServer({c:"setTokenHidden", id: mapData.tokens[a].id, hidden: true});
+                                            }
+                                        }
+                                        updateMapData(true);
+                                    }})
+                                    subMenuOptions.push({text: "Reveal tokens", callback: async function() {
+                                        for (let a = 0; a < mapData.tokens.length; a++)
+                                        {
+                                            if (mapData.tokens[a].group == token.group) {
+                                                await requestServer({c:"setTokenHidden", id: mapData.tokens[a].id, hidden: false});
+                                            }
+                                        }
+                                        updateMapData(true);
+                                    }})
+                                    subMenuOptions.push({text: "Toggle DM only", callback: function() {
+                                        for (let a = 0; a < mapData.tokens.length; a++)
+                                        {
+                                            if (mapData.tokens[a].group == token.group) {
+                                                requestServer({c:"editToken", id: mapData.tokens[a].id, dm: !token.dm});
+                                            }
+                                        }
+                                        updateMapData(true);
+                                    }})
+                                }
+                                displaySubMenu(e, subMenuOptions);
+                            }});
+                        }
                     }
-                    else
+                    
+                    if (isDM)
                     {
-                        menuOptions.push({text: "Hide token", hasSubMenu: false, callback: async function() {
-                            await requestServer({c: "setTokenHidden", id: token.id, hidden: true});
-                            updateMapData();
-                        }})
+                        if (token.hidden)
+                        {
+                            menuOptions.push({text: "Reveal token", hasSubMenu: false, callback: async function() {
+                                await requestServer({c: "setTokenHidden", id: token.id, hidden: false});
+                                updateMapData();
+                            }})
+                        }
+                        else
+                        {
+                            menuOptions.push({text: "Hide token", hasSubMenu: false, callback: async function() {
+                                await requestServer({c: "setTokenHidden", id: token.id, hidden: true});
+                                updateMapData();
+                            }})
+                        }
                     }
+                    displayMenu(e, menuOptions);
                 }
-                displayMenu(e, menuOptions);
+            })
+            
+            if (isDraggingBlocker || quickPolyBlockerMode)
+                imageElement.style.pointerEvents = "none";
+    
+            tokensDiv.appendChild(imageElement);
+    
+            if (!token.image)
+            {
+                let textHolder = document.createElement("div");
+                textHolder.style.zIndex = parseInt(imageElement.style.zIndex);
+                textHolder.style.left = (token.x - 0.4*token.size*gridSize + 0.5*GridLineWidth).toString() + "px";
+                textHolder.style.top = (token.y - 0.25*token.size*gridSize + 0.5*GridLineWidth).toString() + "px";
+                textHolder.style.width = (token.size*gridSize*0.8).toString() + "px";
+                textHolder.style.height = (token.size*gridSize*0.5).toString() + "px";
+                textHolder.style.lineHeight = (token.size*gridSize*0.5).toString() + "px";
+                let textElement = document.createElement("a");
+                textElement.innerText = token.text;
+                textElement.style.height = "100%";
+                textElement.style.whiteSpace = "nowrap";
+                textElement.style.fontSize = "10px";
+                textElement.style.transform = "translate(-50%, -50%);";
+                textElement.style.userSelect = "none";
+                textElement.style.textAlign = "center";
+                textHolder.appendChild(textElement);
+                tokensDiv.appendChild(textHolder);
+                let autoCalcSize = parseInt(textElement.style.fontSize.substr(0, textElement.style.fontSize.length-2)) * (textHolder.getBoundingClientRect().width/textElement.getBoundingClientRect().width);
+                if (autoCalcSize < 0.8*imageElement.getBoundingClientRect().width)
+                    textElement.style.fontSize = autoCalcSize;
+                else
+                    textElement.style.fontSize = 0.8*imageElement.getBoundingClientRect().width;
+                textElement.style.width = (token.size*gridSize*0.8).toString() + "px";
             }
-        })
-        
-        if (isDraggingBlocker || quickPolyBlockerMode)
-            imageElement.style.pointerEvents = "none";
-
-        tokensDiv.appendChild(imageElement);
-
-        if (!token.image)
-        {
-            let textHolder = document.createElement("div");
-            textHolder.style.zIndex = parseInt(imageElement.style.zIndex);
-            textHolder.style.left = (token.x - 0.4*token.size*gridSize + 0.5*GridLineWidth).toString() + "px";
-            textHolder.style.top = (token.y - 0.25*token.size*gridSize + 0.5*GridLineWidth).toString() + "px";
-            textHolder.style.width = (token.size*gridSize*0.8).toString() + "px";
-            textHolder.style.height = (token.size*gridSize*0.5).toString() + "px";
-            textHolder.style.lineHeight = (token.size*gridSize*0.5).toString() + "px";
-            let textElement = document.createElement("a");
-            textElement.innerText = token.text;
-            textElement.style.height = "100%";
-            textElement.style.whiteSpace = "nowrap";
-            textElement.style.fontSize = "10px";
-            textElement.style.transform = "translate(-50%, -50%);";
-            textElement.style.userSelect = "none";
-            textElement.style.textAlign = "center";
-            textHolder.appendChild(textElement);
-            tokensDiv.appendChild(textHolder);
-            let autoCalcSize = parseInt(textElement.style.fontSize.substr(0, textElement.style.fontSize.length-2)) * (textHolder.getBoundingClientRect().width/textElement.getBoundingClientRect().width);
-            if (autoCalcSize < 0.8*imageElement.getBoundingClientRect().width)
-                textElement.style.fontSize = autoCalcSize;
-            else
-                textElement.style.fontSize = 0.8*imageElement.getBoundingClientRect().width;
-            textElement.style.width = (token.size*gridSize*0.8).toString() + "px";
         }
     }
     updateHighlightedToken();
@@ -3385,9 +3388,9 @@ document.body.ondrop = async function(e)
         if (listData.length > 0)
         {
             let tmpHeight = listData.length * 4;
-            if (tmpHeight > 24)
+            if (tmpHeight > 28)
             {
-                tmpHeight = 24;
+                tmpHeight = 28;
                 customMenu.style.overflowY = "scroll";
             }
             else
