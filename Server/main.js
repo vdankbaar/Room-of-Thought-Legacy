@@ -1,4 +1,4 @@
-//Mocht port 80 geblokeerd zijn door windows, voer de command 'net stop http' uit in een shell met admin
+//Mocht port 80 geblokeerd zijn door windows, voer de command 'net stop http' uit in een shell met admin of run unblock.bat in een shell met admin
 let port = 80;
 
 const fs = require('fs');
@@ -54,12 +54,20 @@ app.post("/api", function(request, response) {
             loadCurrentMap();
             currentMap.removedTokens = removedTokens;
             currentMap.removedDrawings = removedDrawings;
+            if ((currentMap.mapX!=request.body.x && request.body.x!=null && request.body.x != 0) || (currentMap.mapY != request.body.y && request.body.y!=null && request.body.y != 0))
+            {
+                currentMap.mapX = request.body.x;
+                currentMap.mapY = request.body.y;
+                saveCurrentMap();
+            }
             response.send(JSON.stringify(currentMap));
             break;
         
         case "setMapData":
             loadCurrentMap();
-            if (request.body.map!=null) {currentMap.map = request.body.map;}
+            if (request.body.map!=null) {
+                currentMap.map = request.body.map;
+            }
             if (request.body.x!=null) {currentMap.x = request.body.x;}
             if (request.body.y!=null) {currentMap.y = request.body.y;}
             if (request.body.offsetX!=null) {currentMap.offsetX = request.body.offsetX;}

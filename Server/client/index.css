@@ -6,31 +6,33 @@
 }
 
 body {
+    transform-origin: top;
     margin: 0px;
     background-image: url("images/Player.jpg");
     background-attachment: fixed;
     background-size: cover;
     background-position: center;
-    backdrop-filter: blur(1vw) brightness(40%);
+    backdrop-filter: blur(20px) brightness(40%);
+    overflow: hidden;
 }
 
 .switch {
-position: relative;
-display: inline-block;
-width: 60px;
-height: 34px;
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
 }
 
 .switch input {
-opacity: 0;
-width: 0;
-height: 0;
+    opacity: 0;
+    width: 0;
+    height: 0;
 }
 
 #playernameinput {
     background-color: rgba(0, 0, 0, 30%);
     border: none;
-    border-radius: 1vw;
+    border-radius: 20px;
     height: 42px;
 }
 #playernameinput:focus {
@@ -47,24 +49,24 @@ height: 0;
 
 /* The slider */
 .slider {
-position: absolute;
-cursor: pointer;
-top: 0;
-left: 0;
-right: 0;
-bottom: 0;
-background-color: #ccc;
--webkit-transition: .4s;
-transition: .4s;
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    -webkit-transition: .4s;
+    transition: .4s;
 }
 
 .slider:before {
-position: absolute;
-content: "";
-height: 26px;
-width: 26px;
-left: 4px;
-bottom: 4px;
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
     background-color: white;
     -webkit-transition: .3s;
     transition: .3s;

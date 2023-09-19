@@ -12,6 +12,7 @@ let hitboxMultiplier = 3;
 let GridLineWidth = 1;
 let map = document.getElementById("map");
 let board = document.getElementById("board");
+let viewport = document.getElementById("viewport");
 let loadedMap = document.getElementById("hiddenMapLoader");
 let shapeMap = document.getElementById("shapeMap");
 let hitboxMap = document.getElementById("hitboxMap");
@@ -305,6 +306,71 @@ function returnToken(id) {
             return mapData.tokens[h];
     }
 }
+
+//#region Custom zoom
+var browser = "";
+if(navigator.userAgent.indexOf("Chrome") != -1 )
+{
+    browser = "c";
+}
+else if (navigator.userAgent.indexOf("Firefox") != -1 )
+{
+    browser = "f";
+}
+else
+{
+    alert("Room of thought is only supported for firefox and chrome. Some features may be unavailable!");
+}
+
+let extraZoom = 0;
+window.addEventListener("wheel", function(e) {
+    if (e.ctrlKey)
+    {
+        if (e.deltaY<0)
+        {
+            if (zoomCapped())
+            {
+                extraZoom+=1;
+                board.style.transform = "scale("+(1+extraZoom/20).toString()+")";
+                viewport.scrollLeft = viewport.scrollLeft*((1+extraZoom/20)/(1+(extraZoom-1)/20));
+                viewport.scrollTop = viewport.scrollTop*((1+extraZoom/20)/(1+(extraZoom-1)/20));
+                e.preventDefault();
+                e.stopImmediatePropagation();
+            }
+        }
+        if (e.deltaY>0)
+        {
+            if (extraZoom>0)
+            {
+                extraZoom-=1;
+                board.style.transform = "scale("+(1+extraZoom/20).toString()+")";
+                viewport.scrollLeft = viewport.scrollLeft/((1+extraZoom/20)/(1+(extraZoom-1)/20));
+                viewport.scrollTop = viewport.scrollTop/((1+extraZoom/20)/(1+(extraZoom-1)/20));
+                e.preventDefault();
+                e.stopImmediatePropagation();
+            }
+        }
+    }
+}, { passive: false });
+
+function zoomCapped() {
+    if (browser=="f")
+    {
+        if (window.devicePixelRatio==3)
+            return true;
+        else
+            return false;
+    }
+    
+    if (browser=="c")
+    {
+        if (window.devicePixelRatio==5)
+            return true;
+        else
+            return false;
+    }
+}
+//#endregion
 
 //#region Side buttons
 let exportButton = document.getElementById("exportMap");
@@ -659,13 +725,13 @@ function drawLine(index, shape)
         handle2.addEventListener("dragend", function(e) {
             pickedUpHandle2 = false;
         });
-
+        
         window.addEventListener("drop", function(e) {
             if (pickedUpHandle1)
             {
-                if ((e.clientX + board.scrollLeft)!=shape.x && (e.clientY + board.scrollTop)!=shape.y)
+                if (((e.clientX + viewport.scrollLeft)/(1+extraZoom/20))!=shape.x && ((e.clientY + viewport.scrollTop)/(1+extraZoom/20))!=shape.y)
                 {
-                    requestServer({c:"editDrawing", id: shape.id, x: (e.clientX + board.scrollLeft), y: (e.clientY + board.scrollTop)});
+                    requestServer({c:"editDrawing", id: shape.id, x: ((e.clientX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.clientY + viewport.scrollTop)/(1+extraZoom/20))});
                     updateMapData();
                 }
             }
@@ -673,9 +739,9 @@ function drawLine(index, shape)
 
             if (pickedUpHandle2)
             {
-                if ((e.clientX + board.scrollLeft)!=shape.destX && (e.clientY + board.scrollTop)!=shape.destY)
+                if (((e.clientX + viewport.scrollLeft)/(1+extraZoom/20))!=shape.destX && ((e.clientY + viewport.scrollTop)/(1+extraZoom/20))!=shape.destY)
                 {
-                    requestServer({c:"editDrawing", id: shape.id, destX: (e.clientX + board.scrollLeft), destY: (e.clientY + board.scrollTop)});
+                    requestServer({c:"editDrawing", id: shape.id, destX: ((e.clientX + viewport.scrollLeft)/(1+extraZoom/20)), destY: ((e.clientY + viewport.scrollTop)/(1+extraZoom/20))});
                     updateMapData();
                 }
             }
@@ -885,9 +951,9 @@ function drawPolyBlockers() {
                     window.addEventListener("drop", function(e) {
                         if (selectedVertHandle!=-1)
                         {
-                            if ((e.clientX + board.scrollLeft)!=vert.x && (e.clientY + board.scrollTop)!=vert.y)
+                            if (((e.clientX + viewport.scrollLeft)/(1+extraZoom/20))!=vert.x && ((e.clientY + viewport.scrollTop)/(1+extraZoom/20))!=vert.y)
                             {
-                                requestServer({c:"editVert", id: selectedBlocker, vertIndex: selectedVertHandle, x: (e.clientX + board.scrollLeft), y: (e.clientY + board.scrollTop)});
+                                requestServer({c:"editVert", id: selectedBlocker, vertIndex: selectedVertHandle, x: ((e.clientX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.clientY + viewport.scrollTop)/(1+extraZoom/20))});
                                 updateMapData();
                             }
                             selectedVertHandle = -1;
@@ -948,8 +1014,8 @@ function drawPolyBlockers() {
                                 isDraggingBlocker = true;
                                 drawTokens();
                                 draggedPolygonId = currentPolyBlocker.id;
-                                polyDragOffset.x = e.pageX + board.scrollLeft;
-                                polyDragOffset.y = e.pageY + board.scrollTop;
+                                polyDragOffset.x = (e.pageX + viewport.scrollLeft)/(1+extraZoom/20);
+                                polyDragOffset.y = (e.pageY + viewport.scrollTop)/(1+extraZoom/20);
                                 polyBlockerHandles.style.visibility = "hidden";
                             }
                         });
@@ -959,7 +1025,7 @@ function drawPolyBlockers() {
                             {
                                 if (currentPolyBlocker.id == draggedPolygonId)
                                 {
-                                    newPolygon.setAttribute("transform", "matrix(1,0,0,1,"+(-polyDragOffset.x + (e.pageX + board.scrollLeft)).toString()+", "+(-polyDragOffset.y + (e.pageY + board.scrollTop)).toString()+")");
+                                    newPolygon.setAttribute("transform", "matrix(1,0,0,1,"+(-polyDragOffset.x + ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20))).toString()+", "+(-polyDragOffset.y + ((e.pageY + viewport.scrollTop)/(1+extraZoom/20))).toString()+")");
                                 }
                             }
                         })
@@ -984,8 +1050,8 @@ function drawPolyBlockers() {
                             isPanning = true;
                             oldMousePos.x = e.pageX;
                             oldMousePos.y = e.pageY;
-                            oldScrollPos.x = board.scrollLeft;
-                            oldScrollPos.y = board.scrollTop;
+                            oldScrollPos.x = viewport.scrollLeft;
+                            oldScrollPos.y = viewport.scrollTop;
                             document.body.style.cursor = "grabbing";
                             drawCanvas();
                         }
@@ -993,8 +1059,8 @@ function drawPolyBlockers() {
                     newPolygon.addEventListener("mousemove", function(e) {
                         if (isPanning)
                         {
-                            board.scrollLeft = oldScrollPos.x - (e.pageX - oldMousePos.x);
-                            board.scrollTop = oldScrollPos.y - (e.pageY - oldMousePos.y);
+                            viewport.scrollLeft = oldScrollPos.x - (e.pageX - oldMousePos.x);
+                            viewport.scrollTop = oldScrollPos.y - (e.pageY - oldMousePos.y);
                         }
                     });
                 }
@@ -1087,8 +1153,8 @@ function drawBlockers()
                     extraBlocker.addEventListener("dragstart", function(e) {
                         isDraggingBlocker = true;
                         extraBlocker.style.backgroundColor = "#000000AA";
-                        blockerDragOffset.x = currentBlocker.x - (e.pageX + board.scrollLeft);
-                        blockerDragOffset.y = currentBlocker.y - (e.pageY + board.scrollTop);
+                        blockerDragOffset.x = currentBlocker.x - ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
+                        blockerDragOffset.y = currentBlocker.y - ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
                     })
 
                     extraBlocker.addEventListener("dragend", function(e) {
@@ -1123,8 +1189,8 @@ function drawBlockers()
                         isPanning = true;
                         oldMousePos.x = e.pageX;
                         oldMousePos.y = e.pageY;
-                        oldScrollPos.x = board.scrollLeft;
-                        oldScrollPos.y = board.scrollTop;
+                        oldScrollPos.x = viewport.scrollLeft;
+                        oldScrollPos.y = viewport.scrollTop;
                         document.body.style.cursor = "grabbing";
                         drawCanvas();
                     }
@@ -1132,8 +1198,8 @@ function drawBlockers()
                 tmpBlocker.addEventListener("mousemove", function(e) {
                     if (isPanning)
                     {
-                        board.scrollLeft = oldScrollPos.x - (e.pageX - oldMousePos.x);
-                        board.scrollTop = oldScrollPos.y - (e.pageY - oldMousePos.y);
+                        viewport.scrollLeft = oldScrollPos.x - (e.pageX - oldMousePos.x);
+                        viewport.scrollTop = oldScrollPos.y - (e.pageY - oldMousePos.y);
                     }
                 });
                 if (mapData.antiBlockerOn)
@@ -1256,6 +1322,7 @@ function drawTokens()
 function createToken(token) 
 {
     let imageElement = document.createElement("img");
+
     if (token.id == selectedToken)
     {
         if (CheckTokenPermission(token))
@@ -1395,16 +1462,21 @@ function createToken(token)
     imageElement.addEventListener("mousemove", function(e) {
         if (isPanning)
         {
-            board.scrollLeft = oldScrollPos.x - (e.pageX - oldMousePos.x);
-            board.scrollTop = oldScrollPos.y - (e.pageY - oldMousePos.y);
+            viewport.scrollLeft = oldScrollPos.x - (e.pageX - oldMousePos.x);
+            viewport.scrollTop = oldScrollPos.y - (e.pageY - oldMousePos.y);
         }
     })
     
     imageElement.addEventListener("dragstart", function(e) {
+        if (browser == "f" && extraZoom>0)
+        {   
+            let emptyImage = document.createElement("img");
+            e.dataTransfer.setDragImage(emptyImage, 0, 0);
+        }
         if (CheckAntiBlockerPixel(e) || isDM)
         {
-            tokenDragOffset.x = token.x - (e.pageX + board.scrollLeft);
-            tokenDragOffset.y = token.y - (e.pageY + board.scrollTop);
+            tokenDragOffset.x = token.x - ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
+            tokenDragOffset.y = token.y - ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
             draggingToken = token.id;
             isDraggingToken = true;
             if (e.ctrlKey || event.metaKey)
@@ -1418,8 +1490,8 @@ function createToken(token)
             isPanning = true;
             oldMousePos.x = e.pageX;
             oldMousePos.y = e.pageY;
-            oldScrollPos.x = board.scrollLeft;
-            oldScrollPos.y = board.scrollTop;
+            oldScrollPos.x = viewport.scrollLeft;
+            oldScrollPos.y = viewport.scrollTop;
             document.body.style.cursor = "grabbing";
             drawCanvas();
         }
@@ -1434,6 +1506,7 @@ function createToken(token)
                 selectedToken = token.id;
                 selectedBlocker = -1;
                 selectedShapeId = -1;
+                updateTrackerHighlight();
                 if (mapData.usePolyBlockers)
                 {
                     drawPolyBlockers()
@@ -1921,6 +1994,7 @@ function createTracker(trackerData)
             { groupIdInput.value = trackerData.group; }
             updateTracker();
             drawTokens();
+            updateTrackerHighlight();
         });
         if (!mapData.hideInit)
         {
@@ -1933,7 +2007,7 @@ function createTracker(trackerData)
             }
             else
             {
-                tmpInitDiv.innerText = trackerData.initiative;
+                tmpInitDiv.innerText = Math.floor(trackerData.initiative);
             }
             tmpTrackerDiv.append(tmpInitDiv);
         }
@@ -2021,25 +2095,37 @@ function createTracker(trackerData)
                 hpP.innerText = "HP";
                 trackerHitpointsSection.append(hpP);
             bottomRow.append(trackerHitpointsSection);
-        tmpTrackerDiv.append(bottomRow);
-        if (trackerData.id==selectedToken)
-        {
-            if (trackerData.dm)
-                tmpTrackerDiv.style.backgroundColor = "#E0A0A0";
-            else
-                tmpTrackerDiv.style.backgroundColor = "#A0A0A0";
-        }
-        else
-        {
-            if (trackerData.dm)
-                tmpTrackerDiv.style.backgroundColor = "#E0C0C0";
-            else
-                tmpTrackerDiv.style.backgroundColor = "#C0C0C0";
-        }    
+        tmpTrackerDiv.append(bottomRow);    
         let trackerHR = document.createElement("hr");
         trackerHR.className = "initiativeHR";
+        tmpTrackerDiv.setAttribute("id", trackerData.id);
+        tmpTrackerDiv.setAttribute("dm", trackerData.dm);
         initiativeTrackerDiv.appendChild(tmpTrackerDiv);
         initiativeTrackerDiv.appendChild(trackerHR);    
+        updateTrackerHighlight();
+    }
+}
+
+function updateTrackerHighlight() {
+    for (let i = 0; i < initiativeTrackerDiv.children.length; i++)
+    {
+        let currentInitTracker = initiativeTrackerDiv.children[i];
+        if (currentInitTracker.tagName=="DIV")
+        {
+            if (currentInitTracker.id == selectedToken) {
+                if (currentInitTracker.getAttribute("dm") == "true")
+                    currentInitTracker.style.backgroundColor = "#E0A0A0";
+                else
+                    currentInitTracker.style.backgroundColor = "#A0A0A0";
+            }
+            else if (currentInitTracker.id != "")
+            {
+                if (currentInitTracker.getAttribute("dm") == "true")
+                    currentInitTracker.style.backgroundColor = "#E0C0C0";
+                else
+                    currentInitTracker.style.backgroundColor = "#C0C0C0";    
+            }
+        }
     }
 }
 
@@ -2087,13 +2173,13 @@ document.body.ondrop = async function(e)
             let tY;
             if (draggingTokenData.size >= 1)
             {
-                tX = Math.round((e.pageX + board.scrollLeft + tokenDragOffset.x - mapData.offsetX - 0.5 * gridX * draggingTokenData.size)/gridX) * gridX + 0.5 * gridX * draggingTokenData.size + 1 + offsetX;
-                tY = Math.round((e.pageY + board.scrollTop + tokenDragOffset.y - mapData.offsetY - 0.5 * gridY * draggingTokenData.size)/gridY) * gridY + 0.5 * gridY * draggingTokenData.size + 1 + offsetY;
+                tX = Math.round(((e.pageX + viewport.scrollLeft)/(1+extraZoom/20) + tokenDragOffset.x - mapData.offsetX - 0.5 * gridX * draggingTokenData.size)/gridX) * gridX + 0.5 * gridX * draggingTokenData.size + 1 + offsetX;
+                tY = Math.round(((e.pageY + viewport.scrollTop)/(1+extraZoom/20) + tokenDragOffset.y - mapData.offsetY - 0.5 * gridY * draggingTokenData.size)/gridY) * gridY + 0.5 * gridY * draggingTokenData.size + 1 + offsetY;
             }
             else
             {
-                tX = Math.round(((e.pageX + board.scrollLeft) - offsetX + tokenDragOffset.x - 0.5 * gridX * draggingTokenData.size) / (gridX * draggingTokenData.size)) * (gridX * draggingTokenData.size) + 0.5 * gridX * draggingTokenData.size + offsetX + 1;
-                tY = Math.round(((e.pageY + board.scrollTop) - offsetY + tokenDragOffset.y - 0.5 * gridY * draggingTokenData.size) / (gridY * draggingTokenData.size)) * (gridY * draggingTokenData.size) + 0.5 * gridY * draggingTokenData.size + offsetY + 1;
+                tX = Math.round((((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) - offsetX + tokenDragOffset.x - 0.5 * gridX * draggingTokenData.size) / (gridX * draggingTokenData.size)) * (gridX * draggingTokenData.size) + 0.5 * gridX * draggingTokenData.size + offsetX + 1;
+                tY = Math.round((((e.pageY + viewport.scrollTop)/(1+extraZoom/20)) - offsetY + tokenDragOffset.y - 0.5 * gridY * draggingTokenData.size) / (gridY * draggingTokenData.size)) * (gridY * draggingTokenData.size) + 0.5 * gridY * draggingTokenData.size + offsetY + 1;
             }
             if (tX != draggingTokenData.x || tY != draggingTokenData.y)
             {
@@ -2103,9 +2189,9 @@ document.body.ondrop = async function(e)
         }
         else
         {
-            if ((e.pageX + board.scrollLeft + tokenDragOffset.x) != draggingTokenData.x || (e.pageY + board.scrollTop + tokenDragOffset.y) != draggingTokenData.y)
+            if (((e.pageX + viewport.scrollLeft)/(1+extraZoom/20) + tokenDragOffset.x) != draggingTokenData.x || ((e.pageY + viewport.scrollTop)/(1+extraZoom/20) + tokenDragOffset.y) != draggingTokenData.y)
             {
-                await requestServer({c: "moveToken", id: draggingToken, x: (e.pageX + board.scrollLeft) + tokenDragOffset.x, y: (e.pageY + board.scrollTop) + tokenDragOffset.y, bypassLink: !controlPressed});
+                await requestServer({c: "moveToken", id: draggingToken, x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) + tokenDragOffset.x, y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)) + tokenDragOffset.y, bypassLink: !controlPressed});
             }
         }
         updateMapData(true);
@@ -2115,8 +2201,8 @@ document.body.ondrop = async function(e)
     }
     if (isDraggingBlocker)
     {
-        draggedBlocker.x = (e.pageX + board.scrollLeft);
-        draggedBlocker.y = (e.pageY + board.scrollTop);
+        draggedBlocker.x = ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
+        draggedBlocker.y = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
     }
 }
 //#endregion
@@ -2128,8 +2214,11 @@ document.getElementById("startAlignTool").onclick = function() {
 }
 
 document.getElementById("invertBlockerButton").onclick = function() {
-    requestServer({c: "invertBlockers"});
-    updateMapData(true);
+    if (confirm("Do you really want to invert the blockers?"))
+    {
+        requestServer({c: "invertBlockers"});
+        updateMapData(true);
+    }
 }
 
 document.getElementById("openBulkGenerator").onclick = function() {
@@ -2304,7 +2393,7 @@ groupIdInput.oninput = function() {
 function CheckAntiBlockerPixel(e) {
     if (mapData.antiBlockerOn)
     {
-        let pixel = antiBlockerCanvas.getImageData((e.pageX + board.scrollLeft), (e.pageY + board.scrollTop), 1, 1).data;
+        let pixel = antiBlockerCanvas.getImageData(((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), 1, 1).data;
         if (pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0 && pixel[3] == 0)
         {
             return true;
@@ -2403,8 +2492,8 @@ function DrawNewPolyMarkers(activateMousedown) {
         });
 
         function handleMouseMovement(e) {
-            editHandleContainer.style.left = e.clientX + board.scrollLeft;
-            editHandleContainer.style.top = e.clientY + board.scrollTop;
+            editHandleContainer.style.left = (e.clientX + viewport.scrollLeft)/(1+extraZoom/20);
+            editHandleContainer.style.top = (e.clientY + viewport.scrollTop)/(1+extraZoom/20);
         }
 
         editHandle.addEventListener("mousedown", function() {
@@ -2413,10 +2502,10 @@ function DrawNewPolyMarkers(activateMousedown) {
 
         editHandle.addEventListener("mouseup", function(e) {
             document.body.removeEventListener("mousemove", handleMouseMovement);
-            if ((e.clientX + board.scrollLeft)!=vert.x && (e.clientY + board.scrollTop)!=vert.y)
+            if (((e.clientX + viewport.scrollLeft)/(1+extraZoom/20))!=vert.x && ((e.clientY + viewport.scrollTop)/(1+extraZoom/20))!=vert.y)
             {
-                vert.x = e.clientX + board.scrollLeft;
-                vert.y = e.clientY + board.scrollTop;
+                vert.x = (e.clientX + viewport.scrollLeft)/(1+extraZoom/20);
+                vert.y = (e.clientY + viewport.scrollTop)/(1+extraZoom/20);
                 DrawNewPolyMarkers();
             }
         });
@@ -2461,8 +2550,8 @@ window.addEventListener("mouseup", async function(e) {
         if (isDraggingBlocker && mapData.usePolyBlockers)
         {
             polyBlockerHandles.style.visibility = "";
-            let moveX = -polyDragOffset.x + (e.pageX + board.scrollLeft);
-            let moveY = -polyDragOffset.y + (e.pageY + board.scrollTop);
+            let moveX = -polyDragOffset.x + ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
+            let moveY = -polyDragOffset.y + ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
             if (moveX!=0 && moveY!=0)
             {
                 requestServer({c: "movePolyBlocker", id: draggedPolygonId, offsetX: moveX, offsetY: moveY});
@@ -2477,7 +2566,7 @@ window.addEventListener("mouseup", async function(e) {
             selectedVertHandle=-1;
         }
 
-        if ((e.pageX + board.scrollLeft)>0 && (e.pageX + board.scrollLeft)<map.width && (e.pageY + board.scrollTop)>0 && (e.pageY + board.scrollTop)<map.height)
+        if (((e.pageX + viewport.scrollLeft)/(1+extraZoom/20))>0 && ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20))<map.width && ((e.pageY + viewport.scrollTop)/(1+extraZoom/20))>0 && ((e.pageY + viewport.scrollTop)/(1+extraZoom/20))<map.height)
         {
             if (isMovingShape)
             {
@@ -2485,7 +2574,7 @@ window.addEventListener("mouseup", async function(e) {
                 document.body.style.cursor = "default";
                 if (CheckAntiBlockerPixel(e) || isDM)
                 {
-                    requestServer({c: "editDrawing", id: movingShapeId, x: (e.pageX + board.scrollLeft) + shapeDragOffset.x, y: (e.pageY + board.scrollTop) + shapeDragOffset.y, both: true});
+                    requestServer({c: "editDrawing", id: movingShapeId, x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) + shapeDragOffset.x, y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)) + shapeDragOffset.y, both: true});
                 }
                 updateMapData();
             }
@@ -2494,7 +2583,7 @@ window.addEventListener("mouseup", async function(e) {
             {
                 isMovingCone = false;
                 document.body.style.cursor = "default";
-                let angle = mapData.drawings[movingShapeId].angle + (Math.atan2(((e.pageY + board.scrollTop) - shapeDragOffset.y), ((e.pageX + board.scrollLeft) - shapeDragOffset.x)) - shapeDragStartAngle);
+                let angle = mapData.drawings[movingShapeId].angle + (Math.atan2((((e.pageY + viewport.scrollTop)/(1+extraZoom/20)) - shapeDragOffset.y), (((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) - shapeDragOffset.x)) - shapeDragStartAngle);
                 if (angle<0)
                     angle+=2*Math.PI;
                 requestServer({c: "editDrawing", id: movingShapeId, angle: angle});
@@ -2505,7 +2594,7 @@ window.addEventListener("mouseup", async function(e) {
             {
                 isMoving5ftLine = false;
                 document.body.style.cursor = "default";
-                let angle = mapData.drawings[movingShapeId].angle + (Math.atan2(((e.pageY + board.scrollTop) - shapeDragOffset.y), ((e.pageX + board.scrollLeft) - shapeDragOffset.x)) - shapeDragStartAngle);
+                let angle = mapData.drawings[movingShapeId].angle + (Math.atan2((((e.pageY + viewport.scrollTop)/(1+extraZoom/20)) - shapeDragOffset.y), (((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) - shapeDragOffset.x)) - shapeDragStartAngle);
                 if (angle<0)
                     angle+=2*Math.PI;
                 requestServer({c: "editDrawing", id: movingShapeId, angle: angle});
@@ -2596,28 +2685,29 @@ shapeMap.addEventListener("mousedown", function(e) {
         selectedToken=-1;
         selectedBlocker=-1;
         selectedShapeId=-1;
+        updateTrackerHighlight();
         displayNoteEditor = false;
         noteEditor.style.display = "none";
         hideDetailsScreen();
         if (alignToolStep == 1) {
-            gridToolData.startX = (e.pageX + board.scrollLeft);
-            gridToolData.startY = (e.pageY + board.scrollTop);
+            gridToolData.startX = ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
+            gridToolData.startY = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
             alert("Now click on the intersection to the bottom right of that one. (2;2)")
             alignToolStep = 2;
             return;
         }
 
         if (alignToolStep == 2) {
-            gridToolData.gridX = (e.pageX + board.scrollLeft) - gridToolData.startX;
-            gridToolData.gridY = (e.pageY + board.scrollTop) - gridToolData.startY;
+            gridToolData.gridX = ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) - gridToolData.startX;
+            gridToolData.gridY = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)) - gridToolData.startY;
             alert("Now click on last visible intersection in the bottom right of the pre-existing grid.");
             alignToolStep = 3;
             return;
         }
 
         if (alignToolStep == 3) {
-            gridToolData.endX = (e.pageX + board.scrollLeft);
-            gridToolData.endY = (e.pageY + board.scrollTop);
+            gridToolData.endX = ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
+            gridToolData.endY = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
             let Xcount = Math.round((gridToolData.endX - gridToolData.startX)/gridToolData.gridX) + 1;
             let Ycount = Math.round((gridToolData.endY - gridToolData.startY)/gridToolData.gridY) + 1;
             if (gridToolData.startX/gridToolData.gridX>1) {
@@ -2712,17 +2802,17 @@ shapeMap.addEventListener("mousedown", function(e) {
                         tokenText = f.toString();
                     }
                     if (newHP!=null) {
-                        requestServer({c: "createToken", text: tokenText, x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
+                        requestServer({c: "createToken", text: tokenText, x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
                     } else {
-                        requestServer({c: "createToken", text: tokenText, x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum});
+                        requestServer({c: "createToken", text: tokenText, x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum});
                     }
                 }
                 else
                 {
                     if (newHP!=null) {
-                        requestServer({c: "createToken", x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
+                        requestServer({c: "createToken", x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
                     } else {
-                        requestServer({c: "createToken", x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum});
+                        requestServer({c: "createToken", x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum});
                     }
                     
                 }
@@ -2733,15 +2823,15 @@ shapeMap.addEventListener("mousedown", function(e) {
         }
 
         if (quickPolyBlockerMode) {
-            newPolyBlockerVerts.push({x: e.pageX+board.scrollLeft, y: e.pageY + board.scrollTop});
+            newPolyBlockerVerts.push({x: e.pageX+viewport.scrollLeft, y: (e.pageY + viewport.scrollTop)/(1+extraZoom/20)});
             DrawNewPolyMarkers(true);
             return;
         }
 
         if (isPlacingSquare)
         {
-            squareMarkers.width = (e.pageX + board.scrollLeft) - squareMarkers.x;
-            squareMarkers.height = (e.pageY + board.scrollTop) - squareMarkers.y;
+            squareMarkers.width = ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) - squareMarkers.x;
+            squareMarkers.height = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)) - squareMarkers.y;
             if (squareMarkers.width >= -map.width && squareMarkers.width <= map.width && squareMarkers.height >= -map.height && squareMarkers.height <= map.height)
             {
                 if (isDM || CheckAntiBlockerPixel(e))
@@ -2766,8 +2856,8 @@ shapeMap.addEventListener("mousedown", function(e) {
         {
             if (isDM)
             {
-                blockerMarkers.width = (e.pageX + board.scrollLeft) - blockerMarkers.x;
-                blockerMarkers.height = (e.pageY + board.scrollTop) - blockerMarkers.y;
+                blockerMarkers.width = ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) - blockerMarkers.x;
+                blockerMarkers.height = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)) - blockerMarkers.y;
                 requestServer({c: "addBlocker", x: blockerMarkers.x, y: blockerMarkers.y, width: blockerMarkers.width, height: blockerMarkers.height});
             }
             isPlacingBlocker = false;
@@ -2778,8 +2868,8 @@ shapeMap.addEventListener("mousedown", function(e) {
 
         if (isPlacingLine)
         {
-            lineMarkers.destX = (e.pageX + board.scrollLeft);
-            lineMarkers.destY = (e.pageY + board.scrollTop);
+            lineMarkers.destX = ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
+            lineMarkers.destY = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
             let dy = lineMarkers.destY - lineMarkers.y;
             let dx = lineMarkers.destX - lineMarkers.x;
             let distance = Math.sqrt(Math.pow((dx), 2) + Math.pow((dy), 2));
@@ -2802,8 +2892,8 @@ shapeMap.addEventListener("mousedown", function(e) {
         }
         if (isPlacing5ftLine)
         {
-            let destX = (e.pageX + board.scrollLeft);
-            let destY = (e.pageY + board.scrollTop);
+            let destX = ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
+            let destY = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
             let angle = Math.atan2((destY - thickLineMarkers.y), (destX - thickLineMarkers.x));
             if (angle<0) { angle+=2*Math.PI; }
             let shapeIsVisible = true;
@@ -2817,8 +2907,8 @@ shapeMap.addEventListener("mousedown", function(e) {
         }
         if (isPlacingCone)
         {
-            let destX = e.pageX + board.scrollLeft;
-            let destY = e.pageY + board.scrollTop;
+            let destX = (e.pageX + viewport.scrollLeft)/(1+extraZoom/20);
+            let destY = (e.pageY + viewport.scrollTop)/(1+extraZoom/20);
             let angle = Math.atan2((destY - coneMarkers.y), (destX - coneMarkers.x));
             if (angle<0) { angle+=2*Math.PI; }
             let shapeIsVisible = true;
@@ -2831,7 +2921,7 @@ shapeMap.addEventListener("mousedown", function(e) {
             return;
         }
 
-        let pixel = hitboxCanvas.getImageData((e.pageX + board.scrollLeft), (e.pageY + board.scrollTop), 1, 1).data;
+        let pixel = hitboxCanvas.getImageData(((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), 1, 1).data;
         if (!(pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0) && CheckAntiBlockerPixel(e))
         {
             let testString = "#" + decToHex(pixel[0]) + decToHex(pixel[1]) + decToHex(pixel[2]);
@@ -2857,8 +2947,8 @@ shapeMap.addEventListener("mousedown", function(e) {
                         drawCanvas();
                     }
                     document.body.style.cursor = "pointer";
-                    shapeDragOffset.x = clickedShape.x - (e.pageX + board.scrollLeft);
-                    shapeDragOffset.y = clickedShape.y - (e.pageY + board.scrollTop);
+                    shapeDragOffset.x = clickedShape.x - ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
+                    shapeDragOffset.y = clickedShape.y - ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
                     movingShapeId = shapeId;
                     isMovingShape = true;
                 }
@@ -2870,7 +2960,7 @@ shapeMap.addEventListener("mousedown", function(e) {
                         document.body.style.cursor = "pointer";
                         shapeDragOffset.x = clickedShape.x;
                         shapeDragOffset.y = clickedShape.y;
-                        shapeDragStartAngle = Math.atan2(((e.pageY + board.scrollTop) - shapeDragOffset.y), ((e.pageX + board.scrollLeft) - shapeDragOffset.x));
+                        shapeDragStartAngle = Math.atan2((((e.pageY + viewport.scrollTop)/(1+extraZoom/20)) - shapeDragOffset.y), (((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) - shapeDragOffset.x));
                         movingShapeId = shapeId;
                         isMovingCone = true;
                         return;
@@ -2880,7 +2970,7 @@ shapeMap.addEventListener("mousedown", function(e) {
                         document.body.style.cursor = "pointer";
                         shapeDragOffset.x = clickedShape.x;
                         shapeDragOffset.y = clickedShape.y;
-                        shapeDragStartAngle = Math.atan2(((e.pageY + board.scrollTop) - shapeDragOffset.y), ((e.pageX + board.scrollLeft) - shapeDragOffset.x));
+                        shapeDragStartAngle = Math.atan2((((e.pageY + viewport.scrollTop)/(1+extraZoom/20)) - shapeDragOffset.y), (((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)) - shapeDragOffset.x));
                         movingShapeId = shapeId;
                         isMoving5ftLine = true;
                         return;
@@ -2888,8 +2978,8 @@ shapeMap.addEventListener("mousedown", function(e) {
                     isPanning = true;
                     oldMousePos.x = e.pageX;
                     oldMousePos.y = e.pageY;
-                    oldScrollPos.x = board.scrollLeft;
-                    oldScrollPos.y = board.scrollTop;
+                    oldScrollPos.x = viewport.scrollLeft;
+                    oldScrollPos.y = viewport.scrollTop;
                     document.body.style.cursor = "grabbing";
                     drawCanvas();
                 }
@@ -2899,8 +2989,8 @@ shapeMap.addEventListener("mousedown", function(e) {
         isPanning = true;
         oldMousePos.x = e.pageX;
         oldMousePos.y = e.pageY;
-        oldScrollPos.x = board.scrollLeft;
-        oldScrollPos.y = board.scrollTop;
+        oldScrollPos.x = viewport.scrollLeft;
+        oldScrollPos.y = viewport.scrollTop;
         document.body.style.cursor = "grabbing";
         drawCanvas();
     }
@@ -2909,8 +2999,8 @@ shapeMap.addEventListener("mousedown", function(e) {
 window.addEventListener("mousemove", function(e) {
     if (isPanning)
     {
-        board.scrollLeft = oldScrollPos.x - (e.pageX - oldMousePos.x);
-        board.scrollTop = oldScrollPos.y - (e.pageY - oldMousePos.y);
+        viewport.scrollLeft = oldScrollPos.x - (e.pageX - oldMousePos.x);
+        viewport.scrollTop = oldScrollPos.y - (e.pageY - oldMousePos.y);
     }
 })
 
@@ -2925,7 +3015,7 @@ shapeMap.addEventListener("contextmenu", function(e) {
     {
         if (CheckAntiBlockerPixel(e) || isDM)
         {
-            let pixel = hitboxCanvas.getImageData((e.pageX + board.scrollLeft), (e.pageY + board.scrollTop), 1, 1).data;
+            let pixel = hitboxCanvas.getImageData(((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), 1, 1).data;
             if (pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0)
             {
                 displayContextMenu(e);
@@ -3045,11 +3135,11 @@ function displayContextMenu(e)
                             if (tokenSize < 20 && tokenSize > 0)
                             {
                                 if (confirm("Make this a DM token?"))
-                                    requestServer({c: "createToken", text: textToDisplay, x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), size: tokenSize, status: "", layer: 0, dm: true})
+                                    requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 0, dm: true})
                                 else
-                                    requestServer({c: "createToken", text: textToDisplay, x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), size: tokenSize, status: "", layer: 0, dm: false})
+                                    requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 0, dm: false})
                                 
-                                console.log("Placing text token with size" + tokenSize + " at " + (e.pageX + board.scrollLeft).toString() + ":" + (e.pageY + board.scrollTop).toString());
+                                console.log("Placing text token with size" + tokenSize + " at " + ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)).toString());
                                 updateMapData();
                             }
                             else
@@ -3061,8 +3151,8 @@ function displayContextMenu(e)
                         {
                             if (tokenSize < 6 && tokenSize > 0)
                             {
-                                requestServer({c: "createToken", text: textToDisplay, x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), size: tokenSize, status: "", layer: 0, dm: false})
-                                console.log("Placing text token with size" + tokenSize + " at " + (e.pageX + board.scrollLeft).toString() + ":" + (e.pageY + board.scrollTop).toString());
+                                requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 0, dm: false})
+                                console.log("Placing text token with size" + tokenSize + " at " + ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)).toString());
                                 updateMapData();
                             }
                             else
@@ -3091,8 +3181,8 @@ function displayContextMenu(e)
                         {
                             if (tokenSize < 20 && tokenSize > 0)
                             {
-                                requestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: tokenList[i], size: tokenSize, status: "", layer: 0, dm: false})
-                                console.log("Placing " + tokenList[i] + " with size" + tokenSize + " at " + (e.pageX + board.scrollLeft).toString() + ":" + (e.pageY + board.scrollTop).toString());
+                                requestServer({c: "createToken", x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", layer: 0, dm: false})
+                                console.log("Placing " + tokenList[i] + " with size" + tokenSize + " at " + ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)).toString());
                                 updateMapData();
                             }
                             else
@@ -3104,8 +3194,8 @@ function displayContextMenu(e)
                         {
                             if (tokenSize < 6 && tokenSize > 0)
                             {
-                                requestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: tokenList[i], size: tokenSize, status: "", layer: 0, dm: false})
-                                console.log("Placing " + tokenList[i] + " with size" + tokenSize + " at " + (e.pageX + board.scrollLeft).toString() + ":" + (e.pageY + board.scrollTop).toString());
+                                requestServer({c: "createToken", x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", layer: 0, dm: false})
+                                console.log("Placing " + tokenList[i] + " with size" + tokenSize + " at " + ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)).toString());
                                 updateMapData();
                             }
                             else
@@ -3132,8 +3222,8 @@ function displayContextMenu(e)
                         }
                         else
                         {
-                            requestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: dmTokenList[i], size: tokenSize, status: "", layer: 0, dm: true})
-                            console.log("Placing " + dmTokenList[i] + " with size" + tokenSize + " at " + (e.pageX + board.scrollLeft).toString() + ":" + (e.pageY + board.scrollTop).toString());
+                            requestServer({c: "createToken", x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), image: dmTokenList[i], size: tokenSize, status: "", layer: 0, dm: true})
+                            console.log("Placing " + dmTokenList[i] + " with size" + tokenSize + " at " + ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)).toString());
                             updateMapData();
                         }
                     }
@@ -3149,8 +3239,8 @@ function displayContextMenu(e)
                     if (!isNaN(radiusInput))
                     {
                         circleMarkers.radius = radiusInput / feetPerSquare;
-                        circleMarkers.x = e.pageX + board.scrollLeft;
-                        circleMarkers.y = e.pageY + board.scrollTop;
+                        circleMarkers.x = (e.pageX + viewport.scrollLeft)/(1+extraZoom/20);
+                        circleMarkers.y = (e.pageY + viewport.scrollTop)/(1+extraZoom/20);
                         let shapeIsVisible = true;
                         if (isDM) {
                             shapeIsVisible = confirm("Should the shape be visible?");
@@ -3160,8 +3250,8 @@ function displayContextMenu(e)
                     }    
                 }},
                 {text: "Draw Square", callback: function() {
-                    squareMarkers.x = e.pageX + board.scrollLeft;
-                    squareMarkers.y = e.pageY + board.scrollTop;
+                    squareMarkers.x = (e.pageX + viewport.scrollLeft)/(1+extraZoom/20);
+                    squareMarkers.y = (e.pageY + viewport.scrollTop)/(1+extraZoom/20);
                     isPlacingSquare = true;
                     drawCanvas();
                 }},
@@ -3178,8 +3268,8 @@ function displayContextMenu(e)
                         {
                             lineMarkers.range = 999999;
                         }
-                        lineMarkers.x = e.pageX + board.scrollLeft;
-                        lineMarkers.y = e.pageY + board.scrollTop;
+                        lineMarkers.x = (e.pageX + viewport.scrollLeft)/(1+extraZoom/20);
+                        lineMarkers.y = (e.pageY + viewport.scrollTop)/(1+extraZoom/20);
                         isPlacingLine = true;
                         drawCanvas();
                     }
@@ -3205,11 +3295,11 @@ function displayContextMenu(e)
                         if (tokenSize < 20 && tokenSize > 0)
                         {
                             if (confirm("Make this a DM token?"))
-                                requestServer({c: "createToken", text: textToDisplay, x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), size: tokenSize, status: "", layer: 0, dm: true, hidden: true})
+                                requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 0, dm: true, hidden: true})
                             else
-                                requestServer({c: "createToken", text: textToDisplay, x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), size: tokenSize, status: "", layer: 0, dm: false, hidden: true})
+                                requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 0, dm: false, hidden: true})
                             
-                            console.log("Placing text token with size" + tokenSize + " at " + (e.pageX + board.scrollLeft).toString() + ":" + (e.pageY + board.scrollTop).toString());
+                            console.log("Placing text token with size" + tokenSize + " at " + ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)).toString());
                             updateMapData();
                         }
                         else
@@ -3237,8 +3327,8 @@ function displayContextMenu(e)
                     {
                         if (tokenSize < 20 && tokenSize > 0)
                         {
-                            requestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: tokenList[i], size: tokenSize, status: "", hidden: true, layer: 0, dm: true})
-                            console.log("Placing hidden " + tokenList[i] + " with size " + tokenSize + " at " + (e.pageX + board.scrollLeft).toString() + ":" + (e.pageY + board.scrollTop).toString());
+                            requestServer({c: "createToken", x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", hidden: true, layer: 0, dm: true})
+                            console.log("Placing hidden " + tokenList[i] + " with size " + tokenSize + " at " + ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)).toString());
                             updateMapData();
                         }
                         else
@@ -3262,8 +3352,8 @@ function displayContextMenu(e)
                     }
                     else
                     {
-                        requestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: dmTokenList[i], size: tokenSize, status: "", hidden: true, layer: 0, dm: true})
-                        console.log("Placing " + dmTokenList[i] + " with size" + tokenSize + " at " + (e.pageX + board.scrollLeft).toString() + ":" + (e.pageY + board.scrollTop).toString());
+                        requestServer({c: "createToken", x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), image: dmTokenList[i], size: tokenSize, status: "", hidden: true, layer: 0, dm: true})
+                        console.log("Placing " + dmTokenList[i] + " with size" + tokenSize + " at " + ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)).toString());
                         updateMapData();
                     }
                 }
@@ -3280,7 +3370,7 @@ function displayContextMenu(e)
             titleText = "Create Anti Blocker";
         }
         DMoptions.push({text: titleText, description: "Creates a blockers with 3 verts at the current position", hasSubMenu: false, callback: async function() {
-            requestServer({c: "addPolyBlocker", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), offset: gridSize});
+            requestServer({c: "addPolyBlocker", x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20)), offset: gridSize});
             updateMapData();
         }})
     }
@@ -3292,8 +3382,8 @@ function displayContextMenu(e)
             titleText = "Place Anti Blocker";
         }
         DMoptions.push({text: titleText, description: "Upon clicking this button click somewhere else to define the bottom right corner", hasSubMenu: false, callback: async function() {
-            blockerMarkers.x = (e.pageX + board.scrollLeft);
-            blockerMarkers.y = (e.pageY + board.scrollTop);
+            blockerMarkers.x = ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
+            blockerMarkers.y = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
             isPlacingBlocker = true;
             drawCanvas();
         }});
@@ -3329,6 +3419,7 @@ window.onclick = function(event)
 
 //#region Menu and Submenu
     let customMenu = document.getElementById("contextMenu");
+    let customMenuPos;
     function displayMenu(event, listData) 
     {
         closeMenu();
@@ -3348,8 +3439,8 @@ window.onclick = function(event)
             }
             customMenu.style.display = "block";
             
-            let testx = (event.pageX + board.scrollLeft);
-            let testy = (event.pageY + board.scrollTop);
+            let testx = (event.pageX + viewport.scrollLeft);
+            let testy = (event.pageY + viewport.scrollTop);
             customMenu.style.top = testy + "px";
             customMenu.style.left = testx + "px";
             customMenu.style.height = tmpHeight + "vh";
@@ -3374,7 +3465,6 @@ window.onclick = function(event)
                 }
                 customMenu.appendChild(listItem);
             }
-            let customMenuPos;
             if (event.pageX + customMenu.offsetWidth > window.innerWidth + window.pageXOffset - sideMenu.offsetWidth)
             {
                 customMenuPos = parseInt(customMenu.style.left.substr(0, customMenu.style.left.length-2));
@@ -3397,9 +3487,9 @@ window.onclick = function(event)
         if (listData.length > 0)
         {
             let tmpHeight = listData.length * 4;
-            if (tmpHeight > 24)
+            if (tmpHeight > 60)
             {
-                tmpHeight = 24;
+                tmpHeight = 60;
                 customSubMenu.style.overflowY = "scroll";
             }
             else
@@ -3408,8 +3498,8 @@ window.onclick = function(event)
             }
             customSubMenu.style.display = "block";
             customSubMenu.style.height = tmpHeight + "vh";
-            customSubMenu.style.top = (event.pageY + board.scrollTop).toString() + "px";
-            customSubMenu.style.left = ((event.pageX + board.scrollLeft) + customMenu.offsetWidth).toString() + "px";
+            customSubMenu.style.top = (event.pageY + viewport.scrollTop).toString() + "px";
+            customSubMenu.style.left = ((event.pageX + viewport.scrollLeft) + customMenu.offsetWidth).toString() + "px";
             for (let p in listData) 
             {
                 let listItem = document.createElement('li');
@@ -3428,9 +3518,15 @@ window.onclick = function(event)
                 }
                 customSubMenu.appendChild(listItem);
             }
-            if ((event.pageX + board.scrollLeft) + customMenu.offsetWidth * 2 > (window.innerWidth + window.pageXOffset))
+            let customSubMenuPos;
+            if (event.pageY + customSubMenu.offsetHeight > window.innerHeight + window.pageYOffset)
             {
-                scrollBy((((event.pageX + board.scrollLeft) + customMenu.offsetWidth * 2 + 10) - (window.innerWidth + window.pageXOffset)), 0);
+                customSubMenuPos = parseInt(customSubMenu.style.top.substr(0, customMenu.style.top.length-2));
+                customSubMenu.style.top = "calc("+(customSubMenuPos - (event.pageY + customSubMenu.offsetHeight - window.innerHeight - window.pageYOffset)).toString()+"px - 1.5vh)";
+            }
+            if (customMenu.offsetLeft + 2*customSubMenu.offsetWidth - viewport.scrollLeft > window.innerWidth + window.pageXOffset - sideMenu.offsetWidth)
+            {
+                customSubMenu.style.left = (customMenu.offsetLeft - customSubMenu.offsetWidth).toString()+"px";
             }
         }
     }
