@@ -924,12 +924,8 @@ function drawBlockers()
         {
             let currentBlocker = mapData.blockers[i];
             let tmpBlocker = document.createElement("div");
+            tmpBlocker.setAttribute("blockerid", currentBlocker.id);
             let extraBlocker = document.createElement("div");
-            if (currentBlocker.id==selectedBlocker)
-            {
-                tmpBlocker.style.outline = "0.3vh dashed "+blockerOutlineColor;
-                previousSelectedBlocker=tmpBlocker;
-            }
             tmpBlocker.className = "blocker";
             tmpBlocker.style.left = currentBlocker.x + "px";
             tmpBlocker.style.top = currentBlocker.y + "px";
@@ -952,7 +948,6 @@ function drawBlockers()
                         e.preventDefault();
                         let menuOptions = [
                             {text: "Remove blocker", hasSubMenu: false, callback: function() {
-                                previousSelectedBlocker=null;
                                 selectedBlocker=-1;
                                 requestServer({c: "removeBlocker", id: currentBlocker.id});
                                 updateMapData();
@@ -964,11 +959,12 @@ function drawBlockers()
                     tmpBlocker.addEventListener("mousedown", function(e) {
                         if (e.button == 0)
                         {
-                            selectedToken=-1;
-                            selectedShapeId=-1;
-                            selectedBlocker=currentBlocker.id;
-                            previousSelectedBlocker=tmpBlocker;
-                            drawCanvas();
+                            selectedToken = -1;
+                            selectedShapeId = -1;
+                            selectedBlocker = currentBlocker.id;
+                            updateHighlightedBlocker();
+                            updateHighlightedToken();
+                            drawShapes();
                         }
                     });
                     tmpBlocker.addEventListener("mouseup", function(e) {
@@ -1052,8 +1048,22 @@ function drawBlockers()
                 }
             }
             tmpBlocker.appendChild(extraBlocker);
-            
             blockersDiv.appendChild(tmpBlocker);
+        }
+        updateHighlightedBlocker();
+    }
+}
+
+function updateHighlightedBlocker() {
+    for (let p = 0; p < blockersDiv.children.length; p++)
+    {
+        if (blockersDiv.children[p].getAttribute("blockerid")==selectedBlocker)
+        {
+            blockersDiv.children[p].style.outline = "0.3vh dashed "+blockerOutlineColor;
+        }
+        else
+        {
+            blockersDiv.children[p].style.outline = "";
         }
     }
 }
@@ -1118,7 +1128,6 @@ function drawGrid()
 function drawTokens() 
 {
     tokensDiv.innerHTML = "";
-    console.log("Redrawing tokens!");
     for (let i in mapData.tokens)
     {
         createToken(mapData.tokens[i]);
@@ -1282,6 +1291,7 @@ function createToken(token)
             showDetailsScreen();
             selectedToken = token.id;
             selectedBlocker = -1;
+            selectedShapeId = -1;
             if (mapData.usePolyBlockers)
             {
                 drawPolyBlockers()
@@ -1313,6 +1323,8 @@ function createToken(token)
             }
             updateTracker();
             updateHighlightedToken();
+            updateHighlightedBlocker();
+            drawShapes();
         }
     })
 
@@ -1625,10 +1637,8 @@ function createToken(token)
 }
 
 function updateHighlightedToken() {
-    console.log("did this!");
     for (let p = 0; p<tokensDiv.children.length; p++)
     {
-        console.log(tokensDiv.children[p]);
         if (tokensDiv.children[p].getAttribute("tokenid")==selectedToken)
         {
             tokensDiv.children[p].style.outline = "0.20vw dashed aqua";
@@ -2257,11 +2267,20 @@ shapeMap.addEventListener("mousedown", function(e) {
                     {
                         tokenText = f.toString();
                     }
-                    requestServer({c: "createToken", text: tokenText, x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
+                    if (newHP!=null) {
+                        requestServer({c: "createToken", text: tokenText, x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
+                    } else {
+                        requestServer({c: "createToken", text: tokenText, x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum});
+                    }
                 }
                 else
                 {
-                    requestServer({c: "createToken", x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: Math.ceil(Math.random()*20)+tmpInit, hidden: hideTokens, group: groupNum, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC})
+                    if (newHP!=null) {
+                        requestServer({c: "createToken", x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: Math.ceil(Math.random()*20)+tmpInit, hidden: hideTokens, group: groupNum, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
+                    } else {
+                        requestServer({c: "createToken", x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: Math.ceil(Math.random()*20)+tmpInit, hidden: hideTokens, group: groupNum});
+                    }
+                    
                 }
             }
             placingBulkOrigin = false;
