@@ -491,14 +491,13 @@ body {
     margin: 0px;
     padding: 0px;
     z-index: 50;
-    background-color: var(--blocker-color);
-    opacity: var(--blocker-opacity);
     overflow: hidden;
+    background-color: var(--blocker-color);
 }
 
 .blocker div:not(.blocker){
     z-index: inherit;
-    background-color: #00000000;
+    
 }
 
 #tokens div {

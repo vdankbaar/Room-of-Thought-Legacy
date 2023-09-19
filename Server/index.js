@@ -125,15 +125,19 @@ app.post("/api", function(request, response) {
                     if (request.body.layer != null)
                         currentMap.tokens[i].layer = request.body.layer;
                     if (request.body.group != null)
+                    {
                         if (request.body.group == "reset")
                             currentMap.tokens[i].group = null;
                         else
                             currentMap.tokens[i].group = request.body.group;
+                    }
                     if (request.body.initiative != null)
+                    {
                         if (request.body.initiative == "reset")
                             currentMap.tokens[i].initiative = null;
                         else    
                             currentMap.tokens[i].initiative = request.body.initiative;
+                    }
                     if (request.body.name != null)
                         currentMap.tokens[i].name = request.body.name;
                     if (request.body.ac != null)
@@ -158,23 +162,24 @@ app.post("/api", function(request, response) {
             loadCurrentMap();
             if (request.body.id == previousRemovedTokenId && request.body.tokensRemoved < removedTokens)
             {
+                console.log("Two people removed a token at the same time!");
                 response.send("[false]");
             }
             else
             {
                 let tokenFound = 0;
-                for (let i in currentMap.tokens)
+                currentMap.tokens.splice(request.body.id, 1);
+                for (let i = 0; i<currentMap.drawings.length; i++)
                 {
-                    let currentToken = currentMap.tokens[i];
-                    if (currentToken.id == request.body.id)
+                    if (currentMap.drawings[i].link == request.body.id)
                     {
-                        tokenFound = i;
-                        currentMap.tokens.splice(i, 1);
+                        removeDrawingById(currentMap.drawings[i].id);
                     }
                 }
                 for (let i = tokenFound; i < currentMap.tokens.length; i++)
                 {
-                    currentMap.tokens[i].id = currentMap.tokens[i].id - 1;
+                    updateLinkedShapes(currentMap.tokens[i].id, i, request.body.id);
+                    currentMap.tokens[i].id = i;
                 }
                 saveCurrentMap();
                 response.send("[true]");
@@ -200,14 +205,14 @@ app.post("/api", function(request, response) {
                             {
                                 currentMap.tokens[j].x = currentMap.tokens[j].x + dx;
                                 currentMap.tokens[j].y = currentMap.tokens[j].y + dy;
-                                CheckLinkedShapes(currentMap.tokens[j], dx, dy);
+                                moveLinkedShapes(currentMap.tokens[j]);
                             }
                             
                         }
                     }
                     currentMap.tokens[i].x = request.body.x;
                     currentMap.tokens[i].y = request.body.y;
-                    CheckLinkedShapes(currentMap.tokens[i], dx, dy);
+                    moveLinkedShapes(currentMap.tokens[i]);
                 }
             }
             saveCurrentMap();
@@ -227,10 +232,9 @@ app.post("/api", function(request, response) {
                         {
                             let dx = currentMap.tokens[j].x - currentMap.tokens[i].x;
                             let dy = currentMap.tokens[j].y - currentMap.tokens[i].y;
-                            console.log(dx + " : " + dy);
                             currentMap.tokens[j].x = currentMap.tokens[i].x + dy;
                             currentMap.tokens[j].y = currentMap.tokens[i].y - dx;
-                            CheckLinkedShapes(currentMap.tokens[j]);
+                            moveLinkedShapes(currentMap.tokens[j]);
                         }
                     }
                 }
@@ -254,7 +258,7 @@ app.post("/api", function(request, response) {
                                 let dy = currentMap.tokens[j].y - currentMap.tokens[i].y;
                                 currentMap.tokens[j].x = currentMap.tokens[i].x - dy;
                                 currentMap.tokens[j].y = currentMap.tokens[i].y + dx;
-                                CheckLinkedShapes(currentMap.tokens[j]);
+                                moveLinkedShapes(currentMap.tokens[j]);
                             }
                         }
                     }
@@ -294,10 +298,8 @@ app.post("/api", function(request, response) {
                     isShape = true;
                     tmpDrawing.x = request.body.x;
                     tmpDrawing.y = request.body.y;
-                    tmpDrawing.destX1 = request.body.destX1;
-                    tmpDrawing.destY1 = request.body.destY1;
-                    tmpDrawing.destX2 = request.body.destX2;
-                    tmpDrawing.destY2 = request.body.destY2;
+                    tmpDrawing.angle = request.body.angle;
+                    tmpDrawing.range = request.body.range;
                     break;
             }
             if (isShape)
@@ -319,18 +321,26 @@ app.post("/api", function(request, response) {
             for (let i in currentMap.drawings)
             {
                 let currentDrawing = currentMap.drawings[i];
-                console.log(currentDrawing);
                 if (currentDrawing.id == request.body.id)
                 {
-                    if (currentMap.drawings[i].shape == "line")
+                    switch(currentMap.drawings[i].shape)
                     {
-                        let dx = currentMap.drawings[i].destX - currentMap.drawings[i].x;
-                        let dy = currentMap.drawings[i].destY - currentMap.drawings[i].y;
-                        currentMap.drawings[i].destX = request.body.x + dx;
-                        currentMap.drawings[i].destY = request.body.y + dy;
+                        case "line":
+                            let dx = currentMap.drawings[i].destX - currentMap.drawings[i].x;
+                            let dy = currentMap.drawings[i].destY - currentMap.drawings[i].y;
+                            currentMap.drawings[i].destX = request.body.x + dx;
+                            currentMap.drawings[i].destY = request.body.y + dy;
+                            break;
+
+                        default:
+                            currentMap.drawings[i].x = request.body.x;
+                            currentMap.drawings[i].y = request.body.y;
+                            break;
+                        
+                        case "cone":
+                            currentMap.drawings[i].angle = request.body.angle;
+                            break;
                     }
-                    currentMap.drawings[i].x = request.body.x;
-                    currentMap.drawings[i].y = request.body.y;
                 }
             }
             saveCurrentMap();
@@ -345,25 +355,9 @@ app.post("/api", function(request, response) {
             }
             else
             {
-            
-                let shapeFound = 0;
-                for (let i in currentMap.drawings)
-                {
-                    let currentDrawing = currentMap.drawings[i];
-                    if (currentDrawing.id == request.body.id)
-                    {
-                        shapeFound = i;
-                        currentMap.drawings.splice(i, 1);
-                    }
-                }
-                for (let i = shapeFound; i < currentMap.drawings.length; i++)
-                {
-                    currentMap.drawings[i].id = currentMap.drawings[i].id - 1;
-                }
+                removeDrawingById(request.body.id);
                 saveCurrentMap();
                 response.send("[true]");
-                previousRemovedDrawingId = request.body.id;
-                removedDrawings++;
             }
             break;
 
@@ -433,7 +427,6 @@ app.post('/upload', function(req, res) {
             return res.status(400).send('No files were uploaded.');
         }
         let sampleFile = req.files.mapFile;
-        console.log(sampleFile);
         sampleFile.mv(dataFolder + req.files.mapFile.name, function(err)
         {
             if (err)
@@ -450,28 +443,46 @@ app.post('/upload', function(req, res) {
 app.use(express.static('client'));
 app.listen(port);
 
-function CheckLinkedShapes(tokenData, dx, dy) 
+function moveLinkedShapes(tokenData) 
 {
     for (let i = 0; i < currentMap.drawings.length; i++)
     {
         if (currentMap.drawings[i].link == tokenData.id)
         {
-            if (currentMap.drawings[i].destX1!=null)
-            {
-                currentMap.drawings[i].x = currentMap.drawings[i].x + dx;
-                currentMap.drawings[i].y = currentMap.drawings[i].y + dy;
-                currentMap.drawings[i].destX1 = currentMap.drawings[i].destX1 + dx;
-                currentMap.drawings[i].destX2 = currentMap.drawings[i].destX2 + dx;
-                currentMap.drawings[i].destY1 = currentMap.drawings[i].destY1 + dy;
-                currentMap.drawings[i].destY2 = currentMap.drawings[i].destY2 + dy;
-            }
-            else
-            {
-                currentMap.drawings[i].x = tokenData.x;
-                currentMap.drawings[i].y = tokenData.y;
-            }
+            currentMap.drawings[i].x = tokenData.x;
+            currentMap.drawings[i].y = tokenData.y;
         }
     }
+}
+
+function updateLinkedShapes(oldId, newId) {
+    for (let i = 0; i < currentMap.drawings.length; i++)
+    {
+        if (currentMap.drawings[i].link == oldId)
+        {
+            currentMap.drawings[i].link = newId;
+        }
+    }
+    saveCurrentMap();
+}
+
+function removeDrawingById(targetId) {
+    let shapeFound = 0;
+    for (let i in currentMap.drawings)
+    {
+        let currentDrawing = currentMap.drawings[i];
+        if (currentDrawing.id == targetId)
+        {
+            shapeFound = i;
+            currentMap.drawings.splice(i, 1);
+        }
+    }
+    for (let i = shapeFound; i < currentMap.drawings.length; i++)
+    {
+        currentMap.drawings[i].id = currentMap.drawings[i].id - 1;
+    }
+    previousRemovedDrawingId = targetId;
+    removedDrawings++;
 }
 
 function loadCurrentMap() 
@@ -488,6 +499,35 @@ function loadCurrentMap()
     currentMap.dmTokenList = readDirectory(publicFolder + "dmTokens", "jpg|png");
     currentMap.mapSourceList = readDirectory(publicFolder + "maps", "jpg|png");
     currentMap.maps = returnMaps();
+    if (currentMap.tokens.length>0)
+    {
+        let tmpTokens = [];
+        tmpTokens.push(currentMap.tokens[0]);
+        if (currentMap.tokens.length>1)
+        {
+            for (let f = 1; f<currentMap.tokens.length; f++)
+            {
+                let currentLength = tmpTokens.length;
+                for (let g = 0; g<currentLength; g++)
+                {
+                    if (tmpTokens[g].initiative < currentMap.tokens[f].initiative)
+                    {
+                        tmpTokens.splice(g, 0, currentMap.tokens[f]);
+                        g = currentLength;
+                    }
+                    else
+                    {
+                        if (g==tmpTokens.length-1)
+                        {
+                            tmpTokens.push(currentMap.tokens[f]);
+                            g=currentLength;
+                        }
+                    }
+                }
+            }
+            currentMap.tokens = tmpTokens;
+        }
+    }
 }
 
 function saveCurrentMap() 

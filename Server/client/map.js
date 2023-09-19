@@ -6,6 +6,7 @@ let offsetX = 0;
 let offsetY = 0;
 let GridColor = "#222222FF";
 let shapeColor = "#FF0000";
+let blockerOutlineColor = "violet";
 let shapeWidth = 2;
 let hitboxMultiplier = 3;
 let GridLineWidth = 1;
@@ -62,17 +63,20 @@ let isDraggingBlocker = false;
 let draggedBlocker = {x: 0, y: 0};
 let hiddenMapImportButton = document.getElementById("fileImport");
 let isMovingShape = false;
+let isMovingCone = false;
 let isPanning = false;
 let oldMousePos = {x: 0, y: 0};
 let oldScrollPos = {x: 0, y: 0};
 let movingShapeId = 0;
 let selectedToken;
 let selectedTokenData;
+let selectedBlocker;
 let oldData;
 let dataIsIdentical = false;
 let resizingSideMenu = false;
 let controlPressed = false;
 let baseTokenIndex = 4;
+let previousSelectedBlocker;
 
 window.onload = function() {
     if (getCookie("isDM") == 1)
@@ -105,6 +109,16 @@ async function Setup() {
     {
         setInterval(function() {updateMapData();}, mapUpdateInterval);
     }
+    if (isDM)
+    {
+        document.body.style.setProperty("--blocker-color", "#00000080");
+        baseTokenIndex = 54;
+    }
+    else
+    {
+        document.body.style.setProperty("--blocker-color", "#000000FF");
+        baseTokenIndex = 4;
+    }
     drawCanvas();
 }
 
@@ -113,10 +127,6 @@ async function updateMapData(force)
     mapData = await requestServer({c: "currentMapData", x: loadedMap.naturalWidth, y: loadedMap.naturalHeight});
     GridColor = mapData.gridColor;
     let stringData = JSON.stringify(mapData);
-    if (force == null)
-    {
-        force = false;
-    }
     if (oldData != stringData || force)
     {
         dataIsIdentical = false;
@@ -129,45 +139,52 @@ async function updateMapData(force)
         console.log("Data is identical!");
     }
     
-    if (isDM)
+    if (!dataIsIdentical)
     {
-        document.getElementById("exportMap").title = mapData.mapName + " : " + mapData.map;
-    }
-    loadedMap.src = "/public/maps/" + mapData.map;
-    
-    mapSelect.innerHTML = "";
-    console.log(mapData.maps);
-    for (let i = 0; i < mapData.maps.length; i++)
-    {
-        let tmpOption = document.createElement("option");
-        tmpOption.value = mapData.maps[i];
-        tmpOption.innerText = mapData.maps[i];
-        mapSelect.append(tmpOption);
-    }
-    mapSelect.value = mapData.mapName;
-    
-    if (document.activeElement != mapSourceSelect)
-    {
-        mapSourceSelect.innerHTML = "";
-        for (let i = 0; i < mapData.mapSourceList.length; i++)
+        if (isDM) { document.getElementById("exportMap").title = mapData.mapName + " : " + mapData.map; }
+        loadedMap.src = "/public/maps/" + mapData.map;
+        
+        mapSelect.innerHTML = "";
+        for (let i = 0; i < mapData.maps.length; i++)
         {
             let tmpOption = document.createElement("option");
-            tmpOption.value = mapData.mapSourceList[i];
-            tmpOption.innerText = mapData.mapSourceList[i];
-            mapSourceSelect.append(tmpOption);
+            tmpOption.value = mapData.maps[i];
+            tmpOption.innerText = mapData.maps[i];
+            mapSelect.append(tmpOption);
         }
-        mapSourceSelect.value = mapData.map;
+        mapSelect.value = mapData.mapName;
+        
+        if (document.activeElement != mapSourceSelect)
+        {
+            mapSourceSelect.innerHTML = "";
+            for (let i = 0; i < mapData.mapSourceList.length; i++)
+            {
+                let tmpOption = document.createElement("option");
+                tmpOption.value = mapData.mapSourceList[i];
+                tmpOption.innerText = mapData.mapSourceList[i];
+                mapSourceSelect.append(tmpOption);
+            }
+            mapSourceSelect.value = mapData.map;
+        }
+        if (document.activeElement!=mapYInput) {mapYInput.value = mapData.y;}
+        if (document.activeElement!=mapXInput) {mapXInput.value = mapData.x;}
+        if (document.activeElement!=offsetXInput) {offsetXInput.value = mapData.offsetX;}
+        if (document.activeElement!=offsetYInput) {offsetYInput.value = mapData.offsetY;}
+        if (document.activeElement!=gridColorPicker) {gridColorPicker.value = mapData.gridColor;}
+        offsetX = mapData.offsetX;
+        offsetY = mapData.offsetY;
+        loadedMap.onload = function() 
+        {
+            drawCanvas(dataIsIdentical);
+        }
     }
-    if (document.activeElement!=mapYInput) {mapYInput.value = mapData.y;}
-    if (document.activeElement!=mapXInput) {mapXInput.value = mapData.x;}
-    if (document.activeElement!=offsetXInput) {offsetXInput.value = mapData.offsetX;}
-    if (document.activeElement!=offsetYInput) {offsetYInput.value = mapData.offsetY;}
-    if (document.activeElement!=gridColorPicker) {gridColorPicker.value = mapData.gridColor;}
-    offsetX = mapData.offsetX;
-    offsetY = mapData.offsetY;
-    loadedMap.onload = function() 
+}
+
+function returnToken(id) {
+    for (let h = 0; h<mapData.tokens.length; h++)
     {
-        drawCanvas(dataIsIdentical);
+        if (mapData.tokens[h].id == id)
+            return mapData.tokens[h];
     }
 }
 
@@ -292,16 +309,6 @@ function drawCanvas(force)
         mapCanvas.translate(0.5, 0.5);
         shapeCanvas.translate(0.5, 0.5);
         hitboxCanvas.translate(0.5, 0.5);
-        if (isDM)
-        {
-            document.body.style.setProperty("--blocker-opacity", "0.5");
-            baseTokenIndex = 54;
-        }
-        else
-        {
-            document.body.style.setProperty("--blocker-opacity", "1");
-            baseTokenIndex = 4;
-        }
         gridSize = (map.width / mapData.x + map.height / mapData.y) / 2;
         drawBlockers();
         drawMap();
@@ -414,13 +421,27 @@ function drawLine(index, shape)
 
 function drawCone(index, shape)
 {
+    let angle = shape.angle;
+    let linkedToken = returnToken(shape.link);
+    let originX = shape.x + Math.cos(angle)*0.5*linkedToken.size*gridSize;
+    let originY = shape.y +  Math.sin(angle)*0.5*linkedToken.size*gridSize;
+
+    let centerY = originY + Math.sin(angle) * shape.range * gridSize;
+    let centerX = originX + Math.cos(angle) * shape.range * gridSize;
+
+    let destX1 = 0.5*(-centerY + originY) + centerX;
+    let destY1 = 0.5*(centerX - originX) + centerY;
+
+    let destX2 = 0.5*(centerY - originY) + centerX;
+    let destY2 = 0.5*(-centerX + originX) + centerY;
+
     shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
     shapeCanvas.beginPath();
-    shapeCanvas.moveTo(shape.x, shape.y);
-    shapeCanvas.lineTo(shape.destX1, shape.destY1);
-    shapeCanvas.lineTo(shape.destX2, shape.destY2);
-    shapeCanvas.lineTo(shape.x, shape.y);
+    shapeCanvas.moveTo(originX, originY);
+    shapeCanvas.lineTo(destX1, destY1);
+    shapeCanvas.lineTo(destX2, destY2);
+    shapeCanvas.lineTo(originX, originY);
     shapeCanvas.stroke();
 
     let colorString = "#";
@@ -434,10 +455,10 @@ function drawCone(index, shape)
     hitboxCanvas.strokeStyle = colorString;
     hitboxCanvas.lineWidth = shapeWidth * hitboxMultiplier;
     hitboxCanvas.beginPath();
-    hitboxCanvas.moveTo(shape.x, shape.y);
-    hitboxCanvas.lineTo(shape.destX1, shape.destY1);
-    hitboxCanvas.lineTo(shape.destX2, shape.destY2);
-    hitboxCanvas.lineTo(shape.x, shape.y);
+    hitboxCanvas.moveTo(originX, originY);
+    hitboxCanvas.lineTo(destX1, destY1);
+    hitboxCanvas.lineTo(destX2, destY2);
+    hitboxCanvas.lineTo(originX, originY);
     hitboxCanvas.stroke();
 }
 
@@ -458,11 +479,16 @@ function drawBlockers()
     if (!isDraggingBlocker)
     {
         blockersDiv.innerHTML = "";
-        for (let i in mapData.blockers)
+        for (let i = 0; i<mapData.blockers.length; i++)
         {
             let currentBlocker = mapData.blockers[i];
             let tmpBlocker = document.createElement("div");
             let extraBlocker = document.createElement("div");
+            if (currentBlocker.id==selectedBlocker)
+            {
+                tmpBlocker.style.outline = "0.5vh dashed "+blockerOutlineColor;
+                previousSelectedBlocker=tmpBlocker;
+            }
             tmpBlocker.className = "blocker";
             tmpBlocker.style.left = currentBlocker.x + "px";
             tmpBlocker.style.top = currentBlocker.y + "px";
@@ -490,6 +516,8 @@ function drawBlockers()
                 let menuOptions = [];
                 let DMoptions = [
                     {text: "Remove blocker", hasSubMenu: false, callback: function() {
+                        previousSelectedBlocker=null;
+                        selectedBlocker=-1;
                         requestServer({c: "removeBlocker", id: currentBlocker.id});
                         updateMapData();
                     }}
@@ -503,20 +531,31 @@ function drawBlockers()
             if (isDM)
             {
                 tmpBlocker.addEventListener("mousedown", function(e) {
+                    updateMapData(true);
+                    if (previousSelectedBlocker)
+                        previousSelectedBlocker.style.outline = "";
+                    tmpBlocker.style.outline = "0.5vh dashed "+blockerOutlineColor;
+                    selectedToken=-1;
+                    selectedBlocker=currentBlocker.id;
+                    previousSelectedBlocker=tmpBlocker;
                     isDraggingBlocker = true;
-                })
+                });
                 tmpBlocker.addEventListener("mouseup", function(e) {
+                    
                     isDraggingBlocker = false;
                     extraBlocker.style.width = currentBlocker.width + "px";
                     extraBlocker.style.height = currentBlocker.height + "px";
-                    requestServer({c: "editBlocker", id: currentBlocker.id, x: currentBlocker.x, y: currentBlocker.y, width: tmpBlocker.offsetWidth, height: tmpBlocker.offsetHeight});
-                    updateMapData();
+                    if (currentBlocker.width!=tmpBlocker.offsetWidth && currentBlocker.height != tmpBlocker.offsetHeight)
+                    {
+                        requestServer({c: "editBlocker", id: currentBlocker.id, x: currentBlocker.x, y: currentBlocker.y, width: tmpBlocker.offsetWidth, height: tmpBlocker.offsetHeight});
+                        updateMapData();
+                    }
                 })
                 extraBlocker.addEventListener("dragstart", function(e) {
                     if (isDM)
                     {
                         isDraggingBlocker = true;
-                        extraBlocker.style.backgroundColor = "#000000";
+                        extraBlocker.style.backgroundColor = "#000000AA";
                         blockerDragOffset.x = currentBlocker.x - (e.pageX + board.scrollLeft);
                         blockerDragOffset.y = currentBlocker.y - (e.pageY + board.scrollTop);
                     }
@@ -533,8 +572,14 @@ function drawBlockers()
                         isDraggingBlocker = false;
                         let newX = draggedBlocker.x + blockerDragOffset.x;
                         let newY = draggedBlocker.y + blockerDragOffset.y;
-                        requestServer({c: "editBlocker", id: currentBlocker.id, x: newX, y: newY, width: tmpBlocker.offsetWidth, height: tmpBlocker.offsetHeight});
-                        updateMapData();
+                        console.log(newX+":"+newY);
+                        console.log(currentBlocker.x+":"+currentBlocker.y);
+                        if (newX!=currentBlocker.x && newY!=currentBlocker.y)
+                        {
+                            requestServer({c: "editBlocker", id: currentBlocker.id, x: newX, y: newY, width: tmpBlocker.offsetWidth, height: tmpBlocker.offsetHeight});
+                            updateMapData();
+                        }
+                            
                     }
                     e.stopPropagation();
                 })
@@ -640,12 +685,13 @@ function createToken(token)
             hiddenImage.style.height = (token.size * gridSize / 3).toString() + "px";
             hiddenImage.style.top = token.y - (gridSize * token.size) / 2 + "px";
             hiddenImage.style.left = token.x - (gridSize * token.size) / 2 + "px";
+            hiddenImage.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
             tokensDiv.appendChild(hiddenImage);
         }
     }
     if (token.id == selectedToken)
     {
-        imageElement.style.outline = "0.15vw dashed aqua";
+        imageElement.style.outline = "0.20vw dashed aqua";
     }
 
     function LoadTokenData() {
@@ -713,6 +759,7 @@ function createToken(token)
     imageElement.addEventListener("click", function() {
         showDetailsScreen();
         selectedToken = token.id;
+        selectedBlocker = -1;
         if (mapData.tokenList.includes(token.image))
             detailsIcon.src = "public/tokens/" + token.image;
         if (mapData.dmTokenList.includes(token.image))
@@ -879,8 +926,7 @@ function createToken(token)
                         {
                             coneMarkers.x = token.x;
                             coneMarkers.y = token.y;
-                            coneMarkers.range = rangeInput / feetPerSquare * gridSize;
-                            coneMarkers.tokenSize = token.size;
+                            coneMarkers.range = rangeInput / feetPerSquare;
                             coneMarkers.linkId = token.id;
                             isPlacingCone = true;
                         }
@@ -955,19 +1001,11 @@ function createToken(token)
 function updateTracker()
 {
     initiativeTrackerDiv.innerHTML = "";
-    let tmpData = [];
     for (let i in mapData.tokens)
     {
-        tmpData.push(mapData.tokens[i]);
-    }
-    tmpData.sort(function(a, b){
-        return a.initiative == b.initiative ? 0 : +(a.initiative < b.initiative) || -1;
-    });
-    for (let i in tmpData)
-    {
-        if (CheckTokenPermission(tmpData[i]))
+        if (CheckTokenPermission(mapData.tokens[i]))
         {
-            createTracker(tmpData[i]);
+            createTracker(mapData.tokens[i]);
         }
     }
     if (initiativeTrackerDiv.children.length>0)
@@ -1156,10 +1194,10 @@ function createTracker(trackerData)
             else
                 tmpTrackerDiv.style.backgroundColor = "#C0C0C0";
         }    
-        initiativeTrackerDiv.append(tmpTrackerDiv);
         let trackerHR = document.createElement("hr");
         trackerHR.className = "initiativeHR";
-        initiativeTrackerDiv.append(trackerHR);
+        initiativeTrackerDiv.appendChild(tmpTrackerDiv);
+        initiativeTrackerDiv.appendChild(trackerHR);    
     }
 }
 
@@ -1283,7 +1321,7 @@ initiativeInput.oninput = function() {
     let newInit = parseFloat(initiativeInput.value);
     if (CheckTokenPermission(selectedTokenData))
     {
-        if (newInit==null)
+        if (newInit==null || isNaN(newInit))
         {
             requestServer({c: "editToken", id: selectedToken, initiative: "reset"});
         }
@@ -1375,6 +1413,7 @@ shapeMap.addEventListener("mousedown", function(e) {
     if (e.button == 0)
     {
         selectedToken=-1;
+        selectedBlocker=-1;
         hideDetailsScreen();
         drawCanvas(true);
         if (isPlacingBlocker)
@@ -1426,23 +1465,10 @@ shapeMap.addEventListener("mousedown", function(e) {
         {
             let destX = e.pageX + board.scrollLeft;
             let destY = e.pageY + board.scrollTop;
-
             let angle = Math.atan2((destY - coneMarkers.y), (destX - coneMarkers.x));
             if (angle<0)
                 angle+=2*Math.PI;
-            coneMarkers.x = coneMarkers.x + Math.cos(angle)*0.5*coneMarkers.tokenSize*gridSize;
-            coneMarkers.y = coneMarkers.y +  Math.sin(angle)*0.5*coneMarkers.tokenSize*gridSize;
-
-            let centerY = coneMarkers.y + Math.sin(angle) * coneMarkers.range;
-            let centerX = coneMarkers.x + Math.cos(angle) * coneMarkers.range;
-        
-            let sideX1 = 0.5*(-centerY + coneMarkers.y) + centerX;
-            let sideY1 = 0.5*(centerX - coneMarkers.x) + centerY;
-
-            let sideX2 = 0.5*(centerY - coneMarkers.y) + centerX;
-            let sideY2 = 0.5*(-centerX + coneMarkers.x) + centerY;
-
-            requestServer({c: "addDrawing", shape: "cone", link: coneMarkers.linkId, x: coneMarkers.x, y: coneMarkers.y, destX1: sideX1, destY1: sideY1, destX2: sideX2, destY2: sideY2, trueColor: shapeColor});
+            requestServer({c: "addDrawing", shape: "cone", link: coneMarkers.linkId, x: coneMarkers.x, y: coneMarkers.y, angle: angle, range: coneMarkers.range, trueColor: shapeColor});
             updateMapData();
             isPlacingCone = false;
             return;
@@ -1464,6 +1490,17 @@ shapeMap.addEventListener("mousedown", function(e) {
                     shapeDragOffset.y = mapData.drawings[shapeId].y - (e.pageY + board.scrollTop);
                     movingShapeId = shapeId;
                     isMovingShape = true;
+                }
+                else
+                {
+                    if (mapData.drawings[shapeId].shape=="cone")
+                    {
+                        document.body.style.cursor = "pointer";
+                        shapeDragOffset.x = mapData.drawings[shapeId].x;
+                        shapeDragOffset.y = mapData.drawings[shapeId].y;
+                        movingShapeId = shapeId;
+                        isMovingCone = true;
+                    }
                 }
             }
             return;
@@ -1496,7 +1533,18 @@ shapeMap.addEventListener("mouseup", function(e) {
             document.body.style.cursor = "default";
             requestServer({c: "editDrawing", id: movingShapeId, x: (e.pageX + board.scrollLeft) + shapeDragOffset.x, y: (e.pageY + board.scrollTop) + shapeDragOffset.y});
             updateMapData();
-        }    
+        }
+        if (isMovingCone)
+        {
+            isMovingCone = false;
+            console.log("Changing cone angle!");
+            document.body.style.cursor = "default";
+            let angle = Math.atan2(((e.pageY + board.scrollTop) - shapeDragOffset.y), ((e.pageX + board.scrollLeft) - shapeDragOffset.x));
+            if (angle<0)
+                angle+=2*Math.PI;
+            requestServer({c: "editDrawing", id: movingShapeId, angle: angle});
+            updateMapData();
+        }
     }
 })
 
@@ -1657,7 +1705,7 @@ function displayContextMenu(e)
                         }
                         else
                         {
-                            requestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: dmTokenList[i], size: tokenSize, status: "", dm: true})
+                            requestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: dmTokenList[i], size: tokenSize, status: "", layer: 0, dm: true})
                             console.log("Placing " + dmTokenList[i] + " with size" + tokenSize + " at " + (e.pageX + board.scrollLeft).toString() + ":" + (e.pageY + board.scrollTop).toString());
                             updateMapData();
                         }
@@ -1745,7 +1793,7 @@ function displayContextMenu(e)
                 tmpElement.text = tokenList[i].substring(0, tokenList[i].length - 4);
                 tmpElement.callback = function() 
                 {
-                    let tokenSize = parseInt(prompt("Please enter the size of the token"));
+                    let tokenSize = parseFloat(prompt("Please enter the size of the token"));
                     if (tokenSize == null)
                     {
                         alert("That wasn't a valid size! Please try again!");
@@ -1772,7 +1820,7 @@ function displayContextMenu(e)
                 tmpElement.text = dmTokenList[i].substring(0, dmTokenList[i].length - 4);
                 tmpElement.callback = function() 
                 {
-                    let tokenSize = parseInt(prompt("Please enter the size of the token"));
+                    let tokenSize = parseFloat(prompt("Please enter the size of the token"));
                     if (tokenSize == null)
                     {
                         alert("That wasn't a valid size! Please try again!");
