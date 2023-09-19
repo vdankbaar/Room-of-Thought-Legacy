@@ -55,6 +55,29 @@ body {
     font-size: 1vw;
 }
 
+#notesEditor {
+    display: none;
+    flex-direction: column;
+    background-color: lightgray;
+    top: 60vh;
+    height: 19.5vw;
+    width: 15vw;
+    position: fixed;
+    right: 14vw;
+    z-index: 999;
+    font-size: 1vw;
+}
+
+#notesEditor textarea {
+    padding: 0px;
+    margin-top: 0.5vw;
+    margin-left: 0.5vw;
+    resize: none;
+    width: 14vw;
+    height: 18.5vw;
+    font-size: 1vw;
+}
+
 #optionsGridDisplay {
     margin-top: 0.5vw;
     margin-bottom: 0.5vw;
@@ -172,6 +195,18 @@ body {
     margin: 0px;
     padding: 0px;
     z-index: 0;
+}
+
+#initiativeHeader {
+    margin-top: 2vh;
+    margin-bottom: 0.5vh;
+    font-size: 1vw;
+    font-family: Helvetica;
+    width: 100%;
+}
+
+#initiativeHeader h3 {
+    margin: 0px;
 }
 
 #initiativeTracker {
@@ -420,7 +455,7 @@ body {
     position: absolute;
     margin: 0px;
     padding: 0px;
-    z-index: 3;
+    z-index: 800;
     background-color: var(--blocker-color);
     opacity: var(--blocker-opacity);
     overflow: hidden;
@@ -429,6 +464,19 @@ body {
 .blocker div:not(.blocker){
     z-index: inherit;
     background-color: #00000000;
+}
+
+#tokens div {
+    pointer-events: none;
+    position: absolute;
+    display: flex;
+}
+
+#tokens div a {
+    text-align: center;
+    position: absolute;
+    pointer-events: none;
+    align-self: center;
 }
 
 .token {

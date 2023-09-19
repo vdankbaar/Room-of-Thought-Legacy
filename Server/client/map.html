@@ -34,31 +34,17 @@
                 <input id="exportMap" class="dmOnly" type="button" value="Export JSON file">
                 <input id="hideInits" class="dmOnly" type="button" value="Toggle initiatives">
             </div>
+            <div id="notesEditor">
+                <textarea placeholder="Enter your notes here..."></textarea>
+            </div>
             <p style="margin: 0px; font-size: 1vw;">Draw Color:</p>
             <input type="color" id="shapeColorPicker" value="#ff0000"></input>
             <div id="initiativeTracker">
                 <h3 style="margin-bottom: 0.3vw;">Initiative Tracker</h3>
-                <div class="initiativeItem">
-                    <div class="initiative">14</div>
-                    <div class="trackerName">Fauna</div>
-                    <div class="trackerBottomRow">
-                        <div class="trackerArmorSection">
-                            <div class="trackerArmorClass">19</div>
-                            <p>AC</p>
-                        </div>
-                        <div class="trackerHitpointsSection">
-                            <button class="trackerDamageButton"><object type="image/svg+xml" data="images/swap_vert-24px.svg"></object></button>
-                            <input type="text" class="trackerHitpoints">
-                            <p>/</p>
-                            <div class="trackerHitpointsMax">63</div>
-                            <p>HP</p>
-                        </div>
-                    </div>
-                </div>
             </div>
             <div id="detailsScreen">
                 <h3 style="grid-area: title; margin: 0px;"></h3>
-                <div id="detailsIcon"><img src="./public/tokens/Fauna.png"></div>
+                <div id="detailsIcon" title="Click to open notes!"><img src="./public/tokens/Fauna.png"></div>
                 <object id="hitpointsIcon" type="image/svg+xml" data="images/favorite-24px.svg"></object>
                 <div id="detailsHitpoints">
                     <input id="currentHitpoints" autocomplete="off">

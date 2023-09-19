@@ -5,14 +5,14 @@ var bodyParser = require("body-parser");
 const fileUpload = require('express-fileupload');
 
 var app = express();
-let dataFolder = __dirname+"/data/";
-let publicFolder = __dirname+"/client/public/";
+let dataFolder = __dirname + "/data/";
+let publicFolder = __dirname + "/client/public/";
 let selectedMap = "currentSettings";
 var currentMap;
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
 app.use(fileUpload());
-LoadCurrentMap();
+loadCurrentMap();
 let removedTokens = 0;
 let previousRemovedTokenId = -1;
 let removedDrawings = 0;
@@ -21,32 +21,32 @@ let playerNameList = [];
 
 app.post("/api", function(request, response) {
     let playerName = GetCookie(request, "playerName");
-    if (!playerNameList.includes(playerName) && playerName!="")
+    if (!playerNameList.includes(playerName) && playerName != "")
     {
-        console.log("A new player has connected: "+playerName);
+        console.log("A new player has connected: " + playerName);
         playerNameList.push(playerName);
-        console.log("Currently connected: "+JSON.stringify(playerNameList));
+        console.log("Currently connected: " + JSON.stringify(playerNameList));
     }
-    if (request.body.c!="currentMapData")
-        console.log(playerName+": "+JSON.stringify(request.body));
+    if (request.body.c != "currentMapData")
+        console.log(playerName + ": " + JSON.stringify(request.body));
     switch(request.body.c) 
     {
         case "currentMapData":
-            LoadCurrentMap();
+            loadCurrentMap();
             currentMap.removedTokens = removedTokens;
             currentMap.removedDrawings = removedDrawings;
             response.send(JSON.stringify(currentMap));
             break;
         
         case "setMapData":
-            LoadCurrentMap();
+            loadCurrentMap();
             currentMap.map = request.body.map;
             currentMap.x = request.body.x;
             currentMap.y = request.body.y;
             currentMap.offsetX = request.body.offsetX;
             currentMap.offsetY = request.body.offsetY;
             currentMap.hideInit = request.body.hideInit;
-            SaveCurrentMap();
+            saveCurrentMap();
             response.send(true);
             break;
 
@@ -66,11 +66,15 @@ app.post("/api", function(request, response) {
                 tmpToken.size = request.body.size;
                 tmpToken.status = request.body.status;
                 tmpToken.layer = request.body.layer;
-                if (request.body.hidden!=null)
+                if (request.body.text != null)
+                    tmpToken.dm = request.body.dm;
+                if (request.body.text != null)
+                    tmpToken.text = request.body.text;
+                if (request.body.hidden != null)
                     tmpToken.hidden = request.body.hidden;
                 currentMap.tokens.push(tmpToken);
                 response.send("[true]");
-                SaveCurrentMap();
+                saveCurrentMap();
             }
             else
             {
@@ -80,7 +84,7 @@ app.post("/api", function(request, response) {
 
 
         case "setTokenHidden":
-            LoadCurrentMap();
+            loadCurrentMap();
             for (let i in currentMap.tokens)
             {
                 let currentToken = currentMap.tokens[i];
@@ -89,43 +93,45 @@ app.post("/api", function(request, response) {
                     currentToken.hidden = request.body.hidden;
                 }
             }
-            SaveCurrentMap();
+            saveCurrentMap();
             response.send("[true]");
             break;
 
         case "editToken":
-            LoadCurrentMap();
+            loadCurrentMap();
             for (let i in currentMap.tokens)
             {
                 let currentToken = currentMap.tokens[i];
                 if (currentToken.id == request.body.id)
                 {
-                        if (request.body.status!=null)
-                            currentMap.tokens[i].status = request.body.status;
-                        if (request.body.size!=null)
-                            if (minMax(request.body.size, 0, 20))
-                                currentMap.tokens[i].size = request.body.size;
-                        if (request.body.layer!=null)
-                            currentMap.tokens[i].layer = request.body.layer;
-                        if (request.body.group!=null)
-                            if (request.body.group=="reset")
-                                currentMap.tokens[i].group = null;
-                            else
-                                currentMap.tokens[i].group = request.body.group;
-                        if (request.body.initiative!=null)
-                            if (request.body.initiative=="reset")
-                                currentMap.tokens[i].initiative = null;
-                            else    
-                                currentMap.tokens[i].initiative = request.body.initiative;
-                        if (request.body.name!=null)
-                            currentMap.tokens[i].name = request.body.name;
-                        if (request.body.ac!=null)
-                            currentMap.tokens[i].ac = request.body.ac;
-                        if (request.body.hp!=null)
-                            currentMap.tokens[i].hp = request.body.hp;
+                    if (request.body.status != null)
+                        currentMap.tokens[i].status = request.body.status;
+                    if (request.body.size != null)
+                        if (minMax(request.body.size, 0, 20))
+                            currentMap.tokens[i].size = request.body.size;
+                    if (request.body.layer != null)
+                        currentMap.tokens[i].layer = request.body.layer;
+                    if (request.body.group != null)
+                        if (request.body.group == "reset")
+                            currentMap.tokens[i].group = null;
+                        else
+                            currentMap.tokens[i].group = request.body.group;
+                    if (request.body.initiative != null)
+                        if (request.body.initiative == "reset")
+                            currentMap.tokens[i].initiative = null;
+                        else    
+                            currentMap.tokens[i].initiative = request.body.initiative;
+                    if (request.body.name != null)
+                        currentMap.tokens[i].name = request.body.name;
+                    if (request.body.ac != null)
+                        currentMap.tokens[i].ac = request.body.ac;
+                    if (request.body.hp != null)
+                        currentMap.tokens[i].hp = request.body.hp;
+                    if (request.body.notes != null)
+                        currentMap.tokens[i].notes = request.body.notes;
                 }
             }
-            SaveCurrentMap();
+            saveCurrentMap();
             response.send("[true]");
 
         case "changeStatus":
@@ -134,8 +140,8 @@ app.post("/api", function(request, response) {
             break;
 
         case "removeToken":
-            LoadCurrentMap();
-            if (request.body.id==previousRemovedTokenId && request.body.tokensRemoved < removedTokens)
+            loadCurrentMap();
+            if (request.body.id == previousRemovedTokenId && request.body.tokensRemoved < removedTokens)
             {
                 response.send("[false]");
             }
@@ -151,11 +157,11 @@ app.post("/api", function(request, response) {
                         currentMap.tokens.splice(i, 1);
                     }
                 }
-                for (let i = tokenFound; i<currentMap.tokens.length; i++)
+                for (let i = tokenFound; i < currentMap.tokens.length; i++)
                 {
-                    currentMap.tokens[i].id = currentMap.tokens[i].id-1;
+                    currentMap.tokens[i].id = currentMap.tokens[i].id - 1;
                 }
-                SaveCurrentMap();
+                saveCurrentMap();
                 response.send("[true]");
                 removedTokens++;
                 previousRemovedTokenId = request.body.id;
@@ -163,19 +169,19 @@ app.post("/api", function(request, response) {
             break;
 
         case "moveToken":
-            LoadCurrentMap();
+            loadCurrentMap();
             for (let i in currentMap.tokens)
             {
                 let currentToken = currentMap.tokens[i];
                 if (currentToken.id == request.body.id)
                 {
-                    if (currentMap.tokens[i].group!=null)
+                    if (currentMap.tokens[i].group != null)
                     {
                         let dx = request.body.x - currentMap.tokens[i].x;
                         let dy = request.body.y - currentMap.tokens[i].y;
                         for (let j in currentMap.tokens)
                         {
-                            if (j!=i && currentMap.tokens[j].group == currentMap.tokens[i].group)
+                            if (j != i && currentMap.tokens[j].group == currentMap.tokens[i].group)
                             {
                                 currentMap.tokens[j].x = currentMap.tokens[j].x + dx;
                                 currentMap.tokens[j].y = currentMap.tokens[j].y + dy;
@@ -189,12 +195,12 @@ app.post("/api", function(request, response) {
                     CheckLinkedShapes(currentMap.tokens[i]);
                 }
             }
-            SaveCurrentMap();
+            saveCurrentMap();
             response.send("[true]");
             break;
         
         case "rotateLeft":
-            LoadCurrentMap();
+            loadCurrentMap();
             for (let i in currentMap.tokens)
             {
                 let currentToken = currentMap.tokens[i];
@@ -202,7 +208,7 @@ app.post("/api", function(request, response) {
                 {
                     for (let j in currentMap.tokens)
                     {
-                        if (j!=i && currentMap.tokens[j].group == currentMap.tokens[i].group)
+                        if (j != i && currentMap.tokens[j].group == currentMap.tokens[i].group)
                         {
                             let dx = currentMap.tokens[j].x - currentMap.tokens[i].x;
                             let dy = currentMap.tokens[j].y - currentMap.tokens[i].y;
@@ -214,12 +220,12 @@ app.post("/api", function(request, response) {
                     }
                 }
             }
-            SaveCurrentMap();
+            saveCurrentMap();
             response.send("[true]");
             break;
 
             case "rotateRight":
-                LoadCurrentMap();
+                loadCurrentMap();
                 for (let i in currentMap.tokens)
                 {
                     let currentToken = currentMap.tokens[i];
@@ -227,7 +233,7 @@ app.post("/api", function(request, response) {
                     {
                         for (let j in currentMap.tokens)
                         {
-                            if (j!=i && currentMap.tokens[j].group == currentMap.tokens[i].group)
+                            if (j != i && currentMap.tokens[j].group == currentMap.tokens[i].group)
                             {
                                 let dx = currentMap.tokens[j].x - currentMap.tokens[i].x;
                                 let dy = currentMap.tokens[j].y - currentMap.tokens[i].y;
@@ -238,13 +244,13 @@ app.post("/api", function(request, response) {
                         }
                     }
                 }
-                SaveCurrentMap();
+                saveCurrentMap();
                 response.send("[true]");
                 break;
         
 
         case "addDrawing":
-            LoadCurrentMap();
+            loadCurrentMap();
             let tmpDrawing = {};
             let isShape = false;
             switch(request.body.shape)
@@ -269,30 +275,39 @@ app.post("/api", function(request, response) {
                     tmpDrawing.destX = request.body.destX;
                     tmpDrawing.destY = request.body.destY;
                     break;
+                case "cone":
+                    isShape = true;
+                    tmpDrawing.x = request.body.x;
+                    tmpDrawing.y = request.body.y;
+                    tmpDrawing.destX1 = request.body.destX1;
+                    tmpDrawing.destY1 = request.body.destY1;
+                    tmpDrawing.destX2 = request.body.destX2;
+                    tmpDrawing.destY2 = request.body.destY2;
+                    break;
             }
             if (isShape)
             {
                 tmpDrawing.shape = request.body.shape;
                 tmpDrawing.id = currentMap.drawings.length;
                 tmpDrawing.trueColor = request.body.trueColor;
-                if (request.body.link!=null)
+                if (request.body.link != null)
                     tmpDrawing.link = request.body.link;
                 currentMap.drawings.push(tmpDrawing);
-                SaveCurrentMap();
+                saveCurrentMap();
             }
         
         response.send("[true]");
         break;
 
         case "editDrawing":
-            LoadCurrentMap();
+            loadCurrentMap();
             for (let i in currentMap.drawings)
             {
                 let currentDrawing = currentMap.drawings[i];
                 console.log(currentDrawing);
                 if (currentDrawing.id == request.body.id)
                 {
-                    if (currentMap.drawings[i].shape=="line")
+                    if (currentMap.drawings[i].shape == "line")
                     {
                         let dx = currentMap.drawings[i].destX - currentMap.drawings[i].x;
                         let dy = currentMap.drawings[i].destY - currentMap.drawings[i].y;
@@ -303,13 +318,13 @@ app.post("/api", function(request, response) {
                     currentMap.drawings[i].y = request.body.y;
                 }
             }
-            SaveCurrentMap();
+            saveCurrentMap();
             response.send("[true]");
             break;
 
         case "removeDrawing":
-            LoadCurrentMap();    
-            if (request.body.id==previousRemovedDrawingId && request.body.drawingsRemoved < removedDrawings)
+            loadCurrentMap();    
+            if (request.body.id == previousRemovedDrawingId && request.body.drawingsRemoved < removedDrawings)
             {
                 response.send("[false]");
             }
@@ -326,11 +341,11 @@ app.post("/api", function(request, response) {
                         currentMap.drawings.splice(i, 1);
                     }
                 }
-                for (let i = shapeFound; i<currentMap.drawings.length; i++)
+                for (let i = shapeFound; i < currentMap.drawings.length; i++)
                 {
-                    currentMap.drawings[i].id = currentMap.drawings[i].id-1;
+                    currentMap.drawings[i].id = currentMap.drawings[i].id - 1;
                 }
-                SaveCurrentMap();
+                saveCurrentMap();
                 response.send("[true]");
                 previousRemovedDrawingId = request.body.id;
                 removedDrawings++;
@@ -338,7 +353,7 @@ app.post("/api", function(request, response) {
             break;
 
         case "addBlocker":
-            LoadCurrentMap();    
+            loadCurrentMap();    
             let tmpBlocker = {};
             tmpBlocker.id = currentMap.blockers.length;
             tmpBlocker.x = request.body.x;
@@ -347,11 +362,11 @@ app.post("/api", function(request, response) {
             tmpBlocker.height = request.body.height;
             currentMap.blockers.push(tmpBlocker);
             response.send("[true]");
-            SaveCurrentMap();
+            saveCurrentMap();
             break;
         
         case "editBlocker":
-            LoadCurrentMap();
+            loadCurrentMap();
             for (let i in currentMap.blockers)
             {
                 let currentBlocker = currentMap.blockers[i];
@@ -363,12 +378,12 @@ app.post("/api", function(request, response) {
                     currentMap.blockers[i].height = request.body.height;
                 }
             }
-            SaveCurrentMap();
+            saveCurrentMap();
             response.send("[true]");
             break;
 
         case "removeBlocker":
-            LoadCurrentMap();
+            loadCurrentMap();
             let blockerFound = 0;
             for (let i in currentMap.blockers)
             {
@@ -379,24 +394,24 @@ app.post("/api", function(request, response) {
                     currentMap.blockers.splice(i, 1);
                 }
             }
-            for (let i = blockerFound; i<currentMap.blockers.length; i++)
+            for (let i = blockerFound; i < currentMap.blockers.length; i++)
             {
-                currentMap.blockers[i].id = currentMap.blockers[i].id-1;
+                currentMap.blockers[i].id = currentMap.blockers[i].id - 1;
             }
-            SaveCurrentMap();
+            saveCurrentMap();
             response.send("[true]");
             break;
 
         case "exportMap":
-            console.log("Exporting: "+selectedMap);
-            copyFile(dataFolder+selectedMap+".json", publicFolder+"export/export.json");
+            console.log("Exporting: " + selectedMap);
+            copyFile(dataFolder + selectedMap + ".json", publicFolder + "export/export.json");
             response.send("[true]");
             break;
     }
 });
 
 app.post('/upload', function(req, res) {
-    if (req.body.isDM=='on')
+    if (req.body.isDM == 'on')
     {
         if (!req.files || Object.keys(req.files).length === 0)
         {
@@ -404,7 +419,7 @@ app.post('/upload', function(req, res) {
         }
         let sampleFile = req.files.mapFile;
         console.log(sampleFile);
-        sampleFile.mv(dataFolder+req.files.mapFile.name, function(err)
+        sampleFile.mv(dataFolder + req.files.mapFile.name, function(err)
         {
             if (err)
                 return res.status(500).send(err);
@@ -422,7 +437,7 @@ app.listen(80);
 
 function CheckLinkedShapes(tokenData) 
 {
-    for (let i = 0; i<currentMap.drawings.length; i++)
+    for (let i = 0; i < currentMap.drawings.length; i++)
     {
         if (currentMap.drawings[i].link == tokenData.id)
         {
@@ -432,26 +447,26 @@ function CheckLinkedShapes(tokenData)
     }
 }
 
-function LoadCurrentMap() 
+function loadCurrentMap() 
 {
-    currentMap = JSON.parse(readFile("data/"+selectedMap+".json"));
-    if (currentMap.offsetX==null)
-        currentMap.offsetX=0;
-    if (currentMap.offsetY==null)
-        currentMap.offsetY=0;
+    currentMap = JSON.parse(readFile("data/" + selectedMap + ".json"));
+    if (currentMap.offsetX == null)
+        currentMap.offsetX = 0;
+    if (currentMap.offsetY == null)
+        currentMap.offsetY = 0;
     currentMap.mapName = selectedMap;
-    currentMap.tokenList = readDirectory(publicFolder+"tokens", "jpg|png");
-    currentMap.dmTokenList = readDirectory(publicFolder+"dmTokens", "jpg|png");
-    currentMap.mapSourceList = readDirectory(publicFolder+"maps", "jpg|png");
-    currentMap.maps = ReturnMaps();
+    currentMap.tokenList = readDirectory(publicFolder + "tokens", "jpg|png");
+    currentMap.dmTokenList = readDirectory(publicFolder + "dmTokens", "jpg|png");
+    currentMap.mapSourceList = readDirectory(publicFolder + "maps", "jpg|png");
+    currentMap.maps = returnMaps();
 }
 
-function SaveCurrentMap() 
+function saveCurrentMap() 
 {
-    writeFile("data/"+selectedMap+".json", JSON.stringify(currentMap));
+    writeFile("data/" + selectedMap + ".json", JSON.stringify(currentMap));
 }
 
-function ReturnMaps() 
+function returnMaps() 
 {
     let tmpMaps = readDirectory("data/", "json");
     for (i in tmpMaps)
@@ -464,7 +479,7 @@ function ReturnMaps()
 //#region Low level functions
 function minMax(value, min, max)
 {
-    if (value>min && value<max)
+    if (value > min && value < max)
         return true;
     else
         return false;
@@ -472,15 +487,15 @@ function minMax(value, min, max)
 
 function renameFile(file, newName)
 {
-    try { fs.renameSync(file, pathLib.dirname(file)+"\\"+newName+pathLib.extname(file)); }
-    catch (err) { console.log("Error: "+err); return false; }
+    try { fs.renameSync(file, pathLib.dirname(file) + "\\" + newName + pathLib.extname(file)); }
+    catch (err) { console.log("Error: " + err); return false; }
     return true;
 }
 
 function renameFolder(path, newName) 
 {
-    try { fs.renameSync(path, pathLib.dirname(path)+"\\"+newName); }
-    catch (err) { console.log("Error: "+err); return false;}
+    try { fs.renameSync(path, pathLib.dirname(path) + "\\" + newName); }
+    catch (err) { console.log("Error: " + err); return false;}
     return true;
 }
 
@@ -488,14 +503,14 @@ function readFile(file)
 {
     //Function that synchronously reads a file
     try { return fs.readFileSync(file, 'utf-8') }
-    catch (err) { console.log("Error: "+err); return false;}
+    catch (err) { console.log("Error: " + err); return false;}
 }
 
 function writeFile(file, content) 
 {
     //Function that synchronously writes a file
     try { fs.writeFileSync(file, content, 'utf-8'); }
-    catch(err) { console.log("Error: "+err); return false;}
+    catch(err) { console.log("Error: " + err); return false;}
     return true;
 }
 
@@ -503,34 +518,34 @@ function readFileHex(file)
 {
     //Function that synchronously reads a file
     try { return fs.readFileSync(file, 'hex') }
-    catch (err) { console.log("Error: "+err); return false;}
+    catch (err) { console.log("Error: " + err); return false;}
 }
 
 function writeFileHex(file, content) 
 {
     //Function that synchronously writes a file
     try { fs.writeFileSync(file, content, 'hex'); }
-    catch(err) { console.log("Error: "+err); return false;}
+    catch(err) { console.log("Error: " + err); return false;}
     return true;
 }
 
 function deletefile(file) 
 {
     try { fs.unlinkSync(file); }
-    catch(err) { console.log("Error: "+err); return false;}
+    catch(err) { console.log("Error: " + err); return false;}
     return true;
 }
 
 function fileExists(file) 
 {
     try { return fs.existsSync(file); }
-    catch(err) { console.log("Error: "+err);}
+    catch(err) { console.log("Error: " + err);}
 }
 
 function copyFile(source, destination) 
 {
     try { fs.copyFileSync(source, destination); }
-    catch (err) { console.log("Error: "+err); return false;}
+    catch (err) { console.log("Error: " + err); return false;}
     return true;
 }
 
@@ -550,10 +565,10 @@ function readDirectory(path, filter)
     //Filter function
     var returnData = [];
     var fileTypes = filter.split("|");
-        for (var i = 0; i<dirData.length; i++) 
+        for (var i = 0; i < dirData.length; i++) 
         {
             var correctType = false;
-            for (var j = 0; j<fileTypes.length; j++)
+            for (var j = 0; j < fileTypes.length; j++)
             {
                 if (dirData[i].includes(fileTypes[j])) 
                 {
@@ -565,7 +580,7 @@ function readDirectory(path, filter)
                 returnData.push(dirData[i]);
             }
         }
-    } catch (err) { console.log("Error: "+err); return false;}
+    } catch (err) { console.log("Error: " + err); return false;}
     //Return array with only file types described in "filter"
     return returnData;
 }
@@ -573,7 +588,7 @@ function readDirectory(path, filter)
 function createDirectory(path) 
 {
     try { fs.mkdirSync(path); }
-    catch (err) { console.log("Error: "+err); return false;}
+    catch (err) { console.log("Error: " + err); return false;}
     return true;
 }
 
@@ -583,7 +598,7 @@ function deleteDirectory(path)
     {
         if( fs.existsSync(path) ) 
         {
-            fs.readdirSync(path).forEach(function(file,index)
+            fs.readdirSync(path).forEach(function(file, index)
             {
                 var curPath = path + "/" + file;
                 if(fs.lstatSync(curPath).isDirectory())
@@ -598,7 +613,7 @@ function deleteDirectory(path)
             fs.rmdirSync(path);
         }
     }
-    catch(err) { console.log("Error: "+err); return false;}
+    catch(err) { console.log("Error: " + err); return false;}
     return true;
 }
 
@@ -607,14 +622,13 @@ function deleteDirectory(path)
 //#region Cookies
 function GetCookie(request, cookieName) 
 {
-    let cookies = request.headers.cookie.replace(/ /g,'').split(";");
+    let cookies = request.headers.cookie.replace(/ /g, '').split(";");
     for (let i in cookies)
     {
         let splitCookie = cookies[i].split("=");
-        if (splitCookie[0]==cookieName)
+        if (splitCookie[0] == cookieName)
             return splitCookie[1];
     }
     return "No cookie!";
 }
 //#endregion
-
