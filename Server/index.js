@@ -9,6 +9,7 @@ let publicFolder = __dirname+"/client/public/";
 var currentMap;
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+app.use(fileUpload());
 LoadCurrentMap();
 
 app.post("/api", function(request, response) {
@@ -32,9 +33,15 @@ app.post("/api", function(request, response) {
                 tmpToken.image = request.body.image;
                 tmpToken.size = request.body.size;
                 tmpToken.status = request.body.status;
+                if (request.body.hidden!=null)
+                    tmpToken.hidden = request.body.hidden;
                 currentMap.tokens.push(tmpToken);
                 response.send("[true]");
                 SaveCurrentMap();
+            }
+            else
+            {
+                response.send("[false]");
             }
             break;
         
@@ -45,8 +52,11 @@ app.post("/api", function(request, response) {
                 let currentToken = currentMap.tokens[i];
                 if (currentToken.id == request.body.id)
                 {
-                    currentMap.tokens[i].status = request.body.status;
-                    currentMap.tokens[i].size = request.body.size;
+                    if (minMax(request.body.size, 0, 20))
+                    {
+                        currentMap.tokens[i].status = request.body.status;
+                        currentMap.tokens[i].size = request.body.size;
+                    }
                 }
             }
             SaveCurrentMap();
@@ -99,7 +109,7 @@ app.post("/api", function(request, response) {
             switch(request.body.shape)
             {
                 case "circle":
-                    if (minMax(request.body.radius, 0, 2000))
+                    if (minMax(request.body.radius, 0, 200))
                     {
                         isShape = true;
                     }
@@ -202,6 +212,32 @@ app.post("/api", function(request, response) {
             SaveCurrentMap();
             response.send("[true]");
             break;
+
+        case "exportMap":
+            copyFile(dataFolder+"currentSettings.json", publicFolder+"export/currentSettings.json");
+            response.send("[true]");
+            break;
+    }
+});
+
+app.post('/upload', function(req, res) {
+    if (req.body.isDM=='on')
+    {
+        if (!req.files || Object.keys(req.files).length === 0)
+        {
+            return res.status(400).send('No files were uploaded.');
+        }
+        let sampleFile = req.files.mapFile;
+        sampleFile.mv(dataFolder+'currentSettings.json', function(err)
+        {
+            if (err)
+                return res.status(500).send(err);
+            res.send('File uploaded!');
+        });
+    }
+    else
+    {
+        res.send("false");
     }
 });
 

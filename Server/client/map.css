@@ -1,5 +1,6 @@
 :root {
     --blocker-color: rgb(0, 0, 0);
+    --blocker-opacity: 1;
     --token-index: 4;
 }
 
@@ -7,6 +8,20 @@ body {
     margin: 0px;
     background-color: rgb(53, 53, 53);
     z-index: -2;
+}
+
+#buttonDiv {
+    position: fixed;
+    right: 0;
+    z-index: 999;
+}
+
+#buttonDiv input {
+    padding: 0;
+    font-size: 1vw;
+    width: 8vw;
+    height: 3vw;
+    margin-bottom: 0.5vw;
 }
 
 #shapeMap {
@@ -36,7 +51,7 @@ body {
     padding: 0px;
     z-index: 3;
     background-color: var(--blocker-color);
-    resize: both;
+    opacity: var(--blocker-opacity);
     overflow: hidden;
 }
 
@@ -50,36 +65,54 @@ body {
     z-index: var(--token-index);
 }
 
+.hiddenToken {
+    position: absolute;
+    z-index: 10;
+    pointer-events:none;
+}
+
 .custom-menu {
-    width: 100px;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    width: 10vw;
+    height: 25vh;
     display: none;
     z-index: 1000;
     position: absolute;
-    overflow: hidden;
-    border: 1px solid rgb(100, 100, 100);
+    border: 0.25vw solid rgb(100, 100, 100);
     white-space: nowrap;
     font-family: sans-serif;
     background: rgb(50, 50, 50);
     color: rgb(128, 128, 128);
-    border-radius: 5px;
+    border-radius: 0.25vw;
     list-style: none;
     padding: 0px;
 }
 
-.custom-menu li {
-    font-size: 0.75em;
-    padding: 8px 6px;
-    padding-left: 2px;
-    cursor: pointer;
+.custom-menu::-webkit-scrollbar {
+    width: 0.5vw;
 }
 
-.custom-menu li:hover {
+.custom-menu::-webkit-scrollbar-track {
+    opacity: 0;
+}
+
+.custom-menu::-webkit-scrollbar-thumb {
+    border-radius: 1vh;
+    background: #c2c9d2;
+}
+
+.custom-menu-element:hover {
     background-color: rgb(75, 75, 75);
 }
 
 .custom-menu-element {
-    align-content: center;
-    text-align: left;
-    width: auto;
-    height: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1vw;
+    cursor: pointer;
+    
+    width: 10vw;
+    height: 5vh;
 }

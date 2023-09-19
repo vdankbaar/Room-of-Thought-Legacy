@@ -1,7 +1,5 @@
 let GridActive = true;
 let GridColor = "#222222FF";
-let blockColorPlayer = "#000000FF";
-let blockColorDM = "#00000099";
 let shapeColor = "#FF0000";
 let shapeWidth = 2;
 let GridLineWidth = 1;
@@ -16,7 +14,7 @@ var shapeCanvas;
 var hitboxCanvas;
 var mapData;
 var gridSize;
-let mapUpdateInterval = 2000;
+let mapUpdateInterval = 1500;
 let tokenDragOffset = {x: 0, y: 0};
 let blockerDragOffset = {x: 0, y: 0};
 let blockerMarkers = {x: 0, y: 0, width: 0, height: 0};
@@ -29,14 +27,21 @@ let feetPerSquare = 5;
 let isPlacingBlocker = false;
 let isPlacingSquare = false;
 let isPlacingLine = false;
-let pauseBlockerUpdate = false;
+let isDraggingBlocker = false;
+let draggedBlocker = {x: 0, y: 0};
+let hiddenMapImportButton = document.getElementById("fileImport");
 
 window.onload = function() {
     if (getCookie("isDM")==1)
     {
         isDM = true;
+        document.getElementById("hiddenDMCheckbox").checked = isDM;
     }
-
+    else
+    {
+        document.getElementById("buttonDiv").parentElement.removeChild(document.getElementById("buttonDiv"));
+    }
+        
     while (clientName=="")
     {
         clientName = prompt("Please enter you name:");
@@ -44,7 +49,11 @@ window.onload = function() {
     }
 }
 
-
+let exportButton = document.getElementById("exportMap");
+exportButton.onclick = function() {
+    RequestServer({c: "exportMap"});
+    window.open("/public/export/currentSettings.json");
+}
 
 MainScript();
 async function MainScript() {
@@ -67,6 +76,24 @@ async function UpdateMapData()
     }
 }
 
+document.getElementById("importMap").onclick = function() {
+    hiddenMapImportButton.click();
+}
+
+hiddenMapImportButton.onchange = function() {
+    console.log("Changed")
+    document.getElementById("submitMap").click();
+    UpdateMapData();
+}
+
+//#region Side buttons
+let colorPicker = document.getElementById("shapeColorPicker");
+colorPicker.onchange = function() {
+    shapeColor = colorPicker.value;
+}
+//#endregion
+
+
 //#region Drawing functions
 function drawCanvas()
 {
@@ -84,12 +111,12 @@ function drawCanvas()
     hitboxCanvas.translate(0.5, 0.5);
     if (isDM)
     {
-        document.body.style.setProperty("--blocker-color", "#00000080");
+        document.body.style.setProperty("--blocker-opacity", "0.5");
         document.body.style.setProperty("--token-index", 4);
     }
     else
     {
-        document.body.style.setProperty("--blocker-color", "#000000");
+        document.body.style.setProperty("--blocker-opacity", "1");
         document.body.style.setProperty("--token-index", 2);
     }
     gridSize = (map.width/mapData.x + map.height/mapData.y)/2;
@@ -125,7 +152,7 @@ function drawShapes()
 
 function drawCircle(index, shape) 
 {
-    shapeCanvas.strokeStyle = shapeColor;
+    shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
     shapeCanvas.beginPath();
     shapeCanvas.arc(shape.x, shape.y, shape.radius, 0, 2*Math.PI);
@@ -139,7 +166,6 @@ function drawCircle(index, shape)
     }
         
     colorString+=hex;
-    //console.log(colorString);
     hitboxCanvas.strokeStyle = colorString;
     hitboxCanvas.lineWidth = shapeWidth*3;
     hitboxCanvas.beginPath();
@@ -149,7 +175,7 @@ function drawCircle(index, shape)
 
 function drawSquare(index, shape) 
 {
-    shapeCanvas.strokeStyle = shapeColor;
+    shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
     shapeCanvas.beginPath();
     shapeCanvas.rect(shape.x, shape.y, shape.width, shape.height);
@@ -173,7 +199,7 @@ function drawSquare(index, shape)
 
 function drawLine(index, shape) 
 {
-    shapeCanvas.strokeStyle = shapeColor;
+    shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
     shapeCanvas.beginPath();
     shapeCanvas.moveTo(shape.x, shape.y);
@@ -210,7 +236,7 @@ function drawMap()
 
 function drawBlockers() 
 {
-    if (!pauseBlockerUpdate)
+    if (!isDraggingBlocker)
     {
         blockersDiv.innerHTML = "";
         for (let i in mapData.blockers)
@@ -218,15 +244,19 @@ function drawBlockers()
             let currentBlocker = mapData.blockers[i];
             let tmpBlocker = document.createElement("div");
             let randomExtraBlocker = document.createElement("div");
-            tmpBlocker.appendChild(randomExtraBlocker);
             tmpBlocker.className = "blocker";
             tmpBlocker.style.left = currentBlocker.x;
             tmpBlocker.style.top = currentBlocker.y;
             tmpBlocker.style.width = currentBlocker.width;
             tmpBlocker.style.height = currentBlocker.height;
+            if (isDM)
+                tmpBlocker.style.resize = "both";
             randomExtraBlocker.style.width = currentBlocker.width;
             randomExtraBlocker.style.height = currentBlocker.height;
-            randomExtraBlocker.draggable = true;
+            if (isDM)
+                randomExtraBlocker.draggable = true;
+            tmpBlocker.appendChild(randomExtraBlocker);
+
             tmpBlocker.addEventListener("contextmenu", function(e) {
                 e.preventDefault();
                 let menuOptions = [];
@@ -245,29 +275,37 @@ function drawBlockers()
             if (isDM)
             {
                 tmpBlocker.addEventListener("mousedown", function(e) {
-                    pauseBlockerUpdate = true;
+                    isDraggingBlocker = true;
                 })
                 tmpBlocker.addEventListener("mouseup", function(e) {
-                    pauseBlockerUpdate = false;
+                    isDraggingBlocker = false;
                     randomExtraBlocker.style.width = currentBlocker.width;
                     randomExtraBlocker.style.height = currentBlocker.height;
                     RequestServer({c: "editBlocker", id: currentBlocker.id, x: currentBlocker.x, y: currentBlocker.y, width: tmpBlocker.offsetWidth, height: tmpBlocker.offsetHeight});
                     UpdateMapData();
                 })
                 randomExtraBlocker.addEventListener("dragstart", function(e) {
-                    pauseBlockerUpdate = true;
+                    isDraggingBlocker = true;
                     randomExtraBlocker.style.backgroundColor = "#000000";
                     blockerDragOffset.x = currentBlocker.x - e.pageX;
                     blockerDragOffset.y = currentBlocker.y - e.pageY;
                 })
                 randomExtraBlocker.addEventListener("dragend", function(e) {
-                    pauseBlockerUpdate = false;
-                    if (isDM)
-                        randomExtraBlocker.style.backgroundColor = "#00000000";
-                    let newX = e.pageX + blockerDragOffset.x;
-                    let newY = e.pageY + blockerDragOffset.y;
-                    RequestServer({c: "editBlocker", id: currentBlocker.id, x: newX, y: newY, width: currentBlocker.width, height: currentBlocker.height});
-                    UpdateMapData();
+                    e.preventDefault();
+                    if (isDraggingBlocker)
+                    {
+                        isDraggingBlocker = false;
+                        console.log(draggedBlocker);
+
+                        let newX = draggedBlocker.x + blockerDragOffset.x;
+                        let newY = draggedBlocker.y + blockerDragOffset.y;
+                        RequestServer({c: "editBlocker", id: currentBlocker.id, x: newX, y: newY, width: tmpBlocker.offsetWidth, height: tmpBlocker.offsetHeight});
+                        UpdateMapData();
+                    }
+                    e.stopPropagation();
+                })
+                randomExtraBlocker.addEventListener("dragover", function(e) {
+                    e.preventDefault();
                 })
             }
             blockersDiv.appendChild(tmpBlocker);
@@ -315,25 +353,31 @@ function createToken(token)
     imageElement.style.left = token.x - (gridSize*token.size)/2;
     imageElement.title = token.status;
     imageElement.draggable = true;
+    if (token.hidden!=null)
+    {
+        if (!isDM)
+            return;
+        let hiddenImage = document.createElement("img");
+        hiddenImage.src = "public/hidden.png";
+        hiddenImage.className = "hiddenToken";
+        hiddenImage.style.width = (token.size * gridSize/3).toString()+"px";
+        hiddenImage.style.height = (token.size * gridSize/3).toString()+"px";
+        hiddenImage.style.top = token.y - (gridSize*token.size)/2;
+        hiddenImage.style.left = token.x - (gridSize*token.size)/2;
+        //hiddenImage.addEventListener("dragstart", function(e) { e.preventDefault(); });
+        tokensDiv.appendChild(hiddenImage);
+    }
+    
 
     imageElement.addEventListener("dragstart", function(e) {
         tokenDragOffset.x = token.x - e.pageX;
         tokenDragOffset.y = token.y - e.pageY;
-        startDrag(token.id);
+        draggingToken = token.id;
+        isDraggingToken = true;
     })
 
     imageElement.addEventListener("dragover", function(e) {
         e.preventDefault();
-    })
-
-    imageElement.addEventListener("dragend", async function(e) {
-        if (isDraggingToken)
-        {
-            await RequestServer({c: "moveToken", id: draggingToken, x: e.pageX+tokenDragOffset.x, y: e.pageY+tokenDragOffset.y});
-            UpdateMapData();
-            isDraggingToken = false;
-            draggingToken = -1;
-        }
     })
 
     imageElement.addEventListener("contextmenu", function(e) {
@@ -351,7 +395,20 @@ function createToken(token)
                         let tokenSize = parseInt(prompt("Please enter the size of the token"));
                         if (tokenSize!=null)
                         {
-                            RequestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status});
+                            if (isDM)
+                            {
+                                if (tokenSize < 20 && tokenSize>0)
+                                    RequestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status});
+                                else
+                                    alert("The desired size is too large or invalid");
+                            }
+                            else
+                            {
+                                if (tokenSize < 6 && tokenSize>0)
+                                    RequestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status});
+                                else
+                                    alert("That token size isn't allowed for players");
+                            }   
                         }
                     }},
                     {text: "Change status", callback: function() {
@@ -379,11 +436,27 @@ shapeMap.addEventListener("dragover", function(e) {
     e.preventDefault();
 })
 
-function startDrag(id)
+shapeMap.addEventListener("dragend", function() {
+    e.preventDefault();
+    e.stopPropagation();
+})
+
+document.body.ondrop = async function(e) 
 {
-    console.log("dragging");
-    draggingToken = id;
-    isDraggingToken = true;
+    e.preventDefault();
+    e.stopPropagation();
+    if (isDraggingToken)
+    {
+        await RequestServer({c: "moveToken", id: draggingToken, x: e.pageX+tokenDragOffset.x, y: e.pageY+tokenDragOffset.y});
+        UpdateMapData();
+        isDraggingToken = false;
+        draggingToken = -1;
+    }
+    if (isDraggingBlocker)
+    {
+        draggedBlocker.x = e.pageX;
+        draggedBlocker.y = e.pageY;
+    }
 }
 //#endregion
 
@@ -391,18 +464,28 @@ function startDrag(id)
 shapeMap.addEventListener("click", function(e) {
     if (isPlacingBlocker)
     {
-        blockerMarkers.width = e.pageX-blockerMarkers.x;
-        blockerMarkers.height = e.pageY-blockerMarkers.y;
-        RequestServer({c: "addBlocker", x: blockerMarkers.x, y: blockerMarkers.y, width: blockerMarkers.width, height: blockerMarkers.height});
-        UpdateMapData();
+        if (isDM)
+        {
+            blockerMarkers.width = e.pageX-blockerMarkers.x;
+            blockerMarkers.height = e.pageY-blockerMarkers.y;
+            RequestServer({c: "addBlocker", x: blockerMarkers.x, y: blockerMarkers.y, width: blockerMarkers.width, height: blockerMarkers.height});
+            UpdateMapData();
+        }
         isPlacingBlocker = false;
     }
     if (isPlacingSquare)
     {
         squareMarkers.width = e.pageX - squareMarkers.x;
         squareMarkers.height = e.pageY - squareMarkers.y;
-        RequestServer({c: "addDrawing", shape: "square", x: squareMarkers.x, y: squareMarkers.y, width: squareMarkers.width, height: squareMarkers.height, trueColor: shapeColor});
-        UpdateMapData();
+        if (squareMarkers.width>=-map.width && squareMarkers.width<=map.width && squareMarkers.height>=-map.height && squareMarkers.height<=map.height)
+        {
+            RequestServer({c: "addDrawing", shape: "square", x: squareMarkers.x, y: squareMarkers.y, width: squareMarkers.width, height: squareMarkers.height, trueColor: shapeColor});
+            UpdateMapData();
+        }
+        else
+        {
+            alert("That square was too large or too small");
+        }
         isPlacingSquare = false;
     }
     if (isPlacingLine)
@@ -414,8 +497,8 @@ shapeMap.addEventListener("click", function(e) {
         let distance = Math.sqrt(Math.pow((dx), 2) + Math.pow((dy), 2));
         if (distance>lineMarkers.range)
         {    
-            lineMarkers.destX = lineMarkers.x + dx/distance*lineRange;
-            lineMarkers.destY = lineMarkers.y + dy/distance*lineRange;
+            lineMarkers.destX = lineMarkers.x + dx/distance*lineMarkers.range;
+            lineMarkers.destY = lineMarkers.y + dy/distance*lineMarkers.range;
         }
         RequestServer({c: "addDrawing", shape: "line", x: lineMarkers.x, y: lineMarkers.y, destX: lineMarkers.destX, destY: lineMarkers.destY, trueColor: shapeColor});
         UpdateMapData();
@@ -431,6 +514,7 @@ map.addEventListener("contextmenu", function(e) {
 shapeMap.addEventListener("contextmenu", function(e) {
     e.preventDefault();
     let pixel = hitboxCanvas.getImageData(e.pageX, e.pageY, 1, 1).data;
+    console.log(pixel);
     if (pixel[0]==0 && pixel[1]==0 && pixel[2]==0 && pixel[3]==0)
     {
         DisplayContextMenu(e);
@@ -443,18 +527,9 @@ shapeMap.addEventListener("contextmenu", function(e) {
 
 function ShapeContextMenu(e, pixel)
 {
-    
-    let colorString = "#";
-    let hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
-    console.log(hex);
-    for (let f = 0; f<(6-hex.length); f++)
-    {
-        colorString += "0";
-    }
-    colorString+=hex;
-    console.log(colorString);
-    
-    let shapeId = colorToSigned24Bit(colorString)/16;
+    let testString = "#"+decToHex(pixel[0]) + decToHex(pixel[1]) + decToHex(pixel[2]);
+    console.log(testString);
+    let shapeId = colorToSigned24Bit(testString)/16;
     if (shapeId%1 == 0)
     {
         let menuOptions = [
@@ -473,6 +548,7 @@ function DisplayContextMenu(e)
         {text: "Place Token", hasSubMenu: true, callback: async function() {
             let subMenu = [];
             let tokenList = mapData.tokenList;
+            let dmTokenList = mapData.dmTokenList;
             for (let i in tokenList)
             {
                 let tmpElement = {};
@@ -486,11 +562,55 @@ function DisplayContextMenu(e)
                     }
                     else
                     {
-                        RequestServer({c: "createToken", x: e.pageX, y: e.pageY, image: tokenList[i], size: tokenSize, status: ""})
-                        console.log("Placing "+tokenList[i]+" with size"+tokenSize+" at "+e.pageX.toString()+":"+e.pageY.toString());
+                        if (isDM)
+                        {
+                            if (tokenSize < 20 && tokenSize>0)
+                            {
+                                RequestServer({c: "createToken", x: e.pageX, y: e.pageY, image: tokenList[i], size: tokenSize, status: ""})
+                                console.log("Placing "+tokenList[i]+" with size"+tokenSize+" at "+e.pageX.toString()+":"+e.pageY.toString());
+                            }
+                            else
+                            {
+                                alert("The desired size is too large or invalid");
+                            }
+                        }
+                        else
+                        {
+                            if (tokenSize < 6 && tokenSize>0)
+                            {
+                                RequestServer({c: "createToken", x: e.pageX, y: e.pageY, image: tokenList[i], size: tokenSize, status: ""})
+                                console.log("Placing "+tokenList[i]+" with size"+tokenSize+" at "+e.pageX.toString()+":"+e.pageY.toString());
+                            }
+                            else
+                            {
+                                alert("That token size isn't allowed for players");
+                            }
+                        }
                     }
                 }
                 subMenu.push(tmpElement);
+            }
+            if (isDM)
+            {
+                for (let i in dmTokenList)
+                {
+                    let tmpElement = {};
+                    tmpElement.text = dmTokenList[i].substring(0, dmTokenList[i].length-4);
+                    tmpElement.callback = function() 
+                    {
+                        let tokenSize = parseInt(prompt("Please enter the size of the token"));
+                        if (tokenSize==null)
+                        {
+                            alert("That wasn't a valid size! Please try again!");
+                        }
+                        else
+                        {
+                            RequestServer({c: "createToken", x: e.pageX, y: e.pageY, image: dmTokenList[i], size: tokenSize, status: ""})
+                            console.log("Placing "+dmTokenList[i]+" with size"+tokenSize+" at "+e.pageX.toString()+":"+e.pageY.toString());
+                        }
+                    }
+                    subMenu.push(tmpElement);
+                }
             }
             DisplaySubMenu(e, subMenu);
         }},
@@ -524,9 +644,10 @@ function DisplayContextMenu(e)
         }}
     ]
     let DMoptions = [
-        {text: "Place DM Token", hasSubMenu: true, callback: async function() {
+        {text: "Place hidden Token", hasSubMenu: true, callback: async function() {
             let subMenu = [];
-            let tokenList = mapData.dmTokenList;
+            let tokenList = mapData.tokenList;
+            let dmTokenList = mapData.dmTokenList;
             for (let i in tokenList)
             {
                 let tmpElement = {};
@@ -540,11 +661,40 @@ function DisplayContextMenu(e)
                     }
                     else
                     {
-                        RequestServer({c: "createToken", x: e.pageX, y: e.pageY, image: tokenList[i], size: tokenSize, status: ""})
-                        console.log("Placing "+tokenList[i]+" with size"+tokenSize+" at "+e.pageX.toString()+":"+e.pageY.toString());
+                        if (tokenSize < 20 && tokenSize>0)
+                        {
+                            RequestServer({c: "createToken", x: e.pageX, y: e.pageY, image: tokenList[i], size: tokenSize, status: "", hidden: true})
+                            console.log("Placing hidden "+tokenList[i]+" with size "+tokenSize+" at "+e.pageX.toString()+":"+e.pageY.toString());
+                        }
+                        else
+                        {
+                            alert("The desired size is too large or invalid");
+                        }
                     }
                 }
                 subMenu.push(tmpElement);
+            }
+            if (isDM)
+            {
+                for (let i in dmTokenList)
+                {
+                    let tmpElement = {};
+                    tmpElement.text = dmTokenList[i].substring(0, dmTokenList[i].length-4);
+                    tmpElement.callback = function() 
+                    {
+                        let tokenSize = parseInt(prompt("Please enter the size of the token"));
+                        if (tokenSize==null)
+                        {
+                            alert("That wasn't a valid size! Please try again!");
+                        }
+                        else
+                        {
+                            RequestServer({c: "createToken", x: e.pageX, y: e.pageY, image: dmTokenList[i], size: tokenSize, status: "", hidden: true})
+                            console.log("Placing "+dmTokenList[i]+" with size"+tokenSize+" at "+e.pageX.toString()+":"+e.pageY.toString());
+                        }
+                    }
+                    subMenu.push(tmpElement);
+                }
             }
             DisplaySubMenu(e, subMenu);
         }},
@@ -586,9 +736,20 @@ window.onclick = function(event)
         customMenu.innerHTML="";
         if (listData.length>0)
         {
+            let tmpHeight = listData.length * 5;
+            if (tmpHeight>25)
+            {
+                tmpHeight = 25;
+                customMenu.style.overflowY = "scroll";
+            }
+            else
+            {
+                customMenu.style.overflowY = "auto";
+            }
             customMenu.style.display = "block";
             customMenu.style.top = event.pageY.toString()+"px";
             customMenu.style.left = event.pageX.toString()+"px";
+            customMenu.style.height = tmpHeight+"vh";
             for (let p in listData)
             {
                 let listItem = document.createElement('li');
@@ -618,7 +779,18 @@ window.onclick = function(event)
         customSubMenu.innerHTML="";
         if (listData.length>0)
         {
+            let tmpHeight = listData.length * 5;
+            if (tmpHeight>25)
+            {
+                tmpHeight = 25;
+                customSubMenu.style.overflowY = "scroll";
+            }
+            else
+            {
+                customSubMenu.style.overflowY = "auto";
+            }
             customSubMenu.style.display = "block";
+            customSubMenu.style.height = tmpHeight+"vh";
             customSubMenu.style.top = event.pageY.toString()+"px";
             customSubMenu.style.left = (event.pageX+customMenu.offsetWidth).toString()+"px";
             for (let p in listData) 
@@ -647,10 +819,14 @@ function colorToSigned24Bit(s) {
     return (parseInt(s.substr(1), 16) << 8) / 256;
 }
 
-function rgbToHex(r, g, b) {
-    if (r > 255 || g > 255 || b > 255)
-        throw "Invalid color component";
-    return ((r << 16) | (g << 8) | b).toString(16);
+function decToHex(num)
+{
+    let tmpHex = num.toString(16);
+    while (tmpHex.length<2)
+    {
+        tmpHex="0"+tmpHex;
+    }
+    return tmpHex;
 }
 
 function getAncestry(el) {

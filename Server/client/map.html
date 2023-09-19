@@ -12,12 +12,28 @@
         <div id="testBlocker">
             <div></div>
         </div>
-        <img id="hiddenMapLoader" width="0" height="0" src="public/current.jpg">
+        <img id="hiddenMapLoader" width="0" height="0" src="">
         <canvas id="shapeMap" width="1280" height="720"></canvas>
         <canvas id="map" width="1280" height="720"></canvas>
         <canvas id="hitboxMap" width="1280" height="720"></canvas>
         <ul id="contextMenu" class='custom-menu' oncontextmenu="event.preventDefault();"></ul>
         <ul id="subContextMenu" class='custom-menu' oncontextmenu="event.preventDefault();"></ul>
+        <div id="buttonDiv">
+            <input type=color id="shapeColorPicker" value="#ff0000">
+            <br>
+            <input id="importMap" type="button" class="btn" value="Load Map"></label>
+            <br>
+            <input type="button" id="exportMap" class="sideButtons" value="Export Map"></button>
+            <br>
+            <form id="fileForm" style="visibility:hidden;" action='/upload' method='post' encType="multipart/form-data" target="hiddenFrame">
+                <input id="fileImport" name="mapFile" type="file" accept=".json">
+                <br>
+                <input id="hiddenDMCheckbox" name="isDM" type="checkbox">
+                <br>
+                <input type="submit" id="submitMap">
+            </form>
+        </div>
     </body>
     <script type="module" src="map.js"></script>
+    <iframe name="hiddenFrame" width="0" height="0" style="display: none;"></iframe>
 </html>
