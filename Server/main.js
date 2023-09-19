@@ -1,5 +1,5 @@
 //Mocht port 80 geblokeerd zijn door windows, voer de command 'net stop http' uit in een shell met admin
-let port = 80;
+let port = 6969;
 
 const fs = require('fs');
 const pathLib = require('path');
@@ -357,6 +357,7 @@ app.post("/api", function(request, response) {
                     isShape = true;
                     tmpDrawing.x = request.body.x;
                     tmpDrawing.y = request.body.y;
+                    tmpDrawing.is90Deg = request.body.is90Deg;
                     tmpDrawing.angle = request.body.angle;
                     tmpDrawing.range = request.body.range;
                     break;

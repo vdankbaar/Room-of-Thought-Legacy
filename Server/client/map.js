@@ -295,6 +295,10 @@ document.getElementById("toggleSnapButton").onclick = function() {
 let displayMapSettings = false;
 let mapOptionsMenu = document.getElementById("mapOptionsMenu");
 document.getElementById("toggleSettingsButton").onclick = function() {
+    if (!(bulkInitGeneratorScreen.style.display=="none" || bulkInitGeneratorScreen.style.display=="")) {
+        document.getElementById("openBulkGenerator").click();
+    }
+    
     if (displayMapSettings)
         mapOptionsMenu.style.display = "none";
     else
@@ -457,7 +461,11 @@ function drawShapes()
                     break;
     
                 case "cone":
-                    drawCone(k, currentShape);
+                    if (currentShape.is90Deg) {
+                        draw90Cone(k, currentShape)
+                    } else {
+                        drawCone(k, currentShape);
+                    }
                     break;
                 
                 case "5ftLine":
@@ -714,6 +722,48 @@ function drawCone(index, shape)
     hitboxCanvas.moveTo(originX, originY);
     hitboxCanvas.lineTo(destX1, destY1);
     hitboxCanvas.lineTo(destX2, destY2);
+    hitboxCanvas.lineTo(originX, originY);
+    hitboxCanvas.stroke();
+}
+
+function draw90Cone(index, shape) {
+    let angle = shape.angle;
+    let linkedToken = returnToken(shape.link);
+    let originX = shape.x + Math.cos(angle)*0.5*linkedToken.size*gridSize;
+    let originY = shape.y +  Math.sin(angle)*0.5*linkedToken.size*gridSize;
+
+    let destX1 = originX + Math.cos(angle+0.25*Math.PI) * shape.range * gridSize;
+    let destY1 = originY + Math.sin(angle+0.25*Math.PI) * shape.range * gridSize;
+
+    let destX2 = originX + Math.cos(angle-0.25*Math.PI) * shape.range * gridSize;
+    let destY2 = originY + Math.sin(angle-0.25*Math.PI) * shape.range * gridSize;
+
+    shapeCanvas.strokeStyle = shape.trueColor;
+    shapeCanvas.lineWidth = shapeWidth;
+    shapeCanvas.beginPath();
+    shapeCanvas.moveTo(originX, originY);
+    shapeCanvas.lineTo(destX1, destY1);
+    let extendedRange = Math.sqrt(Math.pow(destX1 - originX, 2) + Math.pow(destY1 - originY, 2));
+    shapeCanvas.arc(originX, originY, extendedRange, angle+0.25*Math.PI, angle-0.25*Math.PI, true);
+    shapeCanvas.moveTo(destX2, destY2);
+    shapeCanvas.lineTo(originX, originY);
+    shapeCanvas.stroke();
+
+    let colorString = "#";
+    let hex = ((parseInt(index) + 1) * 16).toString(16);
+    for (let f = 0; f < (6 - hex.length); f++)
+    {
+        colorString += "0";
+    }
+
+    colorString += hex;
+    hitboxCanvas.strokeStyle = colorString;
+    hitboxCanvas.lineWidth = shapeWidth * hitboxMultiplier;
+    hitboxCanvas.beginPath();
+    hitboxCanvas.moveTo(originX, originY);
+    hitboxCanvas.lineTo(destX1, destY1);
+    hitboxCanvas.arc(originX, originY, extendedRange, angle+0.25*Math.PI, angle-0.25*Math.PI, true);
+    hitboxCanvas.moveTo(destX2, destY2);
     hitboxCanvas.lineTo(originX, originY);
     hitboxCanvas.stroke();
 }
@@ -1447,6 +1497,20 @@ function createToken(token)
                             let rangeInput = parseFloat(prompt("Please enter the desired range in feet for your cone"));
                             if (!isNaN(rangeInput))
                             {
+                                coneMarkers.is90Deg = false;
+                                coneMarkers.x = token.x;
+                                coneMarkers.y = token.y;
+                                coneMarkers.range = rangeInput / feetPerSquare;
+                                coneMarkers.linkId = token.id;
+                                isPlacingCone = true;
+                                drawCanvas();
+                            }
+                        }},
+                        {text: "Draw 90° Cone", callback: function() {
+                            let rangeInput = parseFloat(prompt("Please enter the desired range in feet for your cone"));
+                            if (!isNaN(rangeInput))
+                            {
+                                coneMarkers.is90Deg = true;
                                 coneMarkers.x = token.x;
                                 coneMarkers.y = token.y;
                                 coneMarkers.range = rangeInput / feetPerSquare;
@@ -2033,6 +2097,10 @@ document.getElementById("invertBlockerButton").onclick = function() {
 }
 
 document.getElementById("openBulkGenerator").onclick = function() {
+    if (displayMapSettings) {
+        document.getElementById("toggleSettingsButton").click();
+    }
+    
     if (bulkInitGeneratorScreen.style.display=="none" || bulkInitGeneratorScreen.style.display=="")
         bulkInitGeneratorScreen.style.display = "block";
     else
@@ -2279,6 +2347,9 @@ window.addEventListener("mouseup", async function(e) {
             resizer.style.right = (calcWidth + 0.5).toString() + "vw";
             resizingSideMenu = false;
             board.style.width = (100 - (calcWidth + 0.8)).toString() + "vw";
+            console.log(newWidth);
+            bulkInitGeneratorScreen.style.right = (calcWidth + 2).toString() + "vw";
+            mapOptionsMenu.style.right = (calcWidth + 2).toString() + "vw";
         }
 
         if (isDraggingBlocker && mapData.usePolyBlockers)
@@ -2347,7 +2418,7 @@ window.addEventListener("mouseup", async function(e) {
 })
 
 document.body.addEventListener("keyup", async function(e) {
-    if (document.activeElement.tagName!="INPUT")
+    if (document.activeElement.tagName!="INPUT" && document.activeElement.tagName!="TEXTAREA")
     {
         switch (e.code) {
             case "KeyG":
@@ -2618,7 +2689,7 @@ shapeMap.addEventListener("mousedown", function(e) {
             if (isDM) {
                 shapeIsVisible = confirm("Should the shape be visible?");
             }
-            requestServer({c: "addDrawing", shape: "cone", link: coneMarkers.linkId, x: coneMarkers.x, y: coneMarkers.y, angle: angle, range: coneMarkers.range, trueColor: shapeColor, visible: shapeIsVisible});
+            requestServer({c: "addDrawing", shape: "cone", link: coneMarkers.linkId, x: coneMarkers.x, y: coneMarkers.y, angle: angle, range: coneMarkers.range, trueColor: shapeColor, visible: shapeIsVisible, is90Deg: coneMarkers.is90Deg});
             updateMapData();
             isPlacingCone = false;
             return;
