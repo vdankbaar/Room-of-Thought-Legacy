@@ -83,6 +83,8 @@ async function UpdateMapData()
 {
     console.log("Updating map");
     mapData = await RequestServer({c: "currentMapData", x: loadedMap.naturalWidth, y: loadedMap.naturalHeight});
+    if (isDM)
+        document.getElementById("exportMap").title = mapData.mapName+" : "+mapData.map;
     loadedMap.src = "/public/maps/"+mapData.map;
     loadedMap.onload = function() 
     {
@@ -771,12 +773,25 @@ function DisplayContextMenu(e)
             blockerMarkers.x = e.pageX;
             blockerMarkers.y = e.pageY;
             isPlacingBlocker = true;
+        }},
+        {text: "Change Map", description: "Changes the map to the desired JSON file", hasSubMenu: true, callback: function() {
+            let subOptions = [];
+            for (let i = 0; i < mapData.maps.length; i++)
+            {
+                let tmpSubOption = {text: mapData.maps[i], hasSubMenu: false, callback: function() {
+                    RequestServer({c: "changeSelectedMap", selectedMap: mapData.maps[i]})
+                }};
+                subOptions.push(tmpSubOption);
+            }
+            DisplaySubMenu(e, subOptions);
         }}
     ]
     if (isDM)
     {
-        listOptions.push(DMoptions[0]);
-        listOptions.push(DMoptions[1]);
+        for (let f = 0; f<DMoptions.length; f++)
+        {
+            listOptions.push(DMoptions[f]);
+        }
     }
     DisplayMenu(e, listOptions);
 }

@@ -6,6 +6,7 @@ const fileUpload = require('express-fileupload');
 var app = express();
 let dataFolder = __dirname+"/data/";
 let publicFolder = __dirname+"/client/public/";
+let selectedMap = "currentSettings";
 var currentMap;
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -35,6 +36,12 @@ app.post("/api", function(request, response) {
             currentMap.removedDrawings = removedDrawings;
             response.send(JSON.stringify(currentMap));
             break;
+
+        case "changeSelectedMap":
+            selectedMap = request.body.selectedMap;
+            response.send(true);
+            break
+
 
         case "createToken":
             if (minMax(request.body.size, 0, 20))
@@ -295,7 +302,8 @@ app.post('/upload', function(req, res) {
             return res.status(400).send('No files were uploaded.');
         }
         let sampleFile = req.files.mapFile;
-        sampleFile.mv(dataFolder+'currentSettings.json', function(err)
+        console.log(sampleFile);
+        sampleFile.mv(dataFolder+req.files.mapFile.name, function(err)
         {
             if (err)
                 return res.status(500).send(err);
@@ -313,30 +321,27 @@ app.listen(80);
 
 function LoadCurrentMap() 
 {
-    currentMap = JSON.parse(readFile("data/currentSettings.json"));
+    currentMap = JSON.parse(readFile("data/"+selectedMap+".json"));
+    currentMap.mapName = selectedMap;
     currentMap.tokenList = readDirectory(publicFolder+"tokens", "jpg|png");
     currentMap.dmTokenList = readDirectory(publicFolder+"dmTokens", "jpg|png");
+    currentMap.maps = ReturnMaps();
 }
 
 function SaveCurrentMap() 
 {
-    writeFile("data/currentSettings.json", JSON.stringify(currentMap));
+    writeFile("data/"+selectedMap+".json", JSON.stringify(currentMap));
 }
 
-function CreateNewCurrentMap(map, x, y)
+function ReturnMaps() 
 {
-    let tmpMap = {};
-    tmpMap.map = map;
-    tmpMap.x = x;
-    tmpMap.y = y;
-    tmpMap.tokenList = readDirectory(publicFolder+"tokens", "jpg|png");
-    tmpMap.dmTokenList = readDirectory(publicFolder+"dmTokens", "jpg|png");
-    tmpMap.tokens = [];
-    tmpMap.blockers = [];
-    tmpMap.drawings = [];
-    writeFile("data/currentSettings.json", JSON.stringify(tmpMap));
+    let tmpMaps = readDirectory("data/", "json");
+    for (i in tmpMaps)
+    {
+        tmpMaps[i] = tmpMaps[i].split(".")[0];
+    }
+    return tmpMaps;
 }
-
 
 //#region Low level functions
 function minMax(value, min, max)
