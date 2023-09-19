@@ -13,7 +13,7 @@ body {
     background-size: cover;
     background-position: center;
     backdrop-filter: blur(20px) brightness(40%);
-    overflow: hidden;
+    overflow-x: hidden;
 }
 
 .switch {

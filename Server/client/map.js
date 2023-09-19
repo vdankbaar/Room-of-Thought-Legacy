@@ -24,6 +24,10 @@ let mapYInput = document.getElementById("mapY");
 let offsetXInput = document.getElementById("offsetX");
 let offsetYInput = document.getElementById("offsetY");
 let initiativeTrackerDiv = document.getElementById("initiativeTracker");
+let trackerScaleSlider = document.getElementById("trackerScaleSlider");
+
+//Detail screen vars
+let detailsScreen = document.getElementById("detailsScreen");
 let initiativeInput = document.getElementById("detailsInitiative");
 let nameInput = document.getElementById("detailsNameInput");
 let acInput = document.getElementById("armorClass");
@@ -32,9 +36,12 @@ let maxHpInput = document.getElementById("maxHitpoints");
 let groupIdInput = document.getElementById("detailsGroup");
 let statusInput = document.getElementById("detailsStatusInput");
 let detailsIcon = document.getElementById("detailsIcon").children[0];
-let sideMenu = document.getElementById("sideMenu");
 let noteEditor = document.getElementById("notesEditor");
-let detailsScreen = document.getElementById("detailsScreen");
+let noteArea = noteEditor.children[0];
+let concentratingInput = document.getElementById("concentrating");
+let hideTrackerInput = document.getElementById("visibility");
+
+let sideMenu = document.getElementById("sideMenu");
 let gridColorPicker = document.getElementById("gridColorPicker");
 let mapSelect = document.getElementById("mapSelect");
 let bulkTokenSelect = document.getElementById("bulkTokenSelect");
@@ -48,8 +55,8 @@ let newPolyBlockerHandles = document.getElementById("newPolyBlockerHandles");
 let shapeHandles = document.getElementById("shapeHandles");
 let antiBlockerMap = document.getElementById("antiBlockerMap");
 let initSearch = document.getElementById("initSearch");
-let buttonList = document.getElementById("toggleButtons");
-let noteArea = noteEditor.children[0];
+let buttonList = document.getElementById("toggleButtonList");
+let quickPolyButton = document.getElementById("quickPolyButton");
 let mapCanvas;
 let shapeCanvas;
 let hitboxCanvas;
@@ -126,7 +133,16 @@ window.onload = function() {
         for (let i = elementsToRemove.length - 1; i >= 0; i--)
             elementsToRemove[i].parentElement.removeChild(elementsToRemove[i]);
     }
-        
+    if (getCookie("sideMenuWidth")!="") {
+        document.body.style.setProperty("--sidemenu-width", getCookie("sideMenuWidth"));
+    }
+
+    if (getCookie("trackerScale")!="") {
+        let tmpTrackerScale = getCookie("trackerScale");
+        document.body.style.setProperty("--tracker-scale", tmpTrackerScale);
+        trackerScaleSlider.value = tmpTrackerScale*100;
+    }
+
     while (clientName == "")
     {
         clientName = prompt("Please enter you name:");
@@ -142,9 +158,9 @@ async function Setup() {
     antiBlockerCanvas = antiBlockerMap.getContext("2d");
     colorPicker.value = shapeColor.substr(0, shapeColor.length-2);
     await updateMapData(true);
-    if(mapData.usePolyBlockers && isDM)
+    if((!mapData.usePolyBlockers && isDM) || !isDM)
     {
-        addQuickPolyBlockerButton();
+        quickPolyButton.style.display = "none";
     }
     if (autoUpdate)
     {
@@ -335,7 +351,6 @@ window.addEventListener("wheel", function(e) {
                 viewport.scrollLeft = viewport.scrollLeft*((20+extraZoom)/(20+extraZoom-1));
                 viewport.scrollTop = viewport.scrollTop*((20+extraZoom)/(20+extraZoom-1));
                 e.preventDefault();
-                e.stopImmediatePropagation();
             }
         }
         if (e.deltaY>0)
@@ -347,11 +362,42 @@ window.addEventListener("wheel", function(e) {
                 viewport.scrollLeft = viewport.scrollLeft/((1+extraZoom/20)/(1+(extraZoom-1)/20));
                 viewport.scrollTop = viewport.scrollTop/((1+extraZoom/20)/(1+(extraZoom-1)/20));
                 e.preventDefault();
-                e.stopImmediatePropagation();
             }
         }
     }
 }, { passive: false });
+
+document.body.addEventListener("keydown", function(e) {
+    if (e.ctrlKey)
+    {
+        switch(e.code)
+        {
+            case "Digit0":
+                extraZoom = 0;
+                break;
+            case "Minus":
+                if (extraZoom>0)
+                {
+                    extraZoom-=1;
+                    board.style.transform = "scale("+(1+extraZoom/20).toString()+")";
+                    viewport.scrollLeft = viewport.scrollLeft/((1+extraZoom/20)/(1+(extraZoom-1)/20));
+                    viewport.scrollTop = viewport.scrollTop/((1+extraZoom/20)/(1+(extraZoom-1)/20));
+                    e.preventDefault();
+                }
+                break;
+            case "Equal":
+                if (zoomCapped())
+                {
+                    extraZoom+=1;
+                    board.style.transform = "scale("+(1+extraZoom/20).toString()+")";
+                    viewport.scrollLeft = viewport.scrollLeft*((20+extraZoom)/(20+extraZoom-1));
+                    viewport.scrollTop = viewport.scrollTop*((20+extraZoom)/(20+extraZoom-1));
+                    e.preventDefault();
+                }
+                break;
+        }
+    }
+});
 
 function zoomCapped() {
     if (browser=="f")
@@ -370,81 +416,20 @@ function zoomCapped() {
             return false;
     }
 }
-//#endregion
 
-//#region Side buttons
-let exportButton = document.getElementById("exportMap");
-exportButton.onclick = function() {
-    requestServer({c: "exportMap"});
-    window.open("/public/export/export.json");
-}
-
-document.getElementById("toggleGridButton").onclick = function() {
-    GridActive = !GridActive;
-    updateMapData(true);
-    updateButtonColors();
-}
-
-document.getElementById("toggleSnapButton").onclick = function() {
-    GridSnap = !GridSnap;
-    updateButtonColors();
-}
-
-let displayMapSettings = false;
-let mapOptionsMenu = document.getElementById("mapOptionsMenu");
-document.getElementById("toggleSettingsButton").onclick = function() {
-    if (!(bulkInitGeneratorScreen.style.display=="none" || bulkInitGeneratorScreen.style.display=="")) {
-        document.getElementById("openBulkGenerator").click();
-    }
-    
-    if (displayMapSettings)
-        mapOptionsMenu.style.display = "none";
-    else
-        mapOptionsMenu.style.display = "flex";
-    displayMapSettings =! displayMapSettings;
-    updateButtonColors();
-}
-
-document.getElementById("toggleBlockerEditing").onclick = function() {
-    blockerEditMode = !blockerEditMode;
-    updateMapData(true);
-    updateButtonColors();
-}
-
-let displayNoteEditor = false;
-detailsIcon.onclick = function() {
-    if (displayNoteEditor)
-        noteEditor.style.display = "none";
-    else
-        noteEditor.style.display = "flex";
-    displayNoteEditor =! displayNoteEditor;
-}
-
-let colorPicker = document.getElementById("shapeColorPicker");
-colorPicker.onchange = function() {
-    let transparacyText = prompt("Please enter the the desired transparancy level (0-255): ", "255");
-    if (transparacyText!=null)
+let previousScrollHeight = initiativeTrackerDiv.scrollHeight;
+let previousScrollTop = 0;
+initiativeTrackerDiv.onscroll = function()
+{
+    if (initiativeTrackerDiv.scrollHeight==previousScrollHeight)
     {
-        let transparancy = parseInt(transparacyText);
-        if (!isNaN(transparancy))
-        {
-            shapeColor = colorPicker.value + transparancy.toString(16);
-            setCookie("shapeColor", shapeColor);
-        }
-        else
-        {
-            colorPicker.value = shapeColor.substr(0, shapeColor.length-2);
-        }
+        previousScrollTop = initiativeTrackerDiv.scrollTop * window.devicePixelRatio;
     }
-}
-
-document.getElementById("importMap").onclick = function() {
-    hiddenMapImportButton.click();
-}
-
-hiddenMapImportButton.onchange = function() {
-    document.getElementById("submitMap").click();
-    updateMapData(true);
+    else
+    {
+        initiativeTrackerDiv.scrollTop = previousScrollTop / window.devicePixelRatio;
+        previousScrollHeight = initiativeTrackerDiv.scrollHeight;
+    }
 }
 //#endregion
 
@@ -1339,6 +1324,7 @@ function createToken(token)
             groupIdInput.value = "";
             acInput.value = "";
             noteArea.value = "";
+            DetailsToggleButtonsUpdate(false, false);
         }
     }
     imageElement.setAttribute("tokenid", token.id);
@@ -1377,23 +1363,36 @@ function createToken(token)
     imageElement.style.zIndex = (token.layer + baseTokenIndex).toString();
     imageElement.title = token.status;
     imageElement.draggable = true;
-    if (token.hidden != null)
+    if (token.hidden)
     {
-        if (token.hidden == true)
+        if (!isDM)
         {
-            if (!isDM)
-            {
-                return;
-            }
-            let hiddenImage = document.createElement("img");
-            hiddenImage.src = "public/hidden.png";
-            hiddenImage.className = "hiddenToken";
-            hiddenImage.style.width = (token.size * gridSize / 3).toString() + "px";
-            hiddenImage.style.height = (token.size * gridSize / 3).toString() + "px";
-            hiddenImage.style.top = token.y - (gridSize * token.size) / 2 + "px";
-            hiddenImage.style.left = token.x - (gridSize * token.size) / 2 + "px";
-            hiddenImage.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
-            tokensDiv.appendChild(hiddenImage);
+            return;
+        }
+        let hiddenImage = document.createElement("img");
+        hiddenImage.src = "public/hidden.png";
+        hiddenImage.className = "hiddenToken";
+        hiddenImage.style.width = (token.size * gridSize / 3).toString() + "px";
+        hiddenImage.style.height = (token.size * gridSize / 3).toString() + "px";
+        hiddenImage.style.top = token.y - (gridSize * token.size) / 2 + "px";
+        hiddenImage.style.left = token.x - (gridSize * token.size) / 2 + "px";
+        hiddenImage.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
+        tokensDiv.appendChild(hiddenImage);
+    }
+
+    if (token.concentrating)
+    {
+        if (!token.dm || isDM)
+        {
+            let concentratingIcon = document.createElement("img");
+            concentratingIcon.className = "concentratingText";
+            concentratingIcon.src = "images/literally_copyright.png";
+            tokensDiv.appendChild(concentratingIcon);
+            concentratingIcon.style.width = (token.size * gridSize / 3).toString() + "px";
+            concentratingIcon.style.height = (token.size * gridSize / 3).toString() + "px";
+            concentratingIcon.style.top = token.y + (gridSize * token.size) / 2 - concentratingIcon.offsetHeight + "px";
+            concentratingIcon.style.left = token.x - (gridSize * token.size) / 2 + "px";
+            concentratingIcon.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
         }
     }
 
@@ -1457,6 +1456,7 @@ function createToken(token)
             { groupIdInput.value = token.group; }
         }
 
+        DetailsToggleButtonsUpdate(token.concentrating, token.hideTracker);
     }
 
     imageElement.addEventListener("mousemove", function(e) {
@@ -1535,6 +1535,7 @@ function createToken(token)
                     groupIdInput.value = "";
                     acInput.value = "";
                     noteArea.value = "";
+                    DetailsToggleButtonsUpdate(false, false);
                 }
                 updateTracker();
                 updateHighlightedToken();
@@ -1574,6 +1575,7 @@ function createToken(token)
                         statusInput.value = "";
                         groupIdInput.value = "";
                         selectedToken = -1;
+                        DetailsToggleButtonsUpdate(false, false);
                     }
                     let result = await requestServer({c: "removeToken", id: token.id, tokensRemoved: mapData.removedTokens});
                     if(result[0] == true)
@@ -1893,10 +1895,12 @@ function updateHighlightedToken() {
         }
     }
 
-}
+} 
 
+let previousInitiativeTrackerScrollPosition = 0;
 function updateTracker(force)
 {
+    previousInitiativeTrackerScrollPosition = initiativeTrackerDiv.scrollTop;
     if (oldParsedData)
     {
         if (JSON.stringify(oldParsedData.tokens) == JSON.stringify(mapData.tokens) && oldParsedData.hideInit == mapData.hideInit && !force)
@@ -1912,29 +1916,50 @@ function updateTracker(force)
             if (initSearch.value!="") {
                 if (mapData.tokens[i].name) {
                     if (mapData.tokens[i].name.toLowerCase().includes(initSearch.value.toLowerCase()) || !mapData.tokens[i].dm) {
-                        createTracker(mapData.tokens[i]);
+                        if (!mapData.tokens[i].hideTracker)
+                            createTracker(mapData.tokens[i], i);
                     }
                 }
             } else {
-                createTracker(mapData.tokens[i]);
+                if (!mapData.tokens[i].hideTracker)
+                    createTracker(mapData.tokens[i], i);
             }
             
         }
     }
-    if (initiativeTrackerDiv.children.length>0)
-    {
-        initiativeTrackerDiv.removeChild(initiativeTrackerDiv.children[initiativeTrackerDiv.children.length - 1]);
-    }
-        
+    initiativeTrackerDiv.scrollTop = previousInitiativeTrackerScrollPosition;
 }
 
-function createTracker(trackerData)
+let isDraggingTracker = false;
+function createTracker(trackerData, index)
 {
     if (trackerData.initiative != null || trackerData.name != null || trackerData.ac != null || trackerData.hp != null)
     {
-        let tmpTrackerDiv = document.createElement("div");
-        tmpTrackerDiv.className = "initiativeItem";
-        tmpTrackerDiv.addEventListener("click", function(e) {
+        let initiativeItem = document.createElement("div");
+        initiativeItem.className = "initiativeItem";
+        initiativeItem.draggable = "true";
+        initiativeItem.addEventListener("drop", async function(e) {
+            if (isDraggingTracker)
+            {
+                if (e.dataTransfer.getData("trackerId")!=index)
+                {
+                    await requestServer({c: "switchTrackerPosition", origin: e.dataTransfer.getData("trackerId"), target: index});
+                }
+                updateMapData();
+                isDraggingTracker = false;
+            }
+        });
+        initiativeItem.addEventListener("dragstart", function(e) {
+            isDraggingTracker = true;
+            e.dataTransfer.setData("trackerId", index);
+        });
+        initiativeItem.addEventListener("dragend", function(e) {
+            isDraggingTracker = false;
+        })
+        initiativeItem.addEventListener("dragover", function(e) {
+            e.preventDefault();
+        });
+        initiativeItem.addEventListener("click", function(e) {
             e.preventDefault();
             e.stopPropagation();
             showDetailsScreen();
@@ -1992,60 +2017,62 @@ function createTracker(trackerData)
             { groupIdInput.value = ""; }
             else
             { groupIdInput.value = trackerData.group; }
+            DetailsToggleButtonsUpdate(trackerData.concentrating, trackerData.hideTracker);
             updateTracker();
             drawTokens();
             updateTrackerHighlight();
         });
         if (!mapData.hideInit)
         {
-            let tmpInitDiv = document.createElement("div");
-            tmpInitDiv.style.pointerEvents = "none";
-            tmpInitDiv.className = "initiative";
+            let initiativeDiv = document.createElement("div");
+            initiativeDiv.className = "initiative";
             if (trackerData.initiative == null)
             {
-                tmpInitDiv.innerText = "";
+                initiativeDiv.innerText = "";
             }
             else
             {
-                tmpInitDiv.innerText = Math.floor(trackerData.initiative);
+                initiativeDiv.innerText = Math.floor(trackerData.initiative);
             }
-            tmpTrackerDiv.append(tmpInitDiv);
+            initiativeItem.append(initiativeDiv);
         }
-        let tmpNameDiv = document.createElement("div");
-        tmpNameDiv.style.pointerEvents = "none";
-        tmpNameDiv.className = "trackerName";
-        tmpNameDiv.innerText = trackerData.name;
-        tmpTrackerDiv.append(tmpNameDiv);
-        let bottomRow = document.createElement("div");
-        bottomRow.className = "trackerBottomRow";
-            let trackerArmorSection = document.createElement("div");
-            trackerArmorSection.style.pointerEvents = "none";
-            trackerArmorSection.className = "trackerArmorSection";
-                let trackerArmorClass = document.createElement("div");
-                trackerArmorClass.className = "trackerArmorClass";
-                trackerArmorClass.style.pointerEvents = "none";
-                if (trackerData.ac == null)
-                {
-                    trackerArmorClass.innerText = "-";
-                }
-                else
-                {
-                    trackerArmorClass.innerText = trackerData.ac;
-                }
-                trackerArmorSection.append(trackerArmorClass);
-                let trackerArmorP = document.createElement("p");
-                trackerArmorP.style.pointerEvents = "none";
-                trackerArmorP.innerText = "AC";
-                trackerArmorSection.append(trackerArmorP);
-            bottomRow.append(trackerArmorSection);
-        
+            let nameDiv = document.createElement("div");
+            nameDiv.className = "trackerName";
+            nameDiv.innerText = trackerData.name;
+            initiativeItem.append(nameDiv);
+            let armorClassDiv = document.createElement("div");
+            armorClassDiv.className = "trackerArmorClass";
+            if (trackerData.ac == null)
+            { armorClassDiv.innerText = "-"; }
+            else
+            { armorClassDiv.innerText = trackerData.ac; }
+            initiativeItem.appendChild(armorClassDiv);
+            let armorClassText = document.createElement("div");
+            armorClassText.innerText = "AC";
+            armorClassText.className = "trackerArmorClassText";
+            initiativeItem.appendChild(armorClassText);
             let trackerHitpointsSection = document.createElement("div");
             trackerHitpointsSection.className = "trackerHitpointsSection";
+                let hitpointMaxDiv = document.createElement("div");
+                hitpointMaxDiv.className = "trackerHitpointsMax";
+                if (trackerData.hp != null)
+                { hitpointMaxDiv.innerText = trackerData.hp.split("/")[1] }
+                else
+                { hitpointMaxDiv.innerText = "-"; }
+                trackerHitpointsSection.appendChild(hitpointMaxDiv);
+                trackerHitpointsSection.innerHTML += "\n/\n";
+                let hitpointsDiv = document.createElement("div");
+                hitpointsDiv.className = "trackerHitpoints";
+                if (trackerData.hp != null)
+                { hitpointsDiv.innerText = trackerData.hp.split("/")[0] }
+                else
+                { hitpointsDiv.innerText = "-"; }
+                trackerHitpointsSection.appendChild(hitpointsDiv);
                 let trackerDamageButton = document.createElement("button");
                 trackerDamageButton.className = "trackerDamageButton";
-                let trackerDamageImage = document.createElement("img");
-                trackerDamageImage.style = "height: 1.1vw;";
-                trackerDamageImage.src = "images/swap_vert-24px.png";
+                    let trackerDamageImage = document.createElement("img");
+                    trackerDamageImage.src = "images/swap_vert-24px.png";
+                    trackerDamageButton.append(trackerDamageImage);
                 trackerDamageButton.onclick = async function(e)
                 {
                     e.preventDefault();
@@ -2060,72 +2087,67 @@ function createTracker(trackerData)
                         }
                     }
                 }
-                trackerDamageButton.append(trackerDamageImage);
-                trackerHitpointsSection.append(trackerDamageButton);
-                let trackerHitpoints = document.createElement("div");
-                trackerHitpoints.style.pointerEvents = "none";
-                trackerHitpoints.className = "trackerHitpoints";
-                if (trackerData.hp != null)
-                {
-                    trackerHitpoints.innerText = trackerData.hp.split("/")[0]
-                }
-                else
-                {
-                    trackerHitpoints.innerText = "-";
-                }
-                trackerHitpointsSection.append(trackerHitpoints);
-                let slashP = document.createElement("p");
-                slashP.style.pointerEvents = "none";
-                slashP.innerText = "/";
-                trackerHitpointsSection.append(slashP);
-                let trackerHitpointsMax = document.createElement("div");
-                trackerHitpointsMax.style.pointerEvents = "none";
-                trackerHitpointsMax.className = "trackerHitpointsMax";
-                if (trackerData.hp != null)
-                {
-                    trackerHitpointsMax.innerText = trackerData.hp.split("/")[1]
-                }
-                else
-                {
-                    trackerHitpointsMax.innerText = "-";
-                }
-                trackerHitpointsSection.append(trackerHitpointsMax);
-                let hpP = document.createElement("p");
-                hpP.style.pointerEvents = "none";
-                hpP.innerText = "HP";
-                trackerHitpointsSection.append(hpP);
-            bottomRow.append(trackerHitpointsSection);
-        tmpTrackerDiv.append(bottomRow);    
-        let trackerHR = document.createElement("hr");
-        trackerHR.className = "initiativeHR";
-        tmpTrackerDiv.setAttribute("id", trackerData.id);
-        tmpTrackerDiv.setAttribute("dm", trackerData.dm);
-        initiativeTrackerDiv.appendChild(tmpTrackerDiv);
-        initiativeTrackerDiv.appendChild(trackerHR);    
+                trackerHitpointsSection.append(trackerDamageButton);    
+            initiativeItem.appendChild(trackerHitpointsSection);
+            let healthTextDiv = document.createElement("div");
+            healthTextDiv.className = "trackerHealthText";
+            healthTextDiv.innerText = "HP";
+            initiativeItem.append(healthTextDiv);
+        initiativeItem.setAttribute("id", trackerData.id);
+        initiativeItem.setAttribute("dm", trackerData.dm);
+        initiativeTrackerDiv.appendChild(initiativeItem);
         updateTrackerHighlight();
     }
 }
 
 function updateTrackerHighlight() {
+    let trackerScale = parseFloat(getComputedStyle(document.body).getPropertyValue("--tracker-scale"));
+    let sideMenuWidthProperty = document.body.style.getPropertyValue("--sidemenu-width");
+    let sideMenuWidth = parseFloat(sideMenuWidthProperty.substr(0, sideMenuWidthProperty.length-2));
     for (let i = 0; i < initiativeTrackerDiv.children.length; i++)
     {
         let currentInitTracker = initiativeTrackerDiv.children[i];
         if (currentInitTracker.tagName=="DIV")
         {
+            if (sideMenuWidth >= 21 * trackerScale)
+                currentInitTracker.classList.add("oneLineInitiative");
+            else
+                currentInitTracker.classList.remove("oneLineInitiative");
+
+
             if (currentInitTracker.id == selectedToken) {
                 if (currentInitTracker.getAttribute("dm") == "true")
-                    currentInitTracker.style.backgroundColor = "#E0A0A0";
+                    currentInitTracker.style.backgroundColor = "#a14b28";
                 else
-                    currentInitTracker.style.backgroundColor = "#A0A0A0";
+                    currentInitTracker.style.backgroundColor = "#3b3b96";
             }
             else if (currentInitTracker.id != "")
             {
                 if (currentInitTracker.getAttribute("dm") == "true")
-                    currentInitTracker.style.backgroundColor = "#E0C0C0";
+                    currentInitTracker.style.backgroundColor = "#614d45";
                 else
-                    currentInitTracker.style.backgroundColor = "#C0C0C0";    
+                    currentInitTracker.style.backgroundColor = "#424254";    
             }
         }
+    }
+}
+
+function DetailsToggleButtonsUpdate(concentrating, hide)
+{
+    if (concentrating)
+        concentratingInput.style.backgroundColor = getComputedStyle(document.body).getPropertyValue("--toggle-highlighted-color");
+    else
+        concentratingInput.style.backgroundColor = "";
+
+    if (hide)
+    {
+        hideTrackerInput.children[0].src = "images/visibility_off-24px.svg";
+        hideTrackerInput.style.backgroundColor = getComputedStyle(document.body).getPropertyValue("--toggle-highlighted-color");
+    }
+    else
+    {
+        hideTrackerInput.children[0].src = "images/visibility-24px.svg";
+        hideTrackerInput.style.backgroundColor = "";
     }
 }
 
@@ -2234,6 +2256,11 @@ document.getElementById("openBulkGenerator").onclick = function() {
         bulkInitGeneratorScreen.style.display = "none";
 }
 
+document.getElementById("sortTracker").onclick = async function() {
+    await requestServer({c:"sortTracker"});
+    updateMapData();
+}
+
 document.getElementById("clearTokensButton").onclick = function() {
     if (confirm("Do you really want to remove all the tokens?"))
     {
@@ -2265,12 +2292,12 @@ document.getElementById("switchBlockerTypeButton").onclick = async function() {
             if(mapData.usePolyBlockers)
             {
                 quickPolyBlockerMode = false;
-                buttonList.removeChild(document.getElementById("quickPolyButton"));
+                quickPolyButton.style.display = "none";
             }
             else
             {
                 quickPolyBlockerMode = false;
-                addQuickPolyBlockerButton();
+                quickPolyButton.style.display = "";
             }
             requestServer({c:"switchBlockerType"});
         }
@@ -2310,26 +2337,27 @@ bulkTokenConfirm.onclick = function() {
     placingBulkOrigin = true;
 }
 
-noteArea.oninput = function() {
+noteArea.oninput = async function() {
     updateSelectedTokenData();
     if (CheckTokenPermission(selectedTokenData))
     {
-        requestServer({c: "editToken", id: selectedToken, notes: noteArea.value});
+        await requestServer({c: "editToken", id: selectedToken, notes: noteArea.value});
     }
+    updateMapData();
 }
 
-initiativeInput.oninput = function() {
+initiativeInput.oninput = async function() {
     updateSelectedTokenData();
     let newInit = parseFloat(initiativeInput.value);
     if (CheckTokenPermission(selectedTokenData))
     {
         if (newInit==null || isNaN(newInit))
         {
-            requestServer({c: "editToken", id: selectedToken, initiative: "reset"});
+            await requestServer({c: "editToken", id: selectedToken, initiative: "reset"});
         }
         else
         {
-            requestServer({c: "editToken", id: selectedToken, initiative: newInit});
+            await requestServer({c: "editToken", id: selectedToken, initiative: newInit});
         }
     }   
     updateMapData();
@@ -2339,58 +2367,189 @@ initSearch.oninput = function() {
     updateTracker(true);
 }
 
-nameInput.oninput = function() {
+trackerScaleSlider.oninput = function() {
+    document.body.style.setProperty("--tracker-scale", (trackerScaleSlider.value/100).toString());
+    updateTrackerHighlight();
+    setCookie("trackerScale", trackerScaleSlider.value/100);
+}
+
+document.getElementById("setScaleToOneLine").onclick = function() {
+    let tmpSideMenuWidthText = getComputedStyle(document.body).getPropertyValue("--sidemenu-width");
+    let tmpSideMenuWidth = parseFloat(tmpSideMenuWidthText.substr(0, tmpSideMenuWidthText.length-2))/21.1;
+    if (tmpSideMenuWidth>(trackerScaleSlider.max/100))
+        tmpSideMenuWidth = trackerScaleSlider.max/100;
+    if (tmpSideMenuWidth<(trackerScaleSlider.min/100))
+        tmpSideMenuWidth = trackerScaleSlider.min/100;
+    document.body.style.setProperty("--tracker-scale", (tmpSideMenuWidth).toString());
+    trackerScaleSlider.value = tmpSideMenuWidth*100;
+    updateTrackerHighlight();
+}
+
+nameInput.oninput = async function() {
     updateSelectedTokenData();
     if (CheckTokenPermission(selectedTokenData)) {
-        requestServer({c: "editToken", id: selectedToken, name: nameInput.value});
+        await requestServer({c: "editToken", id: selectedToken, name: nameInput.value});
     }
     updateMapData();
 }
 
-acInput.oninput = function() {
+acInput.oninput = async function() {
     updateSelectedTokenData();
     if (CheckTokenPermission(selectedTokenData)) {
-        requestServer({c: "editToken", id: selectedToken, ac: acInput.value});  
+        await requestServer({c: "editToken", id: selectedToken, ac: acInput.value});  
     }
     updateMapData();
 }
 
-currentHpInput.oninput = function() {
+currentHpInput.oninput = async function() {
     updateSelectedTokenData();
     if (CheckTokenPermission(selectedTokenData)) {
-        requestServer({c: "editToken", id: selectedToken, hp: currentHpInput.value + "/" + maxHpInput.value});
+        await requestServer({c: "editToken", id: selectedToken, hp: currentHpInput.value + "/" + maxHpInput.value});
     }
     updateMapData();
 }
 
-maxHpInput.oninput = function() {
+maxHpInput.oninput = async function() {
     updateSelectedTokenData();
     if (CheckTokenPermission(selectedTokenData)) {
-        requestServer({c: "editToken", id: selectedToken, hp: currentHpInput.value + "/" + maxHpInput.value});
+        await requestServer({c: "editToken", id: selectedToken, hp: currentHpInput.value + "/" + maxHpInput.value});
     }
     updateMapData();
 }
 
-statusInput.oninput = function() {
+statusInput.oninput = async function() {
     updateSelectedTokenData();
-    requestServer({c:"editToken", id: selectedToken, status: statusInput.value});
+    await requestServer({c:"editToken", id: selectedToken, status: statusInput.value});
     updateMapData();
 }
 
-groupIdInput.oninput = function() {
+groupIdInput.oninput = async function() {
     let newGroupId = parseInt(groupIdInput.value);
     updateSelectedTokenData();
     if (CheckTokenPermission(selectedTokenData)) {
         if (newGroupId)
         {
-            requestServer({c:"editToken", id: selectedToken, group: newGroupId});
+            await requestServer({c:"editToken", id: selectedToken, group: newGroupId});
         }
         else
         {
-            requestServer({c:"editToken", id: selectedToken, group: "reset"});
+            await requestServer({c:"editToken", id: selectedToken, group: "reset"});
         }
     }
     updateMapData();
+}
+
+hideTrackerInput.onclick = async function() {
+    updateSelectedTokenData();
+    await requestServer({c:"editToken", id: selectedToken, hideTracker: !selectedTokenData.hideTracker});
+    updateMapData();
+}
+
+concentratingInput.onclick = async function() {
+    updateSelectedTokenData();
+    await requestServer({c:"editToken", id: selectedToken, concentrating: !selectedTokenData.concentrating});
+    updateMapData();
+}
+//#endregion
+
+//#region Side buttons
+let exportButton = document.getElementById("exportMap");
+exportButton.onclick = function() {
+    requestServer({c: "exportMap"});
+    window.open("/public/export/export.json");
+}
+
+document.getElementById("toggleGridButton").onclick = function() {
+    GridActive = !GridActive;
+    updateMapData(true);
+    updateButtonColors();
+}
+
+document.getElementById("toggleSnapButton").onclick = function() {
+    GridSnap = !GridSnap;
+    updateButtonColors();
+}
+
+quickPolyButton.onclick = function() {
+    if (isDM) {
+        if (quickPolyBlockerMode) {
+            if(confirm("Add the new blocker?")) {
+                if (newPolyBlockerVerts.length>2) {
+                    requestServer({c: "addCustomPolyBlocker", newPolyBlockerVerts: JSON.stringify(newPolyBlockerVerts)});
+                }
+            }
+            quickPolyBlockerMode = false;
+            newPolyBlockerVerts = [];
+            DrawNewPolyMarkers();
+        }
+        else {
+            quickPolyBlockerMode = true;
+            drawCanvas();
+        }
+    }
+    updateButtonColors();
+}
+
+let displayMapSettings = false;
+let mapOptionsMenu = document.getElementById("mapOptionsMenu");
+document.getElementById("toggleSettingsButton").onclick = function() {
+    if (isDM)
+    {
+        if (!(bulkInitGeneratorScreen.style.display=="none" || bulkInitGeneratorScreen.style.display=="")) {
+            document.getElementById("openBulkGenerator").click();
+        }
+        
+        if (displayMapSettings)
+            mapOptionsMenu.style.display = "none";
+        else
+            mapOptionsMenu.style.display = "flex";
+        displayMapSettings =! displayMapSettings;
+    }
+    updateButtonColors();
+}
+
+document.getElementById("toggleBlockerEditing").onclick = function() {
+    blockerEditMode = !blockerEditMode;
+    updateMapData(true);
+    updateButtonColors();
+}
+
+let displayNoteEditor = false;
+detailsIcon.onclick = function() {
+    if (displayNoteEditor)
+        noteEditor.style.display = "none";
+    else
+        noteEditor.style.display = "flex";
+    displayNoteEditor =! displayNoteEditor;
+}
+
+let colorPicker = document.getElementById("shapeColorPicker");
+colorPicker.onchange = function(e) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    let transparacyText = prompt("Please enter the the desired transparancy level (0-255): ", "255");
+    if (transparacyText!=null)
+    {
+        let transparancy = parseInt(transparacyText);
+        if (!isNaN(transparancy))
+        {
+            shapeColor = colorPicker.value + transparancy.toString(16);
+            setCookie("shapeColor", shapeColor);
+        }
+        else
+        {
+            colorPicker.value = shapeColor.substr(0, shapeColor.length-2);
+        }
+    }
+}
+
+document.getElementById("importMap").onclick = function() {
+    hiddenMapImportButton.click();
+}
+
+hiddenMapImportButton.onchange = function() {
+    document.getElementById("submitMap").click();
+    updateMapData(true);
 }
 //#endregion
 
@@ -2538,18 +2697,26 @@ window.addEventListener("mouseup", async function(e) {
             drawCanvas();
         }
 
-        if (resizingSideMenu && !menuIsHidden && e.target != resizer)
+        if (resizingSideMenu && !menuIsHidden)
         {
-            let calcWidth = (window.innerWidth - 3 * resizer.offsetWidth - (e.pageX/(1+extraZoom/20))) / window.innerWidth * 100;
+            let calcWidth = (window.innerWidth - e.clientX) / window.innerWidth * 100 - 1.8;
             if (calcWidth < 12)
                 calcWidth = 12;
-            let newWidth = calcWidth.toString() + "vw";
-            document.body.style.setProperty("--sidemenu-width", newWidth);
-            resizer.style.right = (calcWidth + 0.5).toString() + "vw";
-            resizingSideMenu = false;
-            viewport.style.width = (100 - (calcWidth + 0.8)).toString() + "vw";
-            bulkInitGeneratorScreen.style.right = (calcWidth + 2).toString() + "vw";
-            mapOptionsMenu.style.right = (calcWidth + 2).toString() + "vw";
+            if (calcWidth > 50)
+                calcWidth = 50;
+            let newWidth = (calcWidth).toString() + "vw";
+            if (newWidth != document.body.style.getPropertyValue("--sidemenu-width"))
+            {
+                document.body.style.setProperty("--sidemenu-width", newWidth);
+                setCookie("sideMenuWidth", newWidth);
+                resizingSideMenu = false;
+                bulkInitGeneratorScreen.style.right = (calcWidth + 2).toString() + "vw";
+                updateTrackerHighlight();
+            }
+            else
+            {
+                resizingSideMenu = false;
+            }
         }
 
         if (isDraggingBlocker && mapData.usePolyBlockers)
@@ -2579,7 +2746,7 @@ window.addEventListener("mouseup", async function(e) {
                 document.body.style.cursor = "default";
                 if (CheckAntiBlockerPixel(e) || isDM)
                 {
-                    requestServer({c: "editDrawing", id: movingShapeId, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + shapeDragOffset.x, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)) + shapeDragOffset.y, both: true});
+                    requestServer({c: "editDrawing", id: movingShapeId, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + shapeDragOffset.x, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)) + shapeDragOffset.y, both: true, moveShapeGroup: e.ctrlKey});
                 }
                 updateMapData();
             }
@@ -2642,12 +2809,9 @@ document.body.addEventListener("keyup", async function(e) {
                 break;
 
             case "KeyP":
-                if (isDM)
+                if (isDM && mapData.usePolyBlockers)
                 {
-                    if (mapData.usePolyBlockers)
-                    {
-                        document.getElementById("quickPolyButton").click();
-                    }
+                    quickPolyButton.click();
                 }
             break;
 
@@ -2828,7 +2992,7 @@ shapeMap.addEventListener("mousedown", function(e) {
         }
 
         if (quickPolyBlockerMode) {
-            newPolyBlockerVerts.push({x: (e.pageX/(1+extraZoom/20))+viewport.scrollLeft, y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20))});
+            newPolyBlockerVerts.push({x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20))});
             DrawNewPolyMarkers(true);
             return;
         }
@@ -2927,7 +3091,7 @@ shapeMap.addEventListener("mousedown", function(e) {
         }
 
         let pixel = hitboxCanvas.getImageData(((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), 1, 1).data;
-        if (!(pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0) && CheckAntiBlockerPixel(e))
+        if (!(pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0) && (CheckAntiBlockerPixel(e)||isDM))
         {
             let testString = "#" + decToHex(pixel[0]) + decToHex(pixel[1]) + decToHex(pixel[2]);
             let shapeId = colorToSigned24Bit(testString) / 16;
@@ -2956,6 +3120,7 @@ shapeMap.addEventListener("mousedown", function(e) {
                     shapeDragOffset.y = clickedShape.y - ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
                     movingShapeId = shapeId;
                     isMovingShape = true;
+                    return;
                 }
                 else
                 {
@@ -2980,20 +3145,12 @@ shapeMap.addEventListener("mousedown", function(e) {
                         isMoving5ftLine = true;
                         return;
                     }
-                    isPanning = true;
-                    oldMousePos.x = (e.pageX/(1+extraZoom/20));
-                    oldMousePos.y = (e.pageY/(1+extraZoom/20));
-                    oldScrollPos.x = viewport.scrollLeft;
-                    oldScrollPos.y = viewport.scrollTop;
-                    document.body.style.cursor = "grabbing";
-                    drawCanvas();
                 }
             }
-            return;
         }
         isPanning = true;
-        oldMousePos.x = (e.pageX/(1+extraZoom/20));
-        oldMousePos.y = (e.pageY/(1+extraZoom/20));
+        oldMousePos.x = e.pageX;
+        oldMousePos.y = e.pageY;
         oldScrollPos.x = viewport.scrollLeft;
         oldScrollPos.y = viewport.scrollTop;
         document.body.style.cursor = "grabbing";
@@ -3001,11 +3158,28 @@ shapeMap.addEventListener("mousedown", function(e) {
     }
 })
 
+let previousCalcWidth = 0;
 window.addEventListener("mousemove", function(e) {
     if (isPanning)
     {
-        viewport.scrollLeft = oldScrollPos.x - ((e.pageX/(1+extraZoom/20)) - oldMousePos.x);
-        viewport.scrollTop = oldScrollPos.y - ((e.pageY/(1+extraZoom/20)) - oldMousePos.y);
+        viewport.scrollLeft = oldScrollPos.x + oldMousePos.x - e.pageX;
+        viewport.scrollTop = oldScrollPos.y + oldMousePos.y - e.pageY;
+    }
+
+    if (resizingSideMenu && !menuIsHidden)
+    {
+        let calcWidth = (window.innerWidth - e.clientX) / window.innerWidth * 100 - 1.8;
+        if (calcWidth < 12)
+            calcWidth = 12;
+        if (calcWidth > 50)
+            calcWidth = 50;
+        let newWidth = (calcWidth).toString() + "vw";
+        document.body.style.setProperty("--sidemenu-width", newWidth);
+        bulkInitGeneratorScreen.style.right = (calcWidth + 2).toString() + "vw";
+        let trackerScale = getComputedStyle(document.body).getPropertyValue("--tracker-scale");
+        if ((previousCalcWidth < (21*trackerScale) && calcWidth > (21*trackerScale)) || (previousCalcWidth > (21*trackerScale) && calcWidth < (21*trackerScale)))
+            updateTrackerHighlight();
+        previousCalcWidth = calcWidth;
     }
 })
 
@@ -3068,6 +3242,19 @@ function shapeContextMenu(e, pixel)
                 } else {
                     alert("That drawing has already been removed by someone else!");
                 }
+            }},
+            {text: "Set shape group", hasSubMenu: false, callback: async function() {
+                let shapeGroupString;
+                if (selectedShape.shapeGroup != null)
+                    shapeGroupString = prompt("Enter shape group number: ", selectedShape.shapeGroup);
+                else
+                    shapeGroupString = prompt("Enter shape group number: ");
+                let shapeGroup = parseInt(shapeGroupString);
+                if (!isNaN(shapeGroup))
+                    await requestServer({c:"editDrawing", id: shapeId, shapeGroup: shapeGroup});
+                if (shapeGroupString=="")
+                    await requestServer({c:"editDrawing", id: shapeId, shapeGroup: "null"});
+                updateMapData();
             }}
         ];
         if (isDM) {
@@ -3613,25 +3800,23 @@ function getCookie(cname) {
 //#endregion
 
 //#region Side menu stuff
+updateButtonColors();
 let resizer = document.getElementById("Resizer");
 let menuIsHidden = false;
 resizer.addEventListener("dblclick", function(e) {
     if (menuIsHidden)
     {
         sideMenu.style.display = "";
-        let calcWidth = 12;
-        let newWidth = calcWidth.toString() + "vw";
-        document.body.style.setProperty("--sidemenu-width", newWidth);
-        resizer.style.right = (calcWidth + 0.5).toString() + "vw";
-        viewport.style.width = (100 - (calcWidth + 0.8)).toString() + "vw";
-        resizer.style.width = "0.3vw";
+        viewport.style.width = "";
+        resizer.style.right = "";
+        resizer.style.width = "0.4vw";
     }
     else
     {
         resizer.style.width = "0.5vw";
         sideMenu.style.display = "none";
         resizer.style.right = "0vw";
-        viewport.style.width = "99.7vw";
+        viewport.style.width = "99.5vw";
     }
     e.stopPropagation();
     resizingSideMenu = false;
@@ -3647,90 +3832,58 @@ resizer.addEventListener("mousedown", function(e) {
     }
 })
 
-function addQuickPolyBlockerButton() {
-    let quickPolyButton = document.createElement("Button");
-    let quickPolyButtonSVG = document.createElement("object");
-    quickPolyButtonSVG.type = "image/svg+xml";
-    quickPolyButtonSVG.data = "images/group_work-24px.svg";
-    quickPolyButtonSVG.style.pointerEvents = "none";
-    quickPolyButton.appendChild(quickPolyButtonSVG);
-    quickPolyButton.id = "quickPolyButton"
-    quickPolyButton.title = "Quick add polyblocker (P)";
-    quickPolyButton.className = "dmOnly";
-    quickPolyButton.onclick = function() {
-        if (quickPolyBlockerMode) {
-            if(confirm("Add the new blocker?")) {
-                if (newPolyBlockerVerts.length>2) {
-                    requestServer({c: "addCustomPolyBlocker", newPolyBlockerVerts: JSON.stringify(newPolyBlockerVerts)});
-                }
-            }
-            quickPolyBlockerMode = false;
-            newPolyBlockerVerts = [];
-            DrawNewPolyMarkers();
-        }
-        else {
-            quickPolyBlockerMode = true;
-            drawCanvas();
-        }
-        updateButtonColors();
-    }
-    buttonList.appendChild(quickPolyButton)
-}
-
 function updateButtonColors()
 {
     if (GridActive)
     {
-        document.getElementById("toggleGridButton").style.backgroundColor = "aquamarine";
+        document.getElementById("toggleGridButton").style.backgroundColor = "orange";
     }
     else
     {
-        document.getElementById("toggleGridButton").style.backgroundColor = "rgb(240, 240, 240)";
+        document.getElementById("toggleGridButton").style.backgroundColor = "#424254";
     }
         
     if (GridSnap)
     {
-        document.getElementById("toggleSnapButton").style.backgroundColor = "aquamarine";
+        document.getElementById("toggleSnapButton").style.backgroundColor = "orange";
     }
     else
     {
-        document.getElementById("toggleSnapButton").style.backgroundColor = "rgb(240, 240, 240)";
+        document.getElementById("toggleSnapButton").style.backgroundColor = "#424254";
     }
         
     if (isDM)
     {
         if (displayMapSettings)
         {
-            document.getElementById("toggleSettingsButton").style.backgroundColor = "aquamarine";
+            document.getElementById("toggleSettingsButton").style.backgroundColor = "orange";
         }
         else
         {
-            document.getElementById("toggleSettingsButton").style.backgroundColor = "rgb(240, 240, 240)";
+            document.getElementById("toggleSettingsButton").style.backgroundColor = "#424254";
         }
 
         if (blockerEditMode)
         {
-            document.getElementById("toggleBlockerEditing").style.backgroundColor = "aquamarine";
+            document.getElementById("toggleBlockerEditing").style.backgroundColor = "orange";
         }
         else
         {
-            document.getElementById("toggleBlockerEditing").style.backgroundColor = "rgb(240, 240, 240)";
+            document.getElementById("toggleBlockerEditing").style.backgroundColor = "#424254";
         }
 
         if (quickPolyBlockerMode)
         {
-            let qpb = document.getElementById("quickPolyButton");
-            if (qpb!=null)
+            if (quickPolyButton.style.display!="none")
             {
-                qpb.style.backgroundColor = "aquamarine";
+                quickPolyButton.style.backgroundColor = "orange";
             }
         }
         else
         {
-            let qpb = document.getElementById("quickPolyButton");
-            if (qpb!=null)
+            if (quickPolyButton.style.display!="none")
             {
-                qpb.style.backgroundColor = "rgb(240, 240, 240)";
+                quickPolyButton.style.backgroundColor = "#424254";
             }
         }
     }

@@ -45,23 +45,6 @@ isDMInput.onchange = function() {
 }
 
 //#region custom zoom
-window.addEventListener("wheel", function(e) {
-    if (e.ctrlKey)
-    {
-        if (e.deltaY<0)
-        {
-            e.preventDefault()
-            e.stopImmediatePropagation();
-        }
-        if (e.deltaY>0)
-        {
-            e.preventDefault()
-            e.stopImmediatePropagation();
-        }
-    }
-});
-
-
 browser = "";
 if(navigator.userAgent.indexOf("Chrome") != -1 )
 {
@@ -77,14 +60,14 @@ else
 }
 
 if (browser=="c")
-    board.style.zoom = (100/window.devicePixelRatio).toString()+"%";
+    document.body.style.zoom = (100/window.devicePixelRatio).toString()+"%";
 if (browser=="f")
     document.body.style.transform = "scale("+(1/window.devicePixelRatio).toString()+")";
 window.onzoom = function(e) {
     if (browser=="f")
         document.body.style.transform = "scale("+(1/window.devicePixelRatio).toString()+")";
     if (browser=="c")
-        board.style.zoom = (100/window.devicePixelRatio).toString()+"%";
+        document.body.style.zoom = (100/window.devicePixelRatio).toString()+"%";
 };
 
 (function() {

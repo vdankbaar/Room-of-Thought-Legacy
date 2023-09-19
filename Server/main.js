@@ -50,6 +50,18 @@ app.post("/api", function(request, response) {
         console.log(playerName + ": " + JSON.stringify(request.body));
     switch(request.body.c) 
     {
+        case "setPortalData":
+            loadCurrentMap();
+            if (request.body.portalX != null)
+            { currentMap.portalX = parseInt(request.body.portalX); }
+            if (request.body.portalY != null)
+            { currentMap.portalY = parseInt(request.body.portalY); }
+            if (request.body.portalData != null)
+            { currentMap.portalData = request.body.portalData; }
+            response.send(true);
+            saveCurrentMap();
+            break;
+
         case "currentMapData":
             loadCurrentMap();
             currentMap.removedTokens = removedTokens;
@@ -230,6 +242,10 @@ app.post("/api", function(request, response) {
                         currentMap.tokens[i].text = request.body.text;
                     if (request.body.dm != null)
                         currentMap.tokens[i].dm = request.body.dm;
+                    if (request.body.concentrating != null)
+                        currentMap.tokens[i].concentrating = request.body.concentrating;
+                    if (request.body.hideTracker != null)
+                        currentMap.tokens[i].hideTracker = request.body.hideTracker;
                 }
             }
             saveCurrentMap();
@@ -406,6 +422,12 @@ app.post("/api", function(request, response) {
                     }
                     else
                     {
+                        if ((request.body.x != null || request.body.y != null) && request.body.moveShapeGroup)
+                        {
+                            let dx = request.body.x - currentMap.drawings[i].x;
+                            let dy = request.body.y - currentMap.drawings[i].y;
+                            moveShapeGroup(currentDrawing.id, dx, dy, currentDrawing.shapeGroup);
+                        }
                         if (request.body.destX!=null)
                         { currentMap.drawings[i].destX = request.body.destX; }
                         if (request.body.destY!=null)
@@ -422,6 +444,13 @@ app.post("/api", function(request, response) {
                         { currentMap.drawings[i].angle = request.body.angle; }
                         if (request.body.visible!=null)
                         { currentMap.drawings[i].visible = request.body.visible; }
+                        if (request.body.shapeGroup!=null)
+                        {
+                            if (request.body.shapeGroup == "null")
+                                currentMap.drawings[i].shapeGroup = null
+                            else
+                                currentMap.drawings[i].shapeGroup = request.body.shapeGroup;
+                        }
                     }
                 }
             }
@@ -681,6 +710,59 @@ app.post("/api", function(request, response) {
             saveCurrentMap();
             response.send("[true]");
             break;
+    
+        case "sortTracker":
+            loadCurrentMap();
+            if (currentMap.tokens.length>0)
+            {
+                let tmpTokens = [];
+                tmpTokens.push(currentMap.tokens[0]);
+                if (currentMap.tokens.length>1)
+                {
+                    for (let f = 1; f<currentMap.tokens.length; f++)
+                    {
+                        let currentLength = tmpTokens.length;
+                        for (let g = 0; g<currentLength; g++)
+                        {
+                            if (tmpTokens[g].initiative < currentMap.tokens[f].initiative)
+                            {
+                                tmpTokens.splice(g, 0, currentMap.tokens[f]);
+                                g = currentLength;
+                            }
+                            else
+                            {
+                                if (g==tmpTokens.length-1)
+                                {
+                                    tmpTokens.push(currentMap.tokens[f]);
+                                    g=currentLength;
+                                }
+                            }
+                        }
+                    }
+                    currentMap.tokens = tmpTokens;
+                }
+            }
+            saveCurrentMap();
+            response.send("[true]");
+            break;
+    
+        case "switchTrackerPosition":
+            loadCurrentMap();
+            let origin = parseInt(request.body.origin);
+            let target = parseInt(request.body.target);
+            if (origin<target)
+            {
+                currentMap.tokens.splice(target+1, 0, currentMap.tokens[origin]);
+                currentMap.tokens.splice(origin, 1);
+            }
+            else
+            {
+                currentMap.tokens.splice(target, 0, currentMap.tokens[origin]);
+                currentMap.tokens.splice(origin+1, 1);
+            }
+            saveCurrentMap();
+            response.send("[true]");
+            break;
     }
 });
 
@@ -708,12 +790,30 @@ app.post('/upload', function(req, res) {
 app.use(express.static('client'));
 app.listen(port);
 
+function moveShapeGroup(moveShapeOriginId, dx, dy, targetShapeGroup)
+{
+    if (targetShapeGroup!=null)
+    {
+        for (let i = 0; i < currentMap.drawings.length; i++)
+        {
+            if (currentMap.drawings[i].shapeGroup == targetShapeGroup && currentMap.drawings[i].id != moveShapeOriginId && currentMap.drawings[i].link == null)
+            {
+                currentMap.drawings[i].x = currentMap.drawings[i].x + dx;
+                currentMap.drawings[i].y = currentMap.drawings[i].y + dy;
+            }
+        }
+    }
+}
+
 function moveLinkedShapes(tokenData) 
 {
     for (let i = 0; i < currentMap.drawings.length; i++)
     {
         if (currentMap.drawings[i].link == tokenData.id)
         {
+            let dx = tokenData.x - currentMap.drawings[i].x;
+            let dy = tokenData.y - currentMap.drawings[i].y;
+            moveShapeGroup(currentMap.drawings[i].id, dx, dy, currentMap.drawings[i].shapeGroup);
             currentMap.drawings[i].x = tokenData.x;
             currentMap.drawings[i].y = tokenData.y;
         }
@@ -764,40 +864,17 @@ function loadCurrentMap()
         currentMap.usePolyBlockers = false;
     if (currentMap.polyBlockers == null)
         currentMap.polyBlockers = [];
+    if (currentMap.portalX == null)
+        currentMap.portalX = 0;
+    if (currentMap.portalY == null)
+        currentMap.portalY = 0;
+    if (currentMap.portalData == null)
+        currentMap.portalData = "";
     currentMap.mapName = selectedMap;
     currentMap.tokenList = readDirectory(publicFolder + "tokens", "jpg|png|jpeg|gif");
     currentMap.dmTokenList = readDirectory(publicFolder + "dmTokens", "jpg|png|jpeg|gif");
     currentMap.mapSourceList = readDirectory(publicFolder + "maps", "jpg|png|jpeg|gif");
     currentMap.maps = returnMaps();
-    if (currentMap.tokens.length>0)
-    {
-        let tmpTokens = [];
-        tmpTokens.push(currentMap.tokens[0]);
-        if (currentMap.tokens.length>1)
-        {
-            for (let f = 1; f<currentMap.tokens.length; f++)
-            {
-                let currentLength = tmpTokens.length;
-                for (let g = 0; g<currentLength; g++)
-                {
-                    if (tmpTokens[g].initiative < currentMap.tokens[f].initiative)
-                    {
-                        tmpTokens.splice(g, 0, currentMap.tokens[f]);
-                        g = currentLength;
-                    }
-                    else
-                    {
-                        if (g==tmpTokens.length-1)
-                        {
-                            tmpTokens.push(currentMap.tokens[f]);
-                            g=currentLength;
-                        }
-                    }
-                }
-            }
-            currentMap.tokens = tmpTokens;
-        }
-    }
 }
 
 function saveCurrentMap() 

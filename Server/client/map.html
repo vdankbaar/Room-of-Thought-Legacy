@@ -25,11 +25,13 @@
         </div>
         <div id="Resizer"></div>
         <div id="sideMenu">
-            <div id="toggleButtons">
-                <button id="toggleGridButton" title="Toggle Grid (G)"><object type="image/svg+xml" data="images/grid_on-24px.svg"></object></button>
-                <button id="toggleSnapButton" title="Toggle Grid Snapping (S)"><object type="image/svg+xml" data="images/magnet-solid.svg"></object></button>
-                <button id="toggleBlockerEditing" title="Edit blockers (B)" class="dmOnly"><object type="image/svg+xml" data="images/construction-24px.svg"></object></button>
-                <button id="toggleSettingsButton" title="DM Settings" class="dmOnly"><object type="image/svg+xml" data="images/settings-24px.svg"></object></button>
+            <div id="toggleButtonList">
+                <button class="toggleButton" id="toggleGridButton" title="Toggle Grid (G)"><object type="image/svg+xml" data="images/grid_on-24px.svg"></object></button>
+                <button class="toggleButton" id="toggleSnapButton" title="Toggle Grid Snapping (S)"><object type="image/svg+xml" data="images/magnet-solid.svg"></object></button>
+                <label  id="colorPickerButton" class="toggleButton" for="shapeColorPicker"><input type="color" id="shapeColorPicker"></label>
+                <button class="toggleButton dmOnly" id="toggleBlockerEditing" title="Edit blockers (B)"><object type="image/svg+xml" data="images/construction-24px.svg"></object></button>
+                <button class="toggleButton dmOnly" id="toggleSettingsButton" title="DM Settings"><object type="image/svg+xml" data="images/settings-24px.svg"></object></button>
+                <button class="toggleButton dmOnly" id="quickPolyButton" title="Quick add polyblocker(P)"><object type="image/svg+xml" data="images/group_work-24px.svg"></object></button>
             </div>
             <div id="mapOptionsMenu">
                 <label for="mapSelect">Current map:</label>
@@ -64,15 +66,21 @@
                 <label for="bulkTokenAmountInput">Tokens to place:<input type="number" id="bulkTokenAmountInput" value="1"></label>
                 <input id="bulkTokenConfirm" type="button" value="Start placing">
             </div>
-            <p style="margin: 0px; font-size: 1vw;">Draw Color:</p>
-            <input type="color" id="shapeColorPicker">
+            <!--<p>Draw Color:</p>-->
+            <!--<input type="color" id="shapeColorPicker">-->
             <div id="initiativeHeader">
                 <h3>Initiative Tracker</h3>
+                <input class="dmOnly" id="sortTracker" type="button" value="s">
                 <input class="dmOnly" id="openBulkGenerator" type="button" value="+">
             </div>
             <input class="dmOnly" type="text" id="initSearch" placeholder="Search..." autocomplete="off" spellcheck="false">
-            <div id="initiativeTracker">
+            <div id="sliderSection">
+                <div id="sliderContainer">
+                    <input type="range" min="57" max="110" value="100" class="slider" id="trackerScaleSlider">
+                </div>
+                <button class="sliderButton" id="setScaleToOneLine" title="Set tracker scale to maximum possible value that supports one line">Max</button>
             </div>
+            <div id="initiativeTracker"></div>
             <div id="detailsScreen" style="display: none;">
                 <h3 style="grid-area: title; margin: 0px;"></h3>
                 <div id="detailsIcon" title="Click to open notes!"><img></div>
@@ -92,6 +100,10 @@
                 <p style="grid-area: group; margin: 0px;">Group:</p>
                 <input type="text" id="detailsInitiative" class="detailsBottom" autocomplete="off" spellcheck="false">
                 <input type="text" id="detailsGroup" class="detailsBottom" autocomplete="off" spellcheck="false">
+                <div id="detailsToggles">
+                    <button id="visibility" title="Toggle visibility of token in initiative tracker"><img id="visibilityIcon" type="image/svg+xml" src="images/visibility-24px.svg"></object></button>
+                    <button id="concentrating" title="Toggle concentration"><b>C</b></button>
+                </div>
             </div>
         </div>
         <script>

@@ -3,38 +3,25 @@
     --antiBlocker-color: rgb(0, 0, 0);
     --token-index: 4;
     --sidemenu-width: 12vw;
+    --tracker-scale: 1; /* 0.57 MINIMUM */
+
+    --sidemenu-color: #23232e;
+    --sidemenu-text-color: lightgray;
+    --toggle-highlighted-color: #54aeeb;
+    --input-color: #14141c;
 }
 
+/* #region Non Sidebar */
 body {
     margin: 0px;
     background-color: rgb(53, 53, 53);
     z-index: -2;
 }
 
-body p {
-    user-select: none;
-}
-
-body label {
-    user-select: none;
-}
-
-body a {
-    user-select: none;
-}
-
-body h3 {
-    user-select: none;
-}
-
-#initSearch {
-    width: 100%;
-    height: 3vh;
-    font-size: 1vw;
-    padding: 1vh;
-    border: 0px;
-    margin-bottom: 1vh;
-}
+body p {user-select: none;}
+body label {user-select: none;}
+body a {user-select: none;}
+body h3 {user-select: none;}
 
 #antiBlockerMap {
     pointer-events: none;
@@ -91,43 +78,229 @@ body h3 {
 
 #viewport {
     position: fixed;
-    width: 87.2%;
+    width: calc(100vw - var(--sidemenu-width) - 2vw); /*TODO not sure if this change screws anything over, the original was 87.2%*/
     height: 100%;
     overflow: auto;
 }
 
+#setInit { /*TODO wtf is dit? Ik kan het nergens vinden in map.html en map.js*/
+    text-align: center;
+    position: relative;
+    padding: 0;
+    font-size: 1vw;
+    width: 100%;
+    height: 5vh;
+    margin: 0px auto 0.5vh auto;
+    border: none;
+}
+
+#shapeMap {
+    position: absolute;
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-drag: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    margin: 0px;
+    padding: 0px;
+    z-index: 1;
+}
+
+#map {
+    position: absolute;
+    margin: 0px;
+    padding: 0px;
+    z-index: 0;
+}
+/* #endregion */
+
+/* #region Side Menu */
 #sideMenu {
     display: flex;
     flex-direction: column;
-    background-color: lightgray;
+    background-color: var(--sidemenu-color);
     height: 100vh;
     overflow: auto;
-    width: var(--sidemenu-width);
+    width: calc(var(--sidemenu-width) + 0.8vw);
     position: fixed;
     right: 0;
     padding: 0px 0.3vw;
     padding-left: 0.5vw;   
     z-index: 999;
+    color: var(--sidemenu-text-color);
+}
+
+#toggleButtonList {
+    margin: 0.5vh 0px;
+    display: flex;
+    flex-direction: row;
+}
+
+.toggleButton { /*TODO Checken of buttons aquamarine moeten worden of niet*/
+    width: min(calc((1.8 / 12) * var(--sidemenu-width)), 2.3vw);
+    height: min(calc((1.8 / 12) * var(--sidemenu-width)), 2.3vw);
+    border: none;
+    padding: 0px;
+    margin: 0px min(calc((0.15 / 12) * var(--sidemenu-width)), 0.225vw);
+    text-align: center;
+    line-height: 50%;
+    border-radius: min(calc((0.3 / 12) * var(--sidemenu-width)), 0.45vw);
+    background-color: #424254;
+}
+
+.toggleButton:focus {outline: none;}
+.toggleButton object {pointer-events: none;;}
+
+#quickPolyButton object {pointer-events: none; width: 80%; height: 80%;}
+#toggleGridButton object {pointer-events: none; width: 80%; height: 80%;}
+#toggleSnapButton object {pointer-events: none; width: 63%; height: 63%;}
+#toggleSettingsButton object {pointer-events: none; width: 80%; height: 80%;}
+#toggleBlockerEditing object {pointer-events: none; width: 80%; height: 80%;}
+
+#shapeColorPicker {
+    text-align: center;
+    position: relative;
+    padding: 0;
+    font-size: 1vw;
+    width: min(calc((1 / 12) * var(--sidemenu-width)), 1.2vw);
+    height: min(calc((1 / 12) * var(--sidemenu-width)), 1.2vw);
+    margin: 0px auto 0.5vh auto;
+    border: none;
+}
+
+#shapeColorPicker {appearance: none; border: none;}
+#shapeColorPicker::-webkit-color-swatch-wrapper {padding: 0; outline: none; border: none;}
+#shapeColorPicker::-webkit-color-swatch {padding: 0; outline: none; border: none;}
+
+#shapeColorPicker::-moz-color-swatch-wrapper {padding: 0; outline: none; border: none;}
+#shapeColorPicker::-moz-color-swatch {padding: 0; outline: none; border: none;}
+
+#colorPickerButton {
+    padding-top: min(calc((0.4 / 12) * var(--sidemenu-width)), 0.6vw);
+    height: min(calc((1.4 / 12) * var(--sidemenu-width)), 1.8vw);
+}
+
+#initiativeHeader {
+    display: flex;
+    width: 100%;
+    margin-top: 1vh;
+    margin-bottom: 0.5vh;
+}
+
+#initiativeHeader h3 {
+    margin: 0px;
+    float: left;
+    font-size: min(calc((1 / 12) * var(--sidemenu-width)), 1.5vw);
+    font-family: Helvetica;
+    width: 80%;
+    margin-right: 0.3vw;
+}
+
+#initiativeHeader input {
+    float: right;
+    padding: 0px;
+    border: 0px;
+    width: 10%;
+    font-size: min(calc((1 / 12) * var(--sidemenu-width)), 1.5vw);
+    height: 100%;
+    font-family: Helvetica;
+    background-color: #424254;
+    border-radius: min(calc((0.3 / 12) * var(--sidemenu-width)), 0.45vw);
+    margin-left: 0.3vw;
+    cursor: pointer;
+}
+
+#initSearch {
+    width: 100%;
+    height: 3vh;
+    font-size: 1vw;
+    padding: 1vh;
+    border: 0px;
+    margin-bottom: 1vh;
+    background-color: #14141c;
+    color: lightgray;
+}
+
+#sliderSection {
+    display: flex;
+    margin-bottom: min(calc((0.3 / 12) * var(--sidemenu-width)), 0.45vw);
+    height: min(calc((0.6 / 12) * var(--sidemenu-width)), 0.9vw);
+}
+
+#sliderContainer {
+    width: 90%;
+}
+
+#trackerScaleSlider {
+    -webkit-appearance: none;  /* Override default CSS styles */
+    appearance: none;
+    width: 100%;
+    height: min(calc((0.4 / 12) * var(--sidemenu-width)), 0.6vw); /* Specified height */
+    background: var(--input-color); /* Grey background */
+    outline: none; /* Remove outline */
+    margin: 0px;
+}
+
+#trackerScaleSlider::-webkit-slider-thumb {
+    -webkit-appearance: none; /* Override default look */
+    appearance: none;
+    width: min(calc((0.6 / 12) * var(--sidemenu-width)), 0.9vw); /* Set a specific slider handle width */
+    height: min(calc((0.6 / 12) * var(--sidemenu-width)), 0.9vw); /* Slider handle height */
+    background-color: orange;
+    border-radius: 50%;
+    cursor: pointer; /* Cursor on hover */
+}
+
+#trackerScaleSlider::-moz-range-thumb {
+    border: none;
+    width: min(calc((0.6 / 12) * var(--sidemenu-width)), 0.9vw); /* Set a specific slider handle width */
+    height: min(calc((0.6 / 12) * var(--sidemenu-width)), 0.9vw); /* Slider handle height */
+    cursor: pointer; /* Cursor on hover */
+    border-radius: 50%;
+    background-color: orange;
+}
+
+.sliderButton {
+    float: right;
+    padding: 0px;
+    border: 0px;
+    width: 10%;
+    font-size: min(calc((1 / 12) * var(--sidemenu-width)), 1.5vw);
+    height: 100%;
+    font-family: Helvetica;
+    background-color: #424254;
+    border-radius: min(calc((0.3 / 12) * var(--sidemenu-width)), 0.45vw);
+    margin-left: 0.3vw;
+    font-size: min(calc((0.4 / 12) * var(--sidemenu-width)), 0.6vw);
+    cursor: pointer;
+}
+
+.sliderButton:focus {
+    outline: none;
 }
 
 #resizer {
     z-index: 1000;
     position: absolute;
-    right: 12.5vw;
-    width: 0.3vw;
-    background-color: rgb(145, 164, 185);
+    right: calc(var(--sidemenu-width) + 1.6vw);
+    width: 0.4vw;
+    background-color: black;
     height: 100%;
+    cursor: e-resize;
 }
+/* #endregion */
 
+/* #region Bulk Initiative */
 #bulkInitGeneratorScreen {
     display: none;
     flex-direction: column;
-    background-color: lightgray;
+    color: white;
+    background-color: var(--sidemenu-color);
     height: auto;
     width: 12vw;
     top: 15vh;
     position: fixed;
-    right: 14vw;
+    right: calc(var(--sidemenu-width) + 2vw);
     padding: 0px 0.3vw;
     z-index: 999;
     font-size: 1vw;
@@ -144,7 +317,6 @@ body h3 {
     font-size: 1vw;
     margin: 0px;
     margin-bottom: 1vh;
-    
 }
 
 #bulkInitGeneratorScreen input:focus {
@@ -164,24 +336,13 @@ body h3 {
     font-size: 1vw;
     margin-bottom: 1vh;
 }
+/* #endregion */
 
-#mapOptionsMenu {
-    display: none;
-    flex-direction: column;
-    background-color: lightgray;
-    height: auto;
-    width: 12vw;
-    position: fixed;
-    right: 14vw;
-    padding: 0px 0.3vw;
-    z-index: 999;
-    font-size: 1vw;
-}
-
+/* #region Notes Editor */
 #notesEditor {
     display: none;
     flex-direction: column;
-    background-color: lightgray;
+    background-color: var(--sidemenu-color);
     top: 60vh;
     height: 19.5vw;
     width: 15vw;
@@ -200,107 +361,21 @@ body h3 {
     height: 18.5vw;
     font-size: 1vw;
 }
+/* #endregion */
 
-#optionsGridDisplay {
-    margin-top: 0.5vw;
-    margin-bottom: 0.5vw;
-    display: flex;
-    flex-wrap: wrap;
-}
-
-#optionsGridDisplay label {
-    width: 5vw;
-    margin-left: 0.5vw;
-    margin-right: 0.5vw;
-    justify-content: space-between;
-}
-
-#toggleButtons {
-    margin: 0.5vh 0px;
-    display: flex;
-    flex-direction: row;
-}
-
-#quickPolyButton {
-    width: 1.8vw;
-    height: 1.8vw;
-    border: none;
-    padding: 0px;
-    margin-right: 0.5vh;
-    text-align: center;
-    line-height: 50%;
-    border-radius: 0.3vw;
-}
-
-#quickPolyButton:focus {outline: none;}
-#quickPolyButton object {pointer-events: none; width: 80%; height: 80%;}
-
-#toggleGridButton {
-    width: 1.8vw;
-    height: 1.8vw;
-    border: none;
-    padding: 0px;
-    margin-right: 0.5vh;
-    text-align: center;
-    line-height: 50%;
-    border-radius: 0.3vw;
-    background-color: aquamarine;
-}
-
-#toggleGridButton:focus {outline: none;}
-#toggleGridButton object {pointer-events: none; width: 80%; height: 80%;}
-
-#toggleSnapButton {
-    width: 1.8vw;
-    height: 1.8vw;
-    border: none;
-    padding: 0px;
-    margin-right: 0.5vh;
-    text-align: center;
-    line-height: 50%;
-    border-radius: 0.3vw;
-}
-
-#toggleSnapButton:focus {outline: none;}
-#toggleSnapButton object {pointer-events: none; width: 63%; height: 63%;}
-
-#toggleSettingsButton {
-    width: 1.8vw;
-    height: 1.8vw;
-    border: none;
-    padding: 0px;
-    margin-right: 0.5vh;
-    text-align: center;
-    line-height: 50%;
-    border-radius: 0.3vw;
-}
-
-#toggleSettingsButton:focus {outline: none;}
-#toggleSettingsButton object {pointer-events: none; width: 63%; height: 63%;}
-
-#toggleBlockerEditing {
-    width: 1.8vw;
-    height: 1.8vw;
-    border: none;
-    padding: 0px;
-    margin-right: 0.5vh;
-    text-align: center;
-    line-height: 50%;
-    border-radius: 0.3vw;
-}
-
-#toggleBlockerEditing:focus {outline: none;}
-#toggleBlockerEditing object {pointer-events: none; width: 63%; height: 63%;}
-
-#shapeColorPicker, #setInit, #mapOptionsMenu input {
-    text-align: center;
-    position: relative;
-    padding: 0;
+/* #region Options Menu */
+#mapOptionsMenu {
+    display: none;
+    flex-direction: column;
+    background-color: var(--sidemenu-color);
+    color: var(--sidemenu-text-color);
+    height: auto;
+    width: 12vw; /*TODO Options its own resizer?*/
+    position: fixed;
+    right: calc(var(--sidemenu-width) + 2vw);
+    padding: 0px 0.3vw;
+    z-index: 999;
     font-size: 1vw;
-    width: 100%;
-    height: 5vh;
-    margin: 0px auto 0.5vh auto;
-    border: none;
 }
 
 #mapSelect {
@@ -327,81 +402,41 @@ body h3 {
     margin-bottom: 1vh;
 }
 
-#shapeColorPicker {
-    appearance: none;
-    border: none;
+#gridColorPicker {appearance: none; border: none; margin-bottom: 1vh;}
+#gridColorPicker::-webkit-color-swatch-wrapper {padding: 0; outline: none; border: none;}
+#gridColorPicker::-webkit-color-swatch {padding: 0; outline: none; border: none;}
+
+#optionsGridDisplay {
+    margin-top: 0.5vw;
+    margin-bottom: 0.5vw;
+    display: flex;
+    flex-wrap: wrap;
 }
 
-#shapeColorPicker::-webkit-color-swatch-wrapper {
+#optionsGridDisplay label {
+    width: 5vw;
+    margin-left: 0.5vw;
+    margin-right: 0.5vw;
+    justify-content: space-between;
+}
+
+#mapOptionsMenu input {
+    text-align: center;
+    position: relative;
     padding: 0;
-    outline: none;
-    border: none;
-}
-
-#shapeColorPicker::-webkit-color-swatch {
-    padding: 0;
-    outline: none;
-    border: none;
-}
-
-#gridColorPicker {
-    appearance: none;
-    border: none; 
-    margin-bottom: 1vh;
-}
-
-#gridColorPicker::-webkit-color-swatch-wrapper {
-    padding: 0;
-    outline: none;
-    border: none;
-}
-
-#gridColorPicker::-webkit-color-swatch {
-    padding: 0;
-    outline: none;
-    border: none;
-}
-
-#shapeMap {
-    position: absolute;
-    user-select: none;
-    -moz-user-select: none;
-    -webkit-user-drag: none;
-    -webkit-user-select: none;
-    -ms-user-select: none;
-    margin: 0px;
-    padding: 0px;
-    z-index: 1;
-}
-
-#map {
-    position: absolute;
-    margin: 0px;
-    padding: 0px;
-    z-index: 0;
-}
-
-#initiativeHeader {
+    font-size: 1vw;
     width: 100%;
-    margin-top: 1vh;
-    margin-bottom: 0.5vh;
+    height: 5vh;
+    margin: 0px auto 0.5vh auto;
+    border: none;
 }
+/* #endregion */
 
-#initiativeHeader h3 {
+/* #region Initiative Tracker */
+#sideMenu p {
     margin: 0px;
-    float: left;
-    font-size: 1vw;
-    font-family: Helvetica;
-    width: 80%;
-}
-
-#initiativeHeader input {
-    float: right;
-    padding: 0px;
-    border: 0px;
-    width: 20%;
-    font-size: 1vw;
-    font-family: Helvetica;
+    font-size: 0.8vw;
+    font-family: Segoe UI,Frutiger,Frutiger Linotype,Dejavu Sans,Helvetica Neue,Arial,sans-serif;
 }
 
 #initiativeTracker {
@@ -409,7 +444,7 @@ body h3 {
     width: 100%;
     flex-direction: column;
     justify-content: flex-start;
-    font-size: 1vw;
+    font-size: calc(1vw * var(--tracker-scale));
     font-family: Helvetica;
     flex-grow: 1;
     overflow-y: auto;
@@ -421,123 +456,180 @@ body h3 {
 #initiativeTracker::-webkit-scrollbar-track {background-color: transparent;}
 
 .initiativeItem {
-    border-radius: 0.45vw;
+    margin-bottom: calc(0.5vw * var(--tracker-scale));
+    border-radius: calc(0.45vw * var(--tracker-scale));
+    background-color: #15151c;
     display: grid;
     user-select: none;
     width: 100%;
-    grid-template-columns: 2vw 3vw 4.4vw auto;
-    grid-template-rows: 2vw 2vw;
+    grid-template-columns: calc(2vw * var(--tracker-scale)) calc(1.4vw * var(--tracker-scale)) calc(6.4vw * var(--tracker-scale)) auto;
+    grid-template-rows: calc(2vw * var(--tracker-scale)) calc(2vw * var(--tracker-scale));
     grid-template-areas:
         "initiative name name name"
-        "bottomrow bottomrow bottomrow bottomrow"
+        "ac actext health healthtext"
 }
 
-.initiativeItem:hover {background-color: #AAAAAA;}
+.oneLineInitiative {
+    grid-template-columns: calc(2vw * var(--tracker-scale)) auto calc(2vw * var(--tracker-scale)) calc(1.4vw * var(--tracker-scale)) calc(6.4vw * var(--tracker-scale)) calc(1.4vw * var(--tracker-scale));
+    grid-template-rows: calc(2vw * var(--tracker-scale));
+    grid-template-areas:
+        "initiative name ac actext health healthtext"
+}
 
 .initiative {
     grid-area: initiative;
-    background-color: white;
+    background-color: #14141c;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0.15vw;
+    margin: calc(0.15vw * var(--tracker-scale));
     text-align: center;
-    border-radius: 0.3vw;
+    border-radius: calc(0.3vw * var(--tracker-scale));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .trackerName {
     grid-area: name;
-    background-color: white;
+    background-color: #14141c;
     display: flex;
     align-items: center;
-    margin: 0.15vw;
-    border-radius: 0.3vw;
-    padding-left: 0.5vw;
+    margin: calc(0.15vw * var(--tracker-scale));
+    border-radius: calc(0.3vw * var(--tracker-scale));
+    padding: 0px calc(0.35vw * var(--tracker-scale));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.trackerBottomRow {
-    grid-area: bottomrow;
-    display: flex;
-    flex-direction: ltr;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.trackerArmorSection {display: flex; flex-direction: ltr; align-items: center;}
-.trackerHitpointsSection {display: flex; flex-direction: ltr; align-items: center;}
+.trackerHitpointsSection {grid-area: health; display: flex; flex-direction: row-reverse; align-items: center;}
 
 .trackerArmorClass {
-    background-color: white;
+    grid-area: ac;
+    background-color: #14141c;
     display: flex;
     align-items: center;
     justify-content: center;
+    margin: calc(0.15vw * var(--tracker-scale));
     text-align: center;
-    margin: 0.15vw;
-    height: 1.7vw;
-    min-width: 1.3vw;
-    border-radius: 0.3vw;
-    padding: 0px 0.2vw;
+    border-radius: calc(0.3vw * var(--tracker-scale));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.trackerArmorClassText {
+    grid-area: actext;
+    display: flex;
+    align-items: center;
+    font-size: calc(0.7vw * var(--tracker-scale));
 }
 
 .trackerDamageButton {
-    width: 1vw;
-    height: 1.8vw;
+    width: calc(1vw * var(--tracker-scale));
+    height: calc(1.8vw * var(--tracker-scale));
     border: none;
     padding: 0px;
     text-align: center;
     line-height: 50%;
-    border-radius: 0.3vw;
+    border-radius: calc(0.3vw * var(--tracker-scale));
     background-color: transparent;
 }
 
-.trackerDamageButton object {width: 1vw;}
+.initiativeItem img {height: calc(1.1vw * var(--tracker-scale));}
+
 
 .trackerHitpoints {
-    background-color: white;
+    background-color: #14141c;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
-    margin: 0.15vw;
-    height: 1.7vw;
-    width: 2.2vw;
-    border-radius: 0.3vw;
-    padding: 0px 0.2vw;
+    margin: calc(0.15vw * var(--tracker-scale));
+    height: calc(1.7vw * var(--tracker-scale));
+    max-width: calc(2.1vw * var(--tracker-scale));
+    border-radius: calc(0.3vw * var(--tracker-scale));
+    padding: 0px calc(0.2vw * var(--tracker-scale));
     border: none;
-    font-size: 1vw;
+    font-size: calc(1vw * var(--tracker-scale));
     font-family: helvetica;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .trackerHitpoints:focus {outline: none;}
 
 .trackerHitpointsMax {
-    background-color: white;
+    background-color: #14141c;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
-    margin: 0.15vw;
-    height: 1.7vw;
-    min-width: 1.3vw;
-    border-radius: 0.3vw;
-    padding: 0px 0.2vw;
+    margin: calc(0.15vw * var(--tracker-scale));
+    height: calc(1.7vw * var(--tracker-scale));
+    max-width: calc(2.1vw * var(--tracker-scale));
+    border-radius: calc(0.3vw * var(--tracker-scale));
+    padding: 0px calc(0.2vw * var(--tracker-scale));
+    border: none;
+    font-size: calc(1vw * var(--tracker-scale));
+    font-family: helvetica;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.trackerHealthText {
+    grid-area: healthtext;
+    display: flex;
+    align-items: center;
+    font-size: calc(0.7vw * var(--tracker-scale));
 }
 
 .initiativeHR {
-    background-color: white;
-    margin: 0.5vh 0.5vw;
-    height: 0.25vh;
+    background-color: #14141c;
+    margin: calc(0.2vw * var(--tracker-scale));
+    height: 0.3vh;
     width: auto;
     border-style: none;
+    overflow: auto;
+    border: 0;
+    clear:both;
+    display:block;
 }
+/* #endregion */
 
+/* #region Details Screen */
 #detailsScreen {
     font-family: helvetica;
+    color: lightgray;
     display: grid;
-    box-shadow: 0 -0.4vw 0.5vw -0.4vw #888;
+    box-shadow: 0 -0.4vw 0.5vw -0.4vw black;
     font-size: 1vw;
     margin-bottom: 0.25vw;
-    grid-template-columns: calc(50% - 2vw) 2vw 50%;
+    grid-template-columns: 3.7vw 2vw 3.7vw 2.6vw;
+    grid-template-rows: 1vw 2vw 2vw 1vw 2vw 1vw 2vw 1vw 4vw;
+    grid-template-areas:
+        "title title title title"
+        "icon hpicon health health"
+        "icon acicon armor armor"
+        "name name name name"
+        "nameinput nameinput nameinput toggles"
+        "status status status toggles"
+        "statusinput statusinput statusinput toggles"
+        "initiative initiative group toggles"
+        "initiativeinput initiativeinput groupinput toggles"
+}
+
+/*#detailsScreen {
+    font-family: helvetica;
+    color: lightgray;
+    display: grid;
+    box-shadow: 0 -0.4vw 0.5vw -0.4vw black;
+    font-size: 1vw;
+    margin-bottom: 0.25vw;
+    grid-template-columns: calc(5.7vw - 2vw) 2vw 5.7vw;
     grid-template-rows: 1vw 2vw 2vw 1vw 2vw 1vw 2vw 1vw 4vw;
     grid-template-areas:
         "title title title"
@@ -549,7 +641,7 @@ body h3 {
         "statusinput statusinput statusinput"
         "initiative initiative group"
         "initiativeinput initiativeinput groupinput"
-}
+}*/
 
 #detailsIcon {
     grid-area: icon;
@@ -561,7 +653,8 @@ body h3 {
 #armorIcon {grid-area: acicon; width: 100%; height: 100%}
 
 #currentHitpoints {
-    background-color: white;
+    background-color: var(--input-color);
+    color: lightgray;
     text-align: center;
     margin: 0.15vw;
     height: 1.7vw;
@@ -573,7 +666,8 @@ body h3 {
     font-family: helvetica;
 }
 #maxHitpoints {
-    background-color: white;
+    background-color: var(--input-color);
+    color: lightgray;
     text-align: center;
     margin: 0.15vw;
     height: 1.7vw;
@@ -593,7 +687,9 @@ body h3 {
 }
 
 #armorClass {
-    background-color: white;
+    grid-area: armor;
+    background-color: var(--input-color);
+    color: lightgray;
     text-align: center;
     margin: 0.15vw;
     height: 1.7vw;
@@ -606,7 +702,8 @@ body h3 {
 
 #detailsNameInput {
     grid-area: nameinput;
-    background-color: white;
+    background-color: var(--input-color);
+    color: lightgray;
     text-align: left;
     margin: 0.15vw;
     height: 1.7vw;
@@ -615,12 +712,13 @@ body h3 {
     border: none;
     font-size: 1vw;
     font-family: helvetica;
-    width: 10vw;
+    width: 100%;
 }
 
 #detailsStatusInput {
     grid-area: statusinput;
-    background-color: white;
+    background-color: var(--input-color);
+    color: lightgray;
     text-align: left;
     margin: 0.15vw;
     height: 1.7vw;
@@ -629,14 +727,15 @@ body h3 {
     border: none;
     font-size: 1vw;
     font-family: helvetica;
-    width: 10vw;
+    width: 100%;
 }
 
 .detailsBottom {
     width: 3.7vw;
     height: 3.7vw;
     margin: 0.15vw;
-    background-color: white;
+    background-color: var(--input-color);
+    color: lightgray;
     text-align: center;
     border-radius: 0.3vw;
     border: none;
@@ -645,6 +744,42 @@ body h3 {
 
 #detailsInitiative {grid-area: initiativeinput}
 #detailsGroup {grid-area: groupinput}
+
+#detailsToggles {
+    grid-area: toggles;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: black;
+    font-size: 1.5vw;
+}
+
+#detailsToggles button {
+    background-color: #c2c9d2;
+    margin: 0 0 1.25vw 1vw;
+    border-radius: 0px;
+    color: black;
+    font-size: 1.5vw;
+    width: 2.25vw;
+    border: 0px;
+    padding: 0px;
+}
+
+#detailsToggles button:focus {outline:none}
+
+#detailsToggles button b {
+    pointer-events: none;
+}
+
+#detailsToggles button img {
+    pointer-events: none;
+}
+
+#visibilityIcon {
+    width: 1.5vw;
+    height: 1.5vw;
+}
+/* #endregion */
 
 #hitboxMap {
     position: absolute;
@@ -673,7 +808,7 @@ body h3 {
     display: flex;
 }
 
-#tokens div a {
+.token a {
     text-align: center;
     position: absolute;
     pointer-events: none;
@@ -685,6 +820,12 @@ body h3 {
 }
 
 .hiddenToken {
+    position: absolute;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.concentratingText {
     position: absolute;
     z-index: 10;
     pointer-events: none;
