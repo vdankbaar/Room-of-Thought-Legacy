@@ -344,7 +344,7 @@ window.addEventListener("wheel", function(e) {
     {
         if (e.deltaY<0)
         {
-            if (zoomCapped())
+            if (extraZoom < 0 || zoomMaxed())
             {
                 extraZoom+=1;
                 board.style.transform = "scale("+(1+extraZoom/20).toString()+")";
@@ -355,7 +355,7 @@ window.addEventListener("wheel", function(e) {
         }
         if (e.deltaY>0)
         {
-            if (extraZoom>0)
+            if (extraZoom > 0 || zoomMined())
             {
                 extraZoom-=1;
                 board.style.transform = "scale("+(1+extraZoom/20).toString()+")";
@@ -399,7 +399,7 @@ document.body.addEventListener("keydown", function(e) {
     }
 });
 
-function zoomCapped() {
+function zoomMaxed() {
     if (browser=="f")
     {
         if (window.devicePixelRatio==3)
@@ -411,6 +411,24 @@ function zoomCapped() {
     if (browser=="c")
     {
         if (window.devicePixelRatio==5)
+            return true;
+        else
+            return false;
+    }
+}
+
+function zoomMined() {
+    if (browser=="f")
+    {
+        if (window.devicePixelRatio==0.3)
+            return true;
+        else
+            return false;
+    }
+    
+    if (browser=="c")
+    {
+        if (window.devicePixelRatio==0.25)
             return true;
         else
             return false;
@@ -1468,39 +1486,44 @@ function createToken(token)
     })
     
     imageElement.addEventListener("dragstart", function(e) {
-        if (browser == "f" && extraZoom>0)
-        {   
-            let emptyImage = document.createElement("img");
-            e.dataTransfer.setDragImage(emptyImage, 0, 0);
-        }
-        if (CheckAntiBlockerPixel(e) || isDM)
+        if (!isPanning)
         {
-            tokenDragOffset.x = token.x - (e.pageX + viewport.scrollLeft)/(1+extraZoom/20);
-            tokenDragOffset.y = token.y - (e.pageY + viewport.scrollTop)/(1+extraZoom/20);
-            draggingToken = token.id;
-            isDraggingToken = true;
-            if (e.ctrlKey || event.metaKey)
+            if (browser == "f" && extraZoom>0)
+            {   
+                let emptyImage = document.createElement("img");
+                e.dataTransfer.setDragImage(emptyImage, 0, 0);
+            }
+            if (CheckAntiBlockerPixel(e) || isDM)
             {
-                controlPressed = true;
+                tokenDragOffset.x = token.x - (e.pageX + viewport.scrollLeft)/(1+extraZoom/20);
+                tokenDragOffset.y = token.y - (e.pageY + viewport.scrollTop)/(1+extraZoom/20);
+                draggingToken = token.id;
+                isDraggingToken = true;
+                if (e.ctrlKey || event.metaKey)
+                {
+                    controlPressed = true;
+                }
+            }
+            else
+            {
+                e.preventDefault();
+                isPanning = true;
+                oldMousePos.x = e.pageX;
+                oldMousePos.y = e.pageY;
+                oldScrollPos.x = viewport.scrollLeft;
+                oldScrollPos.y = viewport.scrollTop;
+                document.body.style.cursor = "grabbing";
+                drawCanvas();
             }
         }
-        else
-        {
-            e.preventDefault();
-            isPanning = true;
-            oldMousePos.x = e.pageX;
-            oldMousePos.y = e.pageY;
-            oldScrollPos.x = viewport.scrollLeft;
-            oldScrollPos.y = viewport.scrollTop;
-            document.body.style.cursor = "grabbing";
-            drawCanvas();
-        }
+        isPanning = false;
+        document.body.style.cursor = "";
     });
 
     imageElement.addEventListener("mousedown", function(e) {
-        if (CheckAntiBlockerPixel(e) || isDM)
+        if (e.button==0)
         {
-            if (e.button==0)
+            if (CheckAntiBlockerPixel(e) || isDM)
             {
                 showDetailsScreen();
                 selectedToken = token.id;

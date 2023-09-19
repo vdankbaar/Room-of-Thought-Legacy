@@ -288,6 +288,14 @@ app.post("/api", function(request, response) {
 
         case "moveToken":
             loadCurrentMap();
+            let newX = parseInt(request.body.x);
+            let newY = parseInt(request.body.y);
+            if (isNaN(newX))
+                newX = 0;
+            if (isNaN(newY))
+                newY = 0;
+            request.body.x = newX;
+            request.body.y = newY;
             for (let i in currentMap.tokens)
             {
                 let currentToken = currentMap.tokens[i];
@@ -724,17 +732,25 @@ app.post("/api", function(request, response) {
                         let currentLength = tmpTokens.length;
                         for (let g = 0; g<currentLength; g++)
                         {
-                            if (tmpTokens[g].initiative < currentMap.tokens[f].initiative)
+                            if (currentMap.tokens[f].initiative==null)
                             {
-                                tmpTokens.splice(g, 0, currentMap.tokens[f]);
+                                tmpTokens.push(currentMap.tokens[f]);
                                 g = currentLength;
                             }
                             else
                             {
-                                if (g==tmpTokens.length-1)
+                                if (tmpTokens[g].initiative < currentMap.tokens[f].initiative)
                                 {
-                                    tmpTokens.push(currentMap.tokens[f]);
-                                    g=currentLength;
+                                    tmpTokens.splice(g, 0, currentMap.tokens[f]);
+                                    g = currentLength;
+                                }
+                                else
+                                {
+                                    if (g==tmpTokens.length-1)
+                                    {
+                                        tmpTokens.push(currentMap.tokens[f]);
+                                        g=currentLength;
+                                    }
                                 }
                             }
                         }
