@@ -163,6 +163,13 @@ app.post("/api", function(request, response) {
                 if (currentToken.id == request.body.id)
                 {
                     currentToken.hidden = request.body.hidden;
+                    for (let i = 0; i < currentMap.drawings.length; i++)
+                    {
+                        if (currentMap.drawings[i].link == currentToken.id)
+                        {
+                            currentMap.drawings[i].visible = !request.body.hidden;
+                        }
+                    }
                 }
             }
             saveCurrentMap();
@@ -401,6 +408,8 @@ app.post("/api", function(request, response) {
                         { currentMap.drawings[i].radius = request.body.radius; }
                         if (request.body.angle!=null)
                         { currentMap.drawings[i].angle = request.body.angle; }
+                        if (request.body.visible!=null)
+                        { currentMap.drawings[i].visible = request.body.visible; }
                     }
                 }
             }

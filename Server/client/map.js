@@ -113,7 +113,6 @@ window.onload = function() {
     {
         isDM = true;
         document.getElementById("hiddenDMCheckbox").checked = isDM;
-        console.log("DM is TRUE!");
     }
     else
     {
@@ -331,7 +330,6 @@ document.getElementById("importMap").onclick = function() {
 }
 
 hiddenMapImportButton.onchange = function() {
-    console.log("Changed")
     document.getElementById("submitMap").click();
     updateMapData(true);
 }
@@ -1714,25 +1712,25 @@ function updateHighlightedToken() {
 
 }
 
-function updateTracker()
+function updateTracker(force)
 {
     if (oldParsedData)
     {
-        if (JSON.stringify(oldParsedData.tokens) == JSON.stringify(mapData.tokens) && oldParsedData.hideInit == mapData.hideInit)
+        if (JSON.stringify(oldParsedData.tokens) == JSON.stringify(mapData.tokens) && oldParsedData.hideInit == mapData.hideInit && !force)
         {
-            console.log("Cancel tracker update!");
             return;
         }
     }
-    console.log("Continue tracker update!");
     initiativeTrackerDiv.innerHTML = "";
     for (let i in mapData.tokens)
     {
         if (CheckTokenPermission(mapData.tokens[i]))
         {
             if (initSearch.value!="") {
-                if (mapData.tokens[i].name.includes(initSearch.value) || !mapData.tokens[i].dm) {
-                    createTracker(mapData.tokens[i]);
+                if (mapData.tokens[i].name) {
+                    if (mapData.tokens[i].name.includes(initSearch.value) || !mapData.tokens[i].dm) {
+                        createTracker(mapData.tokens[i]);
+                    }
                 }
             } else {
                 createTracker(mapData.tokens[i]);
@@ -2118,7 +2116,7 @@ initiativeInput.oninput = function() {
 }
 
 initSearch.oninput = function() {
-    updateTracker();
+    updateTracker(true);
 }
 
 nameInput.oninput = function() {
@@ -2733,6 +2731,10 @@ function shapeContextMenu(e, pixel)
                 selectedShape = mapData.drawings[h];
             }
         }
+        let tmpText = "Hide shape";
+        if (!selectedShape.visible) {
+            tmpText = "Reveal shape";
+        }
         let menuOptions = [
             {text: "Erase shape", hasSubMenu: false, callback: async function() {
                 let result = await requestServer({c: "removeDrawing", id: shapeId, removedDrawings: mapData.removedDrawings});
@@ -2746,6 +2748,12 @@ function shapeContextMenu(e, pixel)
                 }
             }}
         ];
+        if (isDM) {
+            menuOptions.push({text: tmpText, hasSubMenu: false, callback: async function() {
+                await requestServer({c: "editDrawing", id: shapeId, visible: !selectedShape.visible});
+                updateMapData();
+            }});
+        }
         switch(selectedShape.shape)
         {
             case "5ftLine":
