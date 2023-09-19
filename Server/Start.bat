@@ -1,2 +1,2 @@
 @echo off
-start cmd.exe /k npm test
+start cmd.exe /k npm start

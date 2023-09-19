@@ -4,7 +4,10 @@ let removeAll = document.getElementById("removeAll");
 let detachAll = document.getElementById("detachAll");
 let AttachAll = document.getElementById("attachAll");
 let clearLifted = document.getElementById("clearLifted");
-let updateInterval = 500;
+let mapUpdateIntervalTime = 500;
+let minUpdateTime = 100;
+let deltaTimes = [1000,1000,1000,1000,1000];
+let mapUpdateInterval;
 let mapData;
 let gridXSize = 50;
 let gridYSize = 50;
@@ -25,7 +28,6 @@ window.onload = function() {
 async function Setup()
 {
     await updateLinks();
-    setInterval(function() {updateLinks();}, updateInterval);
 }
 
 portalSelect.onchange = function()
@@ -41,7 +43,10 @@ removeAll.onclick = async function() {
 }
 
 AttachAll.onclick = async function() {
-    for (let link of portalData.links) { link.id = tokenMap[link.y][link.x]; }
+    for (let link of portalData.links) {
+        if (tokenMap[link.y][link.x] != -1)
+            link.id = tokenMap[link.y][link.x];
+    }
     await requestServer({c: 'setPortalData', x: portalData.portalX, y: portalData.portalY, name: portalData.name, links: JSON.stringify(portalData.links), id: parseInt(portalSelect.value)});
     updateLinks();
 }
@@ -60,7 +65,17 @@ clearLifted.onclick = async function() {
 let previousMapData;
 async function updateLinks(force)
 {
+    let startTime = Date.now();
     mapData = await requestServer({c: "currentMapData"});
+    deltaTimes.splice(0, 0, Date.now()-startTime)
+    deltaTimes.pop();
+    let newInterval = deltaTimes.reduce((a, b) => a + b, 0)/deltaTimes.length;
+    if (newInterval!=mapUpdateIntervalTime) {
+        mapUpdateIntervalTime = newInterval>minUpdateTime?newInterval:minUpdateTime;
+        if (mapUpdateInterval)
+            clearInterval(mapUpdateInterval);
+        mapUpdateInterval = setInterval(function() {updateLinks();}, mapUpdateIntervalTime);
+    }
     if (JSON.stringify(mapData)!=previousMapData || force)
     {
         if (mapData.portalData.length>0)
@@ -124,32 +139,10 @@ function drawLinks()
         if (link.id!=-1)
             linkElement.style.backgroundColor="#88BB88";
         let tokenImage = document.createElement("img");
-        if (tokenData.image==null)
-            tokenImage.src = "public/blankToken.png";
-        else
-        {
-            if (mapData.tokenList.includes(tokenData.image))
-                tokenImage.src = "public/tokens/"+tokenData.image;
-            else
-                tokenImage.src = "public/dmTokens/"+tokenData.image;
-        }
+        tokenImage.src = tokenData.image!=null ? (mapData.tokenList.includes(tokenData.image) ? "public/tokens/" : "public/dmTokens/")+tokenData.image : "public/blankToken.png";
         linkElement.appendChild(tokenImage);
         let namediv = document.createElement("div");
-        if (tokenData.text!=null)
-            namediv.innerText = tokenData.text;
-        else
-        {
-            if (tokenData.name!=null)
-            {
-                if (!tokenData.dm)
-                    namediv.innerText = tokenData.name;
-                else
-                    namediv.innerText = "DM Only!";
-            }
-                
-            else
-                namediv.innerText = "None";
-        }
+        namediv.innerText = tokenData.text==null ? tokenData.name!=null ? tokenData.dm ? "DM Only!" : tokenData.name : "None" : tokenData.text;
         linkElement.appendChild(namediv);
         let xDiv = document.createElement("div");
         xDiv.innerText = link.x;
@@ -179,8 +172,11 @@ function drawLinks()
         attachButton.type = "button";
         attachButton.value = "Attach";
         attachButton.onclick = async function() {
-            link.id = tokenMap[link.y][link.x];
-            await requestServer({c: 'setPortalData', x: portalData.portalX, y: portalData.portalY, name: portalData.name, links: JSON.stringify(portalData.links), id: parseInt(portalSelect.value)});
+            if (tokenMap[link.y][link.x] != -1)
+            {
+                link.id = tokenMap[link.y][link.x];
+                await requestServer({c: 'setPortalData', x: portalData.portalX, y: portalData.portalY, name: portalData.name, links: JSON.stringify(portalData.links), id: parseInt(portalSelect.value)});
+            }
             updateLinks();
         }
         linkElement.appendChild(attachButton);
@@ -202,13 +198,12 @@ function setOrigin()
 
 function generateTokenMap()
 {
+    tokenMap = [];
     for (let i = 0; i < portalData.portalY; i++)
     {
         tokenMap.push([]);
         for (let j = 0; j < portalData.portalX; j++)
-        {
             tokenMap[i].push(-1);
-        }
     }
 
     for (let token of mapData.tokens)

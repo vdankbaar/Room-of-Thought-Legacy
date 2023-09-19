@@ -27,7 +27,6 @@ for (let drawing of currentMap.drawings)
 
 //Reset non permanent vars
 currentMap.portalData = [];
-
 saveCurrentMap();
 
 let removedTokens = 0;
@@ -86,6 +85,8 @@ app.post("/api", function(request, response) {
 
         case "changeSelectedMap":
             selectedMap = request.body.selectedMap;
+            loadCurrentMap();
+            currentMap.portalData = [];
             response.send(true);
             break
 
@@ -195,11 +196,11 @@ app.post("/api", function(request, response) {
                     if (request.body.viewRange != null)
                         token.viewRange = request.body.viewRange;
                     if (request.body.group != null)
-                        token.group = request.body.group=="reset" ? null : request.body.group;
+                        token.group = request.body.group ? request.body.group : null;
                     if (request.body.initiative != null)
-                        token.initiative = request.body.initiative=="reset" ? null : request.body.initiative;
+                        token.initiative = request.body.initiative ? request.body.initiative : null;
                     if (request.body.name != null)
-                        token.name = request.body.name;
+                        token.name = request.body.name ? request.body.name : null;
                     if (request.body.ac != null)
                         token.ac = request.body.ac;
                     if (request.body.hp != null)
@@ -207,7 +208,7 @@ app.post("/api", function(request, response) {
                     if (request.body.notes != null)
                         token.notes = request.body.notes;
                     if (request.body.image != null)
-                        token.image = request.body.image=="reset" ? null : request.body.image;
+                        token.image = request.body.image ? request.body.image : null;
                     if (request.body.text != null)
                         token.text = request.body.text;
                     if (request.body.dm != null)
@@ -216,6 +217,8 @@ app.post("/api", function(request, response) {
                         token.concentrating = request.body.concentrating;
                     if (request.body.hideTracker != null)
                         token.hideTracker = request.body.hideTracker;
+                    if (request.body.objectLock != null)
+                        token.objectLock = request.body.objectLock;
                 }
             }
             saveCurrentMap();
@@ -255,7 +258,7 @@ app.post("/api", function(request, response) {
             {
                 if (currentToken.id == request.body.id)
                 {
-                    if (!currentMap.groupLock.includes(currentToken.group) || !request.body.bypassLink)
+                    if (!currentToken.objectLock || !request.body.bypassLink)
                     {
                         let dx = request.body.x - currentToken.x;
                         let dy = request.body.y - currentToken.y;
@@ -263,13 +266,12 @@ app.post("/api", function(request, response) {
                         {
                             for (let otherToken of currentMap.tokens)
                             {
-                                if (currentToken.id != otherToken.id && otherToken.group == currentToken.group)
+                                if (currentToken.id != otherToken.id && otherToken.group == currentToken.group && (currentToken.objectLock || (!currentToken.objectLock && !otherToken.objectLock)))
                                 {
                                     otherToken.x += dx;
                                     otherToken.y += dy;
                                     moveLinkedShapes(otherToken);
                                 }
-                                
                             }
                         }
                         currentToken.x = request.body.x;
@@ -291,6 +293,8 @@ app.post("/api", function(request, response) {
                     let inputAngle = request.body.angle * -Math.PI / 180;
                     for (let otherToken of currentMap.tokens)
                     {
+                        if (currentToken.objectLock)
+                            otherToken.rotation = otherToken.rotation == null ? parseInt(request.body.angle) : otherToken.rotation - parseInt(request.body.angle);
                         if (currentToken.id != otherToken.id && otherToken.group == currentToken.group)
                         {
                             let oldX = otherToken.x - currentToken.x;
@@ -920,9 +924,8 @@ function checkGroupLock()
     {
         let groupActive = false;
         let maxLayerInGroup = 0;
-        for (let j = 0; j < currentMap.tokens.length; j++)
+        for (let currentToken of currentMap.tokens)
         {
-            let currentToken = currentMap.tokens[j];
             if (currentToken.group==currentMap.groupLock[i])
             {
                 if (maxLayerInGroup<currentToken.layer)
@@ -933,18 +936,15 @@ function checkGroupLock()
             }
         }
         if (!groupActive)
-        {
             currentMap.groupLock.splice(i, 1);
-        }
         else
         {
-            for (let j = 0; j < currentMap.tokens.length; j++)
+            for (let currentToken of currentMap.tokens)
             {
-                let currentToken = currentMap.tokens[j];
                 if (currentToken.group!=currentMap.groupLock[i])
                 {
                     if (currentToken.layer <= maxLayerInGroup)
-                        currentMap.tokens[j].layer = maxLayerInGroup+1;
+                        currentToken.layer = maxLayerInGroup+1;
                 }
             }
         }
