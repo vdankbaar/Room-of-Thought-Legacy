@@ -16,6 +16,8 @@
                 <div id="shapeHandles"></div>
                 <div id="blockers"></div>
                 <canvas id="antiBlockerMap"></canvas>
+                <canvas id="lightingMap"></canvas>
+                <div id="newWallHandles"></div>
                 <canvas id="shapeMap"></canvas>
                 <canvas id="map"></canvas>
                 <canvas id="hitboxMap"></canvas>
@@ -60,10 +62,15 @@
                     <label for="offsetX">X offset:<input type="number" id="offsetX"></label>
                     <label for="offsetY">Y offset:<input type="number" id="offsetY"></label>
                 </div>
+                <label for="blockerType">Blocker type:</label>
+                <select id="blockerType" class="dmOnly">
+                    <option value="0">Square</option>
+                    <option value="1">Poly</option>
+                    <option value="2">Dynamic (walls)</option>
+                </select>
                 <input id="clearTokensButton" class="dmOnly" type="button" value="Clear all tokens">
                 <input id="clearDrawingsButton" class="dmOnly" type="button" value="Clear all drawings">
                 <input id="clearBlockersButton" class="dmOnly" type="button" value="Clear all blockers">
-                <input id="switchBlockerTypeButton" class="dmOnly" type="button" value="Switch blocker type">
                 <input id="invertBlockerButton" class="dmOnly" type="button" value="Invert blockers">
                 <input id="togglePlayerMode" class="dmOnly" type="button" value="Toggle player mode (M)">
                 <input id="clearPortals" class="dmOnly" type="button" value="Clear portal data">

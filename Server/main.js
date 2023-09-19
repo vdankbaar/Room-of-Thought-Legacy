@@ -15,24 +15,21 @@ app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
 app.use(fileUpload());
 loadCurrentMap();
-for (let i = 0; i<currentMap.tokens.length; i++)
-{
-    if (currentMap.tokens[i].dm==null)
-    {
-        if (currentMap.dmTokenList.includes(currentMap.tokens[i].image))
-            currentMap.tokens[i].dm = true;
-        else
-            currentMap.tokens[i].dm = false;
-    }
-}
 
-for (let i = 0; i<currentMap.drawings.length; i++) {
-    if (currentMap.drawings[i].visible == null) {
-        currentMap.drawings[i].visible = true;
-    }
-}
+//Backwards compatibility
+for (let token of currentMap.tokens)
+    if (token.dm==null)
+        token.dm = currentMap.dmTokenList.includes(currentMap.tokens[i].image);
+
+for (let drawing of currentMap.drawings)
+    if (drawing.visible == null)
+        drawing.visible = true;
+
+//Reset non permanent vars
 currentMap.portalData = [];
+
 saveCurrentMap();
+
 let removedTokens = 0;
 let previousRemovedTokenId = -1;
 let removedDrawings = 0;
@@ -48,76 +45,15 @@ app.post("/api", function(request, response) {
         playerNameList.push(playerName);
         console.log("Currently connected: " + JSON.stringify(playerNameList));
     }
+
     if (!nonLoggedCommands.includes(request.body.c))
         console.log(playerName + ": " + JSON.stringify(request.body));
-    switch(request.body.c) 
+
+    switch(request.body.c)
     {
         case "log":
             console.log(request.body.data);
             response.send(true);
-            break;
-
-        case "setLiftedMinis":
-            loadCurrentMap();
-            if (request.body.id != null) {
-                let selectedPortal = parseInt(request.body.id);
-                if (!isNaN(selectedPortal))
-                {
-                    if (selectedPortal==-1 || selectedPortal>=currentMap.portalData.length) {
-                        selectedPortal = currentMap.portalData.push({}) - 1
-                    }
-                    if (request.body.lifted != null)
-                    { currentMap.portalData[selectedPortal].lifted = JSON.parse(request.body.lifted); }
-                    response.send(selectedPortal.toString());
-                }
-            }
-            else
-            {
-                response.send(false);
-            }
-            saveCurrentMap();
-            break;
-
-        case "setPortalData":
-            loadCurrentMap();
-            if (request.body.id != null) {
-                let selectedPortal = parseInt(request.body.id);
-                if (!isNaN(selectedPortal))
-                {
-                    if (selectedPortal==-1 || selectedPortal>=currentMap.portalData.length) {
-                        selectedPortal = currentMap.portalData.push({}) - 1
-                    }
-                    if (request.body.links != null)
-                    { currentMap.portalData[selectedPortal].links = JSON.parse(request.body.links); }
-                    if (request.body.name != null)
-                    { currentMap.portalData[selectedPortal].name = request.body.name; }
-                    if (!isNaN(parseInt(request.body.x)))
-                    { currentMap.portalData[selectedPortal].portalX = parseInt(request.body.x); }
-                    if (!isNaN(parseInt(request.body.y)))
-                    { currentMap.portalData[selectedPortal].portalY = parseInt(request.body.y); }
-                    if (!isNaN(parseInt(request.body.originX)))
-                    { currentMap.portalData[selectedPortal].originX = parseInt(request.body.originX); }
-                    if (!isNaN(parseInt(request.body.originY)))
-                    { currentMap.portalData[selectedPortal].originY = parseInt(request.body.originY); }
-                    if (request.body.lifted != null)
-                    { currentMap.portalData[selectedPortal].lifted = JSON.parse(request.body.lifted); }
-                    if (request.body.crash != null)
-                    { currentMap.portalData[selectedPortal].crash = request.body.crash; }
-                    response.send(selectedPortal.toString());
-                }
-            }
-            else
-            {
-                response.send(false);
-            }
-            saveCurrentMap();
-            break;
-
-        case "clearPortals":
-            loadCurrentMap();
-            currentMap.portalData = [];
-            response.send(true);
-            saveCurrentMap();
             break;
 
         case "currentMapData":
@@ -158,55 +94,25 @@ app.post("/api", function(request, response) {
             {
                 let tmpToken = {};
                 let tmpTokens = [];
-                if (currentMap.tokens.length>0)
-                {
-                    tmpTokens.push(currentMap.tokens[0]);
-                    if (currentMap.tokens.length>1)
-                    {
-                        for (let f = 1; f<currentMap.tokens.length; f++)
-                        {
-                            let currentLength = tmpTokens.length;
-                            for (let g = 0; g<currentLength; g++)
-                            {
-                                if (tmpTokens[g].id > currentMap.tokens[f].id)
-                                {
-                                    tmpTokens.splice(g, 0, currentMap.tokens[f]);
-                                    g = currentLength;
-                                }
-                                else
-                                {
-                                    if (g==tmpTokens.length-1)
-                                    {
-                                        tmpTokens.push(currentMap.tokens[f]);
-                                        g = currentLength;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    for (let s = 0; s < tmpTokens.length; s++)
-                    {
-                        if (tmpTokens[s].id!=s)
-                        {
-                            tmpToken.id = s;
-                            s = tmpTokens.length;
-                        }
-                    }
-                    if (tmpToken.id == null)
-                    {
-                        tmpToken.id = tmpTokens.length;
+                var newId = 0;
+                tmpTokens = JSON.parse(JSON.stringify(currentMap.tokens));
+                tmpTokens.sort(function(a,b){
+                    return a.id - b.id; 
+                });
+                for (let token of tmpTokens) {
+                    if (token.id > -1 && token.id == newId) {
+                        newId++;
                     }
                 }
-                else
-                {
-                    tmpToken.id = 0;
-                }
+                tmpToken.id = newId;
                 tmpToken.x = request.body.x;
                 tmpToken.y = request.body.y;
                 tmpToken.image = request.body.image;
                 tmpToken.size = request.body.size;
                 tmpToken.status = request.body.status;
                 tmpToken.layer = request.body.layer;
+                if (request.body.viewRange != null)
+                    tmpToken.viewRange = request.body.viewRange;
                 if (request.body.dm != null)
                     tmpToken.dm = request.body.dm;
                 if (request.body.text != null)
@@ -286,6 +192,8 @@ app.post("/api", function(request, response) {
                             
                     if (request.body.layer != null)
                         token.layer = request.body.layer;
+                    if (request.body.viewRange != null)
+                        token.viewRange = request.body.viewRange;
                     if (request.body.group != null)
                         token.group = request.body.group=="reset" ? null : request.body.group;
                     if (request.body.initiative != null)
@@ -323,15 +231,8 @@ app.post("/api", function(request, response) {
             }
             else
             {
-                
-                for (let h = 0; h < currentMap.tokens.length; h++)
-                    if (currentMap.tokens[h].id==request.body.id)
-                        currentMap.tokens.splice(h, 1);
-
-                for (let i = 0; i<currentMap.drawings.length; i++)
-                    if (currentMap.drawings[i].link == request.body.id)
-                        removeDrawingById(currentMap.drawings[i].id);
-                        
+                currentMap.tokens = currentMap.tokens.filter(token => token.id != request.body.id);
+                currentMap.drawings = currentMap.drawings.filter(drawing => drawing.link != request.body.id);
                 checkGroupLock();
                 saveCurrentMap();
                 response.send("[true]");
@@ -350,9 +251,8 @@ app.post("/api", function(request, response) {
                 newY = 0;
             request.body.x = newX;
             request.body.y = newY;
-            for (let i in currentMap.tokens)
+            for (let currentToken of currentMap.tokens)
             {
-                let currentToken = currentMap.tokens[i];
                 if (currentToken.id == request.body.id)
                 {
                     if (!currentMap.groupLock.includes(currentToken.group) || !request.body.bypassLink)
@@ -361,13 +261,13 @@ app.post("/api", function(request, response) {
                         let dy = request.body.y - currentToken.y;
                         if (currentToken.group != null && !request.body.bypassLink)
                         {
-                            for (let j in currentMap.tokens)
+                            for (let otherToken of currentMap.tokens)
                             {
-                                if (j != i && currentMap.tokens[j].group == currentToken.group)
+                                if (currentToken.id != otherToken.id && otherToken.group == currentToken.group)
                                 {
-                                    currentMap.tokens[j].x = currentMap.tokens[j].x + dx;
-                                    currentMap.tokens[j].y = currentMap.tokens[j].y + dy;
-                                    moveLinkedShapes(currentMap.tokens[j]);
+                                    otherToken.x += dx;
+                                    otherToken.y += dy;
+                                    moveLinkedShapes(otherToken);
                                 }
                                 
                             }
@@ -384,26 +284,24 @@ app.post("/api", function(request, response) {
         
         case "rotateDeg":
             loadCurrentMap();
-            for (let i in currentMap.tokens)
+            for (let currentToken of currentMap.tokens)
             {
-                let currentToken = currentMap.tokens[i];
                 if (currentToken.id == request.body.id)
                 {
                     let inputAngle = request.body.angle * -Math.PI / 180;
-                    for (let j in currentMap.tokens)
+                    for (let otherToken of currentMap.tokens)
                     {
-                        if (j != i && currentMap.tokens[j].group == currentMap.tokens[i].group)
+                        if (currentToken.id != otherToken.id && otherToken.group == currentToken.group)
                         {
-                            let oldX = currentMap.tokens[j].x - currentToken.x;
-                            let oldY = currentMap.tokens[j].y - currentToken.y;
+                            let oldX = otherToken.x - currentToken.x;
+                            let oldY = otherToken.y - currentToken.y;
                             let radius = Math.sqrt(Math.pow(oldY, 2)+Math.pow(oldX, 2));
-
                             let currentAngle = Math.atan2(oldY, oldX);
                             let newX = Math.cos(currentAngle + inputAngle) * radius;
                             let newY = Math.sin(currentAngle + inputAngle) * radius;
-                            currentMap.tokens[j].x = newX + currentToken.x;
-                            currentMap.tokens[j].y = currentToken.y + newY;
-                            moveLinkedShapes(currentMap.tokens[j]);
+                            otherToken.x = currentToken.x + newX;
+                            otherToken.y = currentToken.y + newY;
+                            moveLinkedShapes(otherToken);
                         }
                     }
                 }
@@ -462,15 +360,20 @@ app.post("/api", function(request, response) {
             {
                 tmpDrawing.visible = request.body.visible;
                 tmpDrawing.shape = request.body.shape;
-                tmpDrawing.id = currentMap.drawings.length;
+                tmpDrawing.id = 0;
+                currentMap.drawings.sort(function(a,b){
+                    return a.id - b.id; 
+                });
+                for (let drawing of currentMap.drawings) {
+                    if (drawing.id > -1 && drawing.id == tmpDrawing.id) {
+                        tmpDrawing.id++;
+                    }
+                }
                 tmpDrawing.trueColor = request.body.trueColor;
-                if (request.body.link != null)
-                    tmpDrawing.link = request.body.link;
+                tmpDrawing.link = request.body.link;
                 currentMap.drawings.push(tmpDrawing);
                 for (let token of currentMap.tokens)
-                {
                     moveLinkedShapes(token);
-                }
                 saveCurrentMap();
             }
         
@@ -479,9 +382,8 @@ app.post("/api", function(request, response) {
 
         case "editDrawing":
             loadCurrentMap();
-            for (let i in currentMap.drawings)
+            for (let currentDrawing of currentMap.drawings)
             {
-                let currentDrawing = currentMap.drawings[i];
                 if (currentDrawing.id == request.body.id)
                 {
                     if (currentDrawing.shape == "vertexLine" && request.body.both)
@@ -491,13 +393,12 @@ app.post("/api", function(request, response) {
                             let dx = request.body.x - currentDrawing.points[0].x;
                             let dy = request.body.y - currentDrawing.points[0].y;
                             if (request.body.moveShapeGroup)
-                            {
                                 moveShapeGroup(currentDrawing.id, dx, dy, currentDrawing.shapeGroup);
-                            }
-                            for (let i = 0; i < currentDrawing.points.length; i++)
+
+                            for (let currentPoint of currentDrawing.points)
                             {
-                                currentDrawing.points[i].x = Math.round(currentDrawing.points[i].x + dx);
-                                currentDrawing.points[i].y = Math.round(currentDrawing.points[i].y + dy);
+                                currentPoint.x = Math.round(currentPoint.x + dx);
+                                currentPoint.y = Math.round(currentPoint.y + dy);
                             }   
                         }
                     }
@@ -510,30 +411,34 @@ app.post("/api", function(request, response) {
                             moveShapeGroup(currentDrawing.id, dx, dy, currentDrawing.shapeGroup);
                         }
                         if (request.body.points!=null)
-                        { currentMap.drawings[i].points = request.body.points; }
+                            currentDrawing.points = request.body.points;
+                        
                         if (request.body.destX!=null)
-                        { currentMap.drawings[i].destX = Math.round(request.body.destX); }
+                            currentDrawing.destX = Math.round(request.body.destX);
+                        
                         if (request.body.destY!=null)
-                        { currentMap.drawings[i].destY = Math.round(request.body.destY); }
+                            currentDrawing.destY = Math.round(request.body.destY);
+                        
                         if (request.body.x!=null)
-                        {currentMap.drawings[i].x = Math.round(request.body.x);} 
+                            currentDrawing.x = Math.round(request.body.x);
+                        
                         if (request.body.y!=null)
-                        { currentMap.drawings[i].y = Math.round(request.body.y); }
+                            currentDrawing.y = Math.round(request.body.y);
+                        
                         if (request.body.range!=null)
-                        { currentMap.drawings[i].range = request.body.range; }
+                            currentDrawing.range = request.body.range;
+
                         if (request.body.radius!=null)
-                        { currentMap.drawings[i].radius = request.body.radius; }
+                            currentDrawing.radius = request.body.radius;
+                        
                         if (request.body.angle!=null)
-                        { currentMap.drawings[i].angle = request.body.angle; }
+                            currentDrawing.angle = request.body.angle;
+                        
                         if (request.body.visible!=null)
-                        { currentMap.drawings[i].visible = request.body.visible; }
+                            currentDrawing.visible = request.body.visible;
+                        
                         if (request.body.shapeGroup!=null)
-                        {
-                            if (request.body.shapeGroup == "null")
-                                currentMap.drawings[i].shapeGroup = null
-                            else
-                                currentMap.drawings[i].shapeGroup = request.body.shapeGroup;
-                        }
+                            currentMap.drawings[i].shapeGroup = request.body.shapeGroup == "null" ? null : request.body.shapeGroup;
                     }
                 }
             }
@@ -549,7 +454,9 @@ app.post("/api", function(request, response) {
             }
             else
             {
-                removeDrawingById(request.body.id);
+                currentMap.drawings = currentMap.drawings.filter(drawing => drawing.id != request.body.id);
+                previousRemovedDrawingId = request.body.id;
+                removedDrawings++;
                 saveCurrentMap();
                 response.send("[true]");
             }
@@ -602,15 +509,14 @@ app.post("/api", function(request, response) {
         
         case "editBlocker":
             loadCurrentMap();
-            for (let i in currentMap.blockers)
+            for (let currentBlocker of currentMap.blockers)
             {
-                let currentBlocker = currentMap.blockers[i];
                 if (currentBlocker.id == request.body.id)
                 {
-                    currentMap.blockers[i].x = request.body.x;
-                    currentMap.blockers[i].y = request.body.y;
-                    currentMap.blockers[i].width = request.body.width;
-                    currentMap.blockers[i].height = request.body.height;
+                    currentBlocker.x = request.body.x;
+                    currentBlocker.y = request.body.y;
+                    currentBlocker.width = request.body.width;
+                    currentBlocker.height = request.body.height;
                 }
             }
             saveCurrentMap();
@@ -630,12 +536,63 @@ app.post("/api", function(request, response) {
                 }
             }
             for (let i = blockerFound; i < currentMap.blockers.length; i++)
-            {
                 currentMap.blockers[i].id = currentMap.blockers[i].id - 1;
+            saveCurrentMap();
+            response.send("[true]");
+            break;
+
+        case "addWallSegment":
+            loadCurrentMap();
+            let newSegment = request.body.segment;
+            for (let segment of currentMap.walls)
+            {
+                if (Math.sqrt(Math.pow(segment.a.x - newSegment.a.x, 2) + Math.pow(segment.a.y - newSegment.a.y, 2)) < 5)
+                {
+                    newSegment.a.x = segment.a.x
+                    newSegment.a.y = segment.a.y
+                }
+                if (Math.sqrt(Math.pow(segment.b.x - newSegment.b.x, 2) + Math.pow(segment.b.y - newSegment.b.y, 2)) < 5)
+                {
+                    newSegment.b.x = segment.b.x
+                    newSegment.b.y = segment.b.y
+                }
+            }
+            currentMap.walls.push(request.body.segment);
+            saveCurrentMap();
+            response.send("[true]");
+            break;
+
+        case "moveWallPoint":
+            loadCurrentMap();
+            for (let derp of currentMap.walls)
+            {
+                if (derp.a.x === request.body.point.x && derp.a.y === request.body.point.y)
+                {
+                    derp.a.x = request.body.newPoint.x;
+                    derp.a.y = request.body.newPoint.y;
+                }
+                    
+                if (derp.b.x === request.body.point.x && derp.b.y === request.body.point.y)
+                {
+                    derp.b.x = request.body.newPoint.x;
+                    derp.b.y = request.body.newPoint.y;
+                }
             }
             saveCurrentMap();
             response.send("[true]");
             break;
+
+        case "removeWallPoint":
+            loadCurrentMap();
+            for (let [i, segment] of currentMap.walls.entries())
+            {
+                if ((segment.a.x == request.body.point.x && segment.a.y == request.body.point.y) || (segment.b.x == request.body.point.x && segment.b.y == request.body.point.y))
+                    currentMap.walls.splice(i, 1);
+            }
+            saveCurrentMap();
+            response.send("[true]");
+            break;
+
 
         case "addPolyBlocker":
             loadCurrentMap();
@@ -649,11 +606,21 @@ app.post("/api", function(request, response) {
             response.send("[true]");
             break;
         
+        case "togglePolyBlocker":
+            loadCurrentMap();
+            for (let currentBlocker of currentMap.polyBlockers)
+            {
+                if (currentBlocker.id == request.body.id)
+                    currentBlocker.inactive = !currentBlocker.inactive;
+            }
+            saveCurrentMap();
+            response.send("[true]");
+            break;
+
         case "editVert":
             loadCurrentMap();
-            for (let i in currentMap.polyBlockers)
+            for (let currentBlocker of currentMap.polyBlockers)
             {
-                let currentBlocker = currentMap.polyBlockers[i];
                 if (currentBlocker.id == request.body.id)
                 {
                     currentBlocker.verts[request.body.vertIndex].x = request.body.x;
@@ -666,15 +633,14 @@ app.post("/api", function(request, response) {
 
         case "movePolyBlocker":
             loadCurrentMap();
-            for (let i in currentMap.polyBlockers)
+            for (let currentBlocker of currentMap.polyBlockers)
             {
-                let currentBlocker = currentMap.polyBlockers[i];
                 if (currentBlocker.id == request.body.id)
                 {
-                    for (let j in currentBlocker.verts)
+                    for (let currentVert of currentBlocker.verts)
                     {
-                        currentBlocker.verts[j].x = currentBlocker.verts[j].x + request.body.offsetX;
-                        currentBlocker.verts[j].y = currentBlocker.verts[j].y + request.body.offsetY;
+                        currentVert.x = currentVert.x + request.body.offsetX;
+                        currentVert.y = currentVert.y + request.body.offsetY;
                     }
                 }
             }
@@ -692,9 +658,8 @@ app.post("/api", function(request, response) {
             
         case "addVert":
             loadCurrentMap();
-            for (let i in currentMap.polyBlockers)
+            for (let currentBlocker of currentMap.polyBlockers)
             {
-                let currentBlocker = currentMap.polyBlockers[i];
                 if (currentBlocker.id == request.body.id)
                 {
                     let prevVert = currentBlocker.verts[request.body.vertId];
@@ -713,13 +678,10 @@ app.post("/api", function(request, response) {
 
         case "removeVert":
             loadCurrentMap();
-            for (let i in currentMap.polyBlockers)
+            for (let currentBlocker of currentMap.polyBlockers)
             {
-                let currentBlocker = currentMap.polyBlockers[i];
                 if (currentBlocker.id == request.body.id)
-                {
                     currentBlocker.verts.splice(request.body.vertId, 1);
-                }
             }
             saveCurrentMap();
             response.send("[true]");
@@ -761,11 +723,13 @@ app.post("/api", function(request, response) {
         case "clearTokens":
             loadCurrentMap();
             currentMap.tokens = [];
-            for (let i = 0; i < currentMap.drawings.length; i++)
+            for (let targetDrawing of currentMap.drawings)
             {
-                if (currentMap.drawings[i].link!=null)
+                if (targetDrawing.link!=null)
                 {
-                    removeDrawingById(currentMap.drawings[i].link);
+                    currentMap.drawings = currentMap.drawings.filter(drawing => drawing.id != targetDrawing.link);
+                    previousRemovedDrawingId = targetDrawing.link;
+                    removedDrawings++;
                 }
             }
             saveCurrentMap();
@@ -783,13 +747,18 @@ app.post("/api", function(request, response) {
             loadCurrentMap();
             currentMap.blockers = [];
             currentMap.polyBlockers = [];
+            currentMap.walls = [];
             saveCurrentMap();
             response.send("[true]");
             break;
 
         case "switchBlockerType":
             loadCurrentMap();
-            currentMap.usePolyBlockers = !currentMap.usePolyBlockers;
+            if (!isNaN(parseInt(request.body.type)))
+            {
+                currentMap.blockerType = parseInt(request.body.type);
+                currentMap.usePolyBlockers = currentMap.blockerType == 1;
+            }
             saveCurrentMap();
             response.send("[true]");
             break;
@@ -802,10 +771,10 @@ app.post("/api", function(request, response) {
                 tmpTokens.push(currentMap.tokens[0]);
                 if (currentMap.tokens.length>1)
                 {
-                    for (let f = 1; f<currentMap.tokens.length; f++)
+                    for (let f = 1; f < currentMap.tokens.length; f++)
                     {
                         let currentLength = tmpTokens.length;
-                        for (let g = 0; g<currentLength; g++)
+                        for (let g = 0; g < currentLength; g++)
                         {
                             if (currentMap.tokens[f].initiative==null)
                             {
@@ -853,6 +822,70 @@ app.post("/api", function(request, response) {
             }
             saveCurrentMap();
             response.send("[true]");
+            break;
+
+        case "setLiftedMinis":
+            loadCurrentMap();
+            if (request.body.id != null) {
+                let selectedPortal = parseInt(request.body.id);
+                if (!isNaN(selectedPortal))
+                {
+                    if (selectedPortal==-1 || selectedPortal>=currentMap.portalData.length)
+                        selectedPortal = currentMap.portalData.push({}) - 1
+
+                    if (request.body.lifted != null)
+                        currentMap.portalData[selectedPortal].lifted = JSON.parse(request.body.lifted);
+                        
+                    response.send(selectedPortal.toString());
+                }
+            }
+            else
+            {
+                response.send(false);
+            }
+            saveCurrentMap();
+            break;
+
+        case "setPortalData":
+            loadCurrentMap();
+            if (request.body.id != null) {
+                let selectedPortal = parseInt(request.body.id);
+                if (!isNaN(selectedPortal))
+                {
+                    if (selectedPortal==-1 || selectedPortal>=currentMap.portalData.length) {
+                        selectedPortal = currentMap.portalData.push({}) - 1
+                    }
+                    if (request.body.links != null)
+                    { currentMap.portalData[selectedPortal].links = JSON.parse(request.body.links); }
+                    if (request.body.name != null)
+                    { currentMap.portalData[selectedPortal].name = request.body.name; }
+                    if (!isNaN(parseInt(request.body.x)))
+                    { currentMap.portalData[selectedPortal].portalX = parseInt(request.body.x); }
+                    if (!isNaN(parseInt(request.body.y)))
+                    { currentMap.portalData[selectedPortal].portalY = parseInt(request.body.y); }
+                    if (!isNaN(parseInt(request.body.originX)))
+                    { currentMap.portalData[selectedPortal].originX = parseInt(request.body.originX); }
+                    if (!isNaN(parseInt(request.body.originY)))
+                    { currentMap.portalData[selectedPortal].originY = parseInt(request.body.originY); }
+                    if (request.body.lifted != null)
+                    { currentMap.portalData[selectedPortal].lifted = JSON.parse(request.body.lifted); }
+                    if (request.body.crash != null)
+                    { currentMap.portalData[selectedPortal].crash = request.body.crash; }
+                    response.send(selectedPortal.toString());
+                }
+            }
+            else
+            {
+                response.send(false);
+            }
+            saveCurrentMap();
+            break;
+
+        case "clearPortals":
+            loadCurrentMap();
+            currentMap.portalData = [];
+            response.send(true);
+            saveCurrentMap();
             break;
     }
 });
@@ -969,25 +1002,6 @@ function updateTokenCircleRange(tokenData, newSize) {
     } 
 }
 
-function removeDrawingById(targetId) {
-    let shapeFound = 0;
-    for (let i in currentMap.drawings)
-    {
-        let currentDrawing = currentMap.drawings[i];
-        if (currentDrawing.id == targetId)
-        {
-            shapeFound = i;
-            currentMap.drawings.splice(i, 1);
-        }
-    }
-    for (let i = shapeFound; i < currentMap.drawings.length; i++)
-    {
-        currentMap.drawings[i].id = currentMap.drawings[i].id - 1;
-    }
-    previousRemovedDrawingId = targetId;
-    removedDrawings++;
-}
-
 function loadCurrentMap() 
 {
     currentMap = JSON.parse(readFile("data/" + selectedMap + ".json"));
@@ -1013,6 +1027,16 @@ function loadCurrentMap()
         currentMap.portalData = [];
     if (currentMap.groupPresets == null)
         currentMap.groupPresets = [];
+    if (currentMap.walls == null)
+        currentMap.walls = [];
+    if (currentMap.blockerType == null)
+    {
+        if (currentMap.usePolyBlockers)
+            currentMap.blockerType = 1;
+        else
+            currentMap.blockerType = 0;
+    }
+        
     currentMap.mapName = selectedMap;
     currentMap.tokenList = readDirectory(publicFolder + "tokens", "jpg|png|jpeg|gif");
     currentMap.dmTokenList = readDirectory(publicFolder + "dmTokens", "jpg|png|jpeg|gif");
