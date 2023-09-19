@@ -1,15 +1,19 @@
 let GridActive = true;
 let GridSnap = true;
 let autoUpdate = true;
-let mapUpdateInterval = 1000;
+let minUpdateTime = 500;
+let blockerOutlineColor = "violet";
+let shapeWidth = 2;
+let GridLineWidth = 1;
+let feetPerSquare = 5.0;
+
 let offsetX = 0;
 let offsetY = 0;
 let GridColor = "#222222FF";
 let shapeColor = "#FF0000FF";
-let blockerOutlineColor = "violet";
-let shapeWidth = 2;
+let mapUpdateIntervalTime = 1000;
+let mapUpdateInterval;
 let hitboxMultiplier = 3;
-let GridLineWidth = 1;
 let map = document.getElementById("map");
 let board = document.getElementById("board");
 let viewport = document.getElementById("viewport");
@@ -57,6 +61,7 @@ let antiBlockerMap = document.getElementById("antiBlockerMap");
 let initSearch = document.getElementById("initSearch");
 let buttonList = document.getElementById("toggleButtonList");
 let quickPolyButton = document.getElementById("quickPolyButton");
+let colorPickerButton = document.getElementById("colorPickerButton");
 let mapCanvas;
 let shapeCanvas;
 let hitboxCanvas;
@@ -83,7 +88,6 @@ if (shapeColorCookie == "") {
 let clientName = getCookie("playerName");
 if (clientName == "")
     window.location.href = "/";
-let feetPerSquare = 5.0;
 let isPlacingBlocker = false;
 let isPlacingSquare = false;
 let isPlacingLine = false;
@@ -104,7 +108,7 @@ let selectedTokenData;
 let selectedBlocker;
 let selectedShapeId = -1;
 let oldData = "";
-let oldParsedData = null;
+let oldParsedData;
 let resizingSideMenu = false;
 let controlPressed = false;
 let placingBulkOrigin = false;
@@ -121,6 +125,7 @@ let newPolyBlockerVerts = [];
 let selectedNewVertHandle = -1;
 let playerMode = false;
 let selectedPortal = -1;
+let deltaTimes = [1000,1000,1000,1000,1000];
 
 window.onload = function() {
     if (getCookie("isDM") == 1)
@@ -154,19 +159,15 @@ window.onload = function() {
 }
 
 async function Setup() {
+    mapData = await requestServer({c: "currentMapData"});
     mapCanvas = map.getContext("2d");
     hitboxCanvas = hitboxMap.getContext("2d");
     shapeCanvas = shapeMap.getContext("2d");
     antiBlockerCanvas = antiBlockerMap.getContext("2d");
-    colorPicker.value = shapeColor.substr(0, shapeColor.length-2);
-    await updateMapData(true);
+    setColor(shapeColor);
     if((!mapData.usePolyBlockers && isDM) || !isDM)
     {
         quickPolyButton.style.display = "none";
-    }
-    if (autoUpdate)
-    {
-        setInterval(function() {updateMapData();}, mapUpdateInterval);
     }
     if (isDM)
     {
@@ -177,12 +178,23 @@ async function Setup() {
     {
         baseTokenIndex = 4;
     }
-    drawCanvas();
+    updateMapData(true);
 }
+
 
 async function updateMapData(force) 
 {
+    let startTime = Date.now();
     mapData = await requestServer({c: "currentMapData", x: loadedMap.naturalWidth, y: loadedMap.naturalHeight});
+    deltaTimes.splice(0, 0, Date.now()-startTime)
+    deltaTimes.pop();
+    let newInterval = deltaTimes.reduce((a, b) => a + b, 0)/deltaTimes.length;
+    if (newInterval!=mapUpdateIntervalTime) {
+        mapUpdateIntervalTime = newInterval>minUpdateTime?newInterval:minUpdateTime;
+        clearInterval(mapUpdateInterval);
+        mapUpdateInterval = setInterval(function() {updateMapData();}, mapUpdateIntervalTime);
+    }
+
     let stringData = JSON.stringify(mapData);
     if (oldData != stringData || force)
     {
@@ -275,14 +287,10 @@ async function updateMapData(force)
                 selectedShapeId = -1;
                 selectedVertHandle = -1;
                 detailsScreen.style.display = "none";
-                loadedMap.onload = function() 
-                {
-                    drawCanvas();
-                    oldData = stringData;
-                    if (oldData) {
-                        oldParsedData = JSON.parse(oldData);
-                    }
-                }
+                await loadedMap.decode()
+                drawCanvas();
+                oldData = stringData;
+                oldParsedData = oldData?JSON.parse(oldData):oldParsedData;
             } else {
                 let skipMapRedraw = true;
                 if (oldParsedData.x != mapData.x) { skipMapRedraw = false; }
@@ -293,27 +301,21 @@ async function updateMapData(force)
                 if (force) { skipMapRedraw = false; }
                 drawCanvas(skipMapRedraw);
                 oldData = stringData;
-                if (oldData) {
-                    oldParsedData = JSON.parse(oldData);
-                }
+                oldParsedData = oldData?JSON.parse(oldData):oldParsedData;
             }
         } else {
             mapCanvas.clearRect(0, 0, map.width, map.height);
             loadedMap.src = "/public/maps/" + mapData.map;
-            loadedMap.onload = function() 
-            {
-                drawCanvas();
-                oldData = stringData;
-                if (oldData) {
-                    oldParsedData = JSON.parse(oldData);
-                }
-            }
+            await loadedMap.decode();
+            drawCanvas();
+            oldData = stringData;
+            oldParsedData = oldData?JSON.parse(oldData):oldParsedData;
+            if (autoUpdate)
+                mapUpdateInterval = setInterval(function() {updateMapData();}, mapUpdateIntervalTime);
         }
     }
     else
-    {
         console.log("Data is identical, not updating!");
-    }
 }
 
 function returnToken(id) {
@@ -463,15 +465,13 @@ initiativeTrackerDiv.onscroll = function()
 //#endregion
 
 //#region Map options
-
-
-gridColorPicker.onchange = function() {
-    requestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: false, gridColor: gridColorPicker.value});
+gridColorPicker.onchange = async function() {
+    await requestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: false, gridColor: gridColorPicker.value});
     updateMapData();
 }
 
 mapSelect.onchange = async function() {
-    requestServer({c: "changeSelectedMap", selectedMap: mapSelect.value})
+    await requestServer({c: "changeSelectedMap", selectedMap: mapSelect.value})
     await updateMapData();
     mapSourceSelect.value = mapData.map;
     mapYInput.value = mapData.y;
@@ -486,28 +486,28 @@ mapSelect.onchange = async function() {
         quickPolyButton.style.display = "none";
 }
 
-mapSourceSelect.onchange = function() {
-    requestServer({c: "setMapData", map: mapSourceSelect.value, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: mapData.hideInit});
+mapSourceSelect.onchange = async function() {
+    await requestServer({c: "setMapData", map: mapSourceSelect.value, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: mapData.hideInit});
     updateMapData();
 }
 
-mapYInput.onchange = function() {
-    requestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: parseFloat(mapYInput.value), offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: mapData.hideInit});
+mapYInput.onchange = async function() {
+    await requestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: parseFloat(mapYInput.value), offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: mapData.hideInit});
     updateMapData();
 }
 
-mapXInput.onchange = function() {
-    requestServer({c: "setMapData", map: mapData.map, x: parseFloat(mapXInput.value), y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: mapData.hideInit});
+mapXInput.onchange = async function() {
+    await requestServer({c: "setMapData", map: mapData.map, x: parseFloat(mapXInput.value), y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: mapData.hideInit});
     updateMapData();
 }
 
-offsetXInput.onchange = function() {
-    requestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: parseFloat(offsetXInput.value), offsetY: mapData.offsetY, hideInit: mapData.hideInit});
+offsetXInput.onchange = async function() {
+    await requestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: parseFloat(offsetXInput.value), offsetY: mapData.offsetY, hideInit: mapData.hideInit});
     updateMapData();
 }
 
-offsetYInput.onchange = function() {
-    requestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: parseFloat(offsetYInput.value), hideInit: mapData.hideInit});
+offsetYInput.onchange = async function() {
+    await requestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: parseFloat(offsetYInput.value), hideInit: mapData.hideInit});
     updateMapData();
 }
 //#endregion
@@ -583,10 +583,10 @@ function drawVertexLine(index, shape)
     shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
     shapeCanvas.beginPath();
-    shapeCanvas.moveTo(shape.points[0].x, shape.points[0].y);
+    shapeCanvas.moveTo(shape.points[0].x+0.5, shape.points[0].y+0.5);
     for (let i = 1; i < shape.points.length; i++)
     {
-        shapeCanvas.lineTo(shape.points[i].x, shape.points[i].y)
+        shapeCanvas.lineTo(shape.points[i].x+0.5, shape.points[i].y+0.5)
     }
     shapeCanvas.stroke();
 
@@ -601,10 +601,10 @@ function drawVertexLine(index, shape)
     hitboxCanvas.strokeStyle = colorString;
     hitboxCanvas.lineWidth = shapeWidth * hitboxMultiplier;
     hitboxCanvas.beginPath();
-    hitboxCanvas.moveTo(shape.points[0].x, shape.points[0].y);
+    hitboxCanvas.moveTo(shape.points[0].x+0.5, shape.points[0].y+0.5);
     for (let i = 1; i < shape.points.length; i++)
     {
-        hitboxCanvas.lineTo(shape.points[i].x, shape.points[i].y)
+        hitboxCanvas.lineTo(shape.points[i].x+0.5, shape.points[i].y+0.5)
     }
     hitboxCanvas.stroke();
     if (selectedShapeId == shape.id)
@@ -638,11 +638,11 @@ function drawVertexLine(index, shape)
             handle.addEventListener("contextmenu", function(e) {
                 e.preventDefault();
                 let menuOptions = [
-                    {text: "Remove vert", hasSubMenu: false, callback: function() {
+                    {text: "Remove vert", hasSubMenu: false, callback: async function() {
                         if (shape.points.length>2)
                         {
                             shape.points.splice(i, 1);
-                            requestServer({c: "editDrawing", id: shape.id, points: shape.points});
+                            await requestServer({c: "editDrawing", id: shape.id, points: shape.points});
                             updateMapData();
                         }
                         else
@@ -686,7 +686,7 @@ function drawCircle(index, shape)
     shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
     shapeCanvas.beginPath();
-    shapeCanvas.arc(shape.x, shape.y, trueRadius, 0, 2 * Math.PI);
+    shapeCanvas.arc(shape.x+0.5, shape.y+0.5, trueRadius, 0, 2 * Math.PI);
     shapeCanvas.stroke();
 
     let colorString = "#";
@@ -700,7 +700,7 @@ function drawCircle(index, shape)
     hitboxCanvas.strokeStyle = colorString;
     hitboxCanvas.lineWidth = shapeWidth * hitboxMultiplier;
     hitboxCanvas.beginPath();
-    hitboxCanvas.arc(shape.x, shape.y, trueRadius, 0, 2 * Math.PI);
+    hitboxCanvas.arc(shape.x+0.5, shape.y+0.5, trueRadius, 0, 2 * Math.PI);
     hitboxCanvas.stroke();
 }
 
@@ -709,7 +709,7 @@ function drawSquare(index, shape)
     shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
     shapeCanvas.beginPath();
-    shapeCanvas.rect(shape.x, shape.y, shape.width, shape.height);
+    shapeCanvas.rect(shape.x+0.5, shape.y+0.5, shape.width, shape.height);
     shapeCanvas.stroke();
 
     let colorString = "#";
@@ -723,7 +723,7 @@ function drawSquare(index, shape)
     hitboxCanvas.strokeStyle = colorString;
     hitboxCanvas.lineWidth = shapeWidth * hitboxMultiplier;
     hitboxCanvas.beginPath();
-    hitboxCanvas.rect(shape.x, shape.y, shape.width, shape.height);
+    hitboxCanvas.rect(shape.x+0.5, shape.y+0.5, shape.width, shape.height);
     hitboxCanvas.stroke();
 }
 
@@ -736,11 +736,11 @@ function draw5Line(index, shape) {
     shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
     shapeCanvas.beginPath();
-    shapeCanvas.moveTo(topOriginCorner.x, topOriginCorner.y);
-    shapeCanvas.lineTo(bottomOriginCorner.x, bottomOriginCorner.y);
-    shapeCanvas.lineTo(bottomTargetCorner.x, bottomTargetCorner.y);
-    shapeCanvas.lineTo(topTargetCorner.x, topTargetCorner.y);
-    shapeCanvas.lineTo(topOriginCorner.x, topOriginCorner.y);
+    shapeCanvas.moveTo(topOriginCorner.x+0.5, topOriginCorner.y+0.5);
+    shapeCanvas.lineTo(bottomOriginCorner.x+0.5, bottomOriginCorner.y+0.5);
+    shapeCanvas.lineTo(bottomTargetCorner.x+0.5, bottomTargetCorner.y+0.5);
+    shapeCanvas.lineTo(topTargetCorner.x+0.5, topTargetCorner.y+0.5);
+    shapeCanvas.lineTo(topOriginCorner.x+0.5, topOriginCorner.y+0.5);
     shapeCanvas.stroke();
     let colorString = "#";
     let hex = ((parseInt(index) + 1) * 16).toString(16);
@@ -753,11 +753,11 @@ function draw5Line(index, shape) {
     hitboxCanvas.strokeStyle = colorString;
     hitboxCanvas.lineWidth = shapeWidth * hitboxMultiplier;
     hitboxCanvas.beginPath();
-    hitboxCanvas.moveTo(topOriginCorner.x, topOriginCorner.y);
-    hitboxCanvas.lineTo(bottomOriginCorner.x, bottomOriginCorner.y);
-    hitboxCanvas.lineTo(bottomTargetCorner.x, bottomTargetCorner.y);
-    hitboxCanvas.lineTo(topTargetCorner.x, topTargetCorner.y);
-    hitboxCanvas.lineTo(topOriginCorner.x, topOriginCorner.y);
+    hitboxCanvas.moveTo(topOriginCorner.x+0.5, topOriginCorner.y+0.5);
+    hitboxCanvas.lineTo(bottomOriginCorner.x+0.5, bottomOriginCorner.y+0.5);
+    hitboxCanvas.lineTo(bottomTargetCorner.x+0.5, bottomTargetCorner.y+0.5);
+    hitboxCanvas.lineTo(topTargetCorner.x+0.5, topTargetCorner.y+0.5);
+    hitboxCanvas.lineTo(topOriginCorner.x+0.5, topOriginCorner.y+0.5);
     hitboxCanvas.stroke();
 }
 
@@ -780,10 +780,10 @@ function drawCone(index, shape)
     shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
     shapeCanvas.beginPath();
-    shapeCanvas.moveTo(originX, originY);
-    shapeCanvas.lineTo(destX1, destY1);
-    shapeCanvas.lineTo(destX2, destY2);
-    shapeCanvas.lineTo(originX, originY);
+    shapeCanvas.moveTo(originX+0.5, originY+0.5);
+    shapeCanvas.lineTo(destX1+0.5, destY1+0.5);
+    shapeCanvas.lineTo(destX2+0.5, destY2+0.5);
+    shapeCanvas.lineTo(originX+0.5, originY+0.5);
     shapeCanvas.stroke();
 
     let colorString = "#";
@@ -797,10 +797,10 @@ function drawCone(index, shape)
     hitboxCanvas.strokeStyle = colorString;
     hitboxCanvas.lineWidth = shapeWidth * hitboxMultiplier;
     hitboxCanvas.beginPath();
-    hitboxCanvas.moveTo(originX, originY);
-    hitboxCanvas.lineTo(destX1, destY1);
-    hitboxCanvas.lineTo(destX2, destY2);
-    hitboxCanvas.lineTo(originX, originY);
+    hitboxCanvas.moveTo(originX+0.5, originY+0.5);
+    hitboxCanvas.lineTo(destX1+0.5, destY1+0.5);
+    hitboxCanvas.lineTo(destX2+0.5, destY2+0.5);
+    hitboxCanvas.lineTo(originX+0.5, originY+0.5);
     hitboxCanvas.stroke();
 }
 
@@ -819,12 +819,12 @@ function draw90Cone(index, shape) {
     shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
     shapeCanvas.beginPath();
-    shapeCanvas.moveTo(originX, originY);
-    shapeCanvas.lineTo(destX1, destY1);
+    shapeCanvas.moveTo(originX+0.5, originY+0.5);
+    shapeCanvas.lineTo(destX1+0.5, destY1+0.5);
     let extendedRange = Math.sqrt(Math.pow(destX1 - originX, 2) + Math.pow(destY1 - originY, 2));
-    shapeCanvas.arc(originX, originY, extendedRange, angle+0.25*Math.PI, angle-0.25*Math.PI, true);
-    shapeCanvas.moveTo(destX2, destY2);
-    shapeCanvas.lineTo(originX, originY);
+    shapeCanvas.arc(originX+0.5, originY+0.5, extendedRange, angle+0.25*Math.PI, angle-0.25*Math.PI, true);
+    shapeCanvas.moveTo(destX2+0.5, destY2+0.5);
+    shapeCanvas.lineTo(originX+0.5, originY+0.5);
     shapeCanvas.stroke();
 
     let colorString = "#";
@@ -838,11 +838,11 @@ function draw90Cone(index, shape) {
     hitboxCanvas.strokeStyle = colorString;
     hitboxCanvas.lineWidth = shapeWidth * hitboxMultiplier;
     hitboxCanvas.beginPath();
-    hitboxCanvas.moveTo(originX, originY);
-    hitboxCanvas.lineTo(destX1, destY1);
-    hitboxCanvas.arc(originX, originY, extendedRange, angle+0.25*Math.PI, angle-0.25*Math.PI, true);
-    hitboxCanvas.moveTo(destX2, destY2);
-    hitboxCanvas.lineTo(originX, originY);
+    hitboxCanvas.moveTo(originX+0.5, originY+0.5);
+    hitboxCanvas.lineTo(destX1+0.5, destY1+0.5);
+    hitboxCanvas.arc(originX+0.5, originY+0.5, extendedRange, angle+0.25*Math.PI, angle-0.25*Math.PI, true);
+    hitboxCanvas.moveTo(destX2+0.5, destY2+0.5);
+    hitboxCanvas.lineTo(originX+0.5, originY+0.5);
     hitboxCanvas.stroke();
 }
 
@@ -858,6 +858,7 @@ function drawPolyBlockers() {
             drawAntiBlocker();
         polyBlockers.innerHTML = '';
         polyBlockerHandles.innerHTML = '';
+        polyBlockerHandles.style.visibility = "";
         blockersDiv.innerHTML = "";
         for (let [i, currentPolyBlocker] of mapData.polyBlockers.entries())
         {
@@ -883,14 +884,14 @@ function drawPolyBlockers() {
                     editHandle.addEventListener("contextmenu", function(e) {
                         e.preventDefault();
                         let menuOptions = [
-                            {text: "Add new vert", hasSubMenu: false, callback: function() {
-                                requestServer({c: "addVert", id: currentPolyBlocker.id, vertId: j});
+                            {text: "Add new vert", hasSubMenu: false, callback: async function() {
+                                await requestServer({c: "addVert", id: currentPolyBlocker.id, vertId: j});
                                 updateMapData();
                             }},
-                            {text: "Remove vert", hasSubMenu: false, callback: function() {
+                            {text: "Remove vert", hasSubMenu: false, callback: async function() {
                                 if (currentPolyBlocker.verts.length>3)
                                 {
-                                    requestServer({c: "removeVert", id: currentPolyBlocker.id, vertId: j});
+                                    await requestServer({c: "removeVert", id: currentPolyBlocker.id, vertId: j});
                                     updateMapData();
                                 }
                                 else
@@ -911,15 +912,13 @@ function drawPolyBlockers() {
                         e.preventDefault();
                     });
 
-                    window.addEventListener("drop", function(e) {
+                    window.addEventListener("drop", async function(e) {
                         if (selectedVertHandle!=-1)
                         {
                             if (((e.clientX + viewport.scrollLeft)/(1+extraZoom/20))!=vert.x && ((e.clientY + viewport.scrollTop)/(1+extraZoom/20))!=vert.y)
-                            {
-                                requestServer({c:"editVert", id: selectedBlocker, vertIndex: selectedVertHandle, x: ((e.clientX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.clientY + viewport.scrollTop)/(1+extraZoom/20))});
-                                updateMapData();
-                            }
+                                await requestServer({c:"editVert", id: selectedBlocker, vertIndex: selectedVertHandle, x: ((e.clientX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.clientY + viewport.scrollTop)/(1+extraZoom/20))});
                             selectedVertHandle = -1;
+                            updateMapData();
                         }
                     });
                     editHandleContainer.appendChild(editHandle);
@@ -956,9 +955,9 @@ function drawPolyBlockers() {
                     newPolygon.addEventListener("contextmenu", function(e) {
                         e.preventDefault();
                         let menuOptions = [
-                            {text: "Remove blocker", hasSubMenu: false, callback: function() {
+                            {text: "Remove blocker", hasSubMenu: false, callback: async function() {
                                 selectedBlocker=-1;
-                                requestServer({c: "removePolyBlocker", id: currentPolyBlocker.id});
+                                await requestServer({c: "removePolyBlocker", id: currentPolyBlocker.id});
                                 updateMapData();
                             }}
                         ];
@@ -983,9 +982,7 @@ function drawPolyBlockers() {
                         if (isDraggingBlocker)
                         {
                             if (currentPolyBlocker.id == draggedPolygonId)
-                            {
                                 newPolygon.setAttribute("transform", "matrix(1,0,0,1,"+(-polyDragOffset.x + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20))).toString()+", "+(-polyDragOffset.y + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20))).toString()+")");
-                            }
                         }
                     })
                 }
@@ -1079,16 +1076,16 @@ function drawBlockers()
                         selectedToken = -1;
                         updateHighlightedBlocker()
                         let menuOptions = [
-                            {text: "Remove blocker", hasSubMenu: false, callback: function() {
+                            {text: "Remove blocker", hasSubMenu: false, callback: async function() {
                                 selectedBlocker=-1;
-                                requestServer({c: "removeBlocker", id: currentBlocker.id});
+                                await requestServer({c: "removeBlocker", id: currentBlocker.id});
                                 updateMapData();
                             }}
                         ];
                         displayMenu(e, menuOptions);
                     });
 
-                    tmpBlocker.addEventListener("mouseup", function(e) {
+                    tmpBlocker.addEventListener("mouseup", async function(e) {
                         if (e.button == 0)
                         {
                             isDraggingBlocker = false;
@@ -1096,7 +1093,7 @@ function drawBlockers()
                             extraBlocker.style.height = currentBlocker.height + "px";
                             if (currentBlocker.width!=tmpBlocker.offsetWidth && currentBlocker.height != tmpBlocker.offsetHeight)
                             {
-                                requestServer({c: "editBlocker", id: currentBlocker.id, x: currentBlocker.x, y: currentBlocker.y, width: tmpBlocker.offsetWidth, height: tmpBlocker.offsetHeight});
+                                await requestServer({c: "editBlocker", id: currentBlocker.id, x: currentBlocker.x, y: currentBlocker.y, width: tmpBlocker.offsetWidth, height: tmpBlocker.offsetHeight});
                                 updateMapData();
                             }
                         }
@@ -1109,7 +1106,7 @@ function drawBlockers()
                         blockerDragOffset.y = currentBlocker.y - ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
                     })
 
-                    extraBlocker.addEventListener("dragend", function(e) {
+                    extraBlocker.addEventListener("dragend", async function(e) {
                         e.preventDefault();
                         if (isDraggingBlocker)
                         {
@@ -1118,7 +1115,7 @@ function drawBlockers()
                             let newY = draggedBlocker.y + blockerDragOffset.y;
                             if (newX!=currentBlocker.x && newY!=currentBlocker.y)
                             {
-                                requestServer({c: "editBlocker", id: currentBlocker.id, x: newX, y: newY, width: tmpBlocker.offsetWidth, height: tmpBlocker.offsetHeight});
+                                await requestServer({c: "editBlocker", id: currentBlocker.id, x: newX, y: newY, width: tmpBlocker.offsetWidth, height: tmpBlocker.offsetHeight});
                                 updateMapData();
                             }
                         }
@@ -1264,7 +1261,7 @@ function LoadTokenData(token, force) {
         }
         
         if (document.activeElement!=statusInput || force)
-            statusInput.value = token.status?token.status:"No status";
+            statusInput.value = token.status?token.status:"";
         
         if (document.activeElement!=groupIdInput || force)
             groupIdInput.value = token.group?token.group:"";
@@ -1470,7 +1467,7 @@ function drawTokens()
                     let menuOptions = [
                         {text: "Draw Shape", description: "Pick a shape to draw", hasSubMenu: true, callback: function() {
                             let subMenuOptions = [
-                                {text: "Draw Circle", callback: function() {
+                                {text: "Draw Circle", callback: async function() {
                                     let radiusInput = parseFloat(prompt("Please enter the desired radius in feet for your circle(s)"));
                                     if (!isNaN(radiusInput))
                                     {
@@ -1479,7 +1476,7 @@ function drawTokens()
                                             shapeIsVisible = confirm("Should the shape be visible?");
                                         }
                                         circleMarkers.radius = (radiusInput + (feetPerSquare / 2) * token.size) / feetPerSquare;
-                                        requestServer({c: "addDrawing", shape: "circle", link: token.id, x: token.x, y: token.y, radius: circleMarkers.radius, trueColor: shapeColor, visible: shapeIsVisible});
+                                        await requestServer({c: "addDrawing", shape: "circle", link: token.id, x: token.x, y: token.y, radius: circleMarkers.radius, trueColor: shapeColor, visible: shapeIsVisible});
                                         updateMapData();
                                         closeMenu();
                                         closeSubMenu();
@@ -1561,32 +1558,32 @@ function drawTokens()
     
                         menuOptions.push({text: "Edit token", hasSubMenu: true, callback: function() {
                             let subMenuOptions = [
-                                {text: "Change size", callback: function() {
+                                {text: "Change size", callback: async function() {
                                     let tokenSize = parseFloat(prompt("Please enter the new size of the token"));
                                     if (!isNaN(tokenSize))
                                     {
                                         if (isDM)
                                         {
                                             if (tokenSize < 20 && tokenSize > 0)
-                                                requestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, group: token.group});
+                                                await requestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, group: token.group});
                                             else
                                                 alert("The desired size is too large or invalid");
                                         }
                                         else
                                         {
                                             if (tokenSize < 6 && tokenSize > 0)
-                                                requestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, group: token.group});
+                                                await requestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, group: token.group});
                                             else
                                                 alert("That token size isn't allowed for players");
                                         }   
                                         updateMapData();
                                     }
                                 }},
-                                {text: "Change layer", callback: function() {
+                                {text: "Change layer", callback: async function() {
                                     let newLayer = parseInt(prompt("Please enter the new layer"));
                                     if (!isNaN(newLayer) && newLayer>=0 && newLayer<50)
                                     {
-                                        requestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: newLayer, group: token.group});
+                                        await requestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: newLayer, group: token.group});
                                         updateMapData();
                                     }
                                     else
@@ -1597,19 +1594,19 @@ function drawTokens()
                             ];
                             if (token.text != null)
                             {
-                                subMenuOptions.push({text: "Edit text", callback: function() {
+                                subMenuOptions.push({text: "Edit text", callback: async function() {
                                     let newText = prompt("Please enter the new text for the token:", token.text);
                                     if (newText!=null)
                                     {
-                                        requestServer({c:"editToken", id: token.id, text: newText});
+                                        await requestServer({c:"editToken", id: token.id, text: newText});
                                         updateMapData();
                                     }
                                 }});
                             }
                             if (isDM)
                             {
-                                subMenuOptions.push({text: "Toggle DM only", callback: function() {
-                                    requestServer({c:"editToken", id: token.id, dm: !token.dm});
+                                subMenuOptions.push({text: "Toggle DM only", callback: async function() {
+                                    await requestServer({c:"editToken", id: token.id, dm: !token.dm});
                                 }});
                             }
                             displaySubMenu(e, subMenuOptions);
@@ -1617,14 +1614,14 @@ function drawTokens()
     
                         menuOptions.push({text: "Change image", hasSubMenu: true, callback: function() {
                             let subMenu = [];
-                            subMenu.push({text: "Text", callback: function() {
-                                requestServer({c: "editToken", id: token.id, image: "reset", text: token.text?token.text:"Text"});
+                            subMenu.push({text: "Text", callback: async function() {
+                                await requestServer({c: "editToken", id: token.id, image: "reset", text: token.text?token.text:"Text"});
                                 updateMapData();
                             }});
                             for (let image of mapData.tokenList)
                             {
-                                subMenu.push({text: image.substring(0, image.length - 4), callback: function() {
-                                    requestServer({c: "editToken", id: token.id, image: image});
+                                subMenu.push({text: image.substring(0, image.length - 4), callback: async function() {
+                                    await requestServer({c: "editToken", id: token.id, image: image});
                                     updateMapData();
                                 }});
                             }
@@ -1632,8 +1629,8 @@ function drawTokens()
                             {
                                 for (let image of mapData.dmTokenList)
                                 {
-                                    subMenu.push({text: image.substring(0, image.length - 4), callback: function() {
-                                        requestServer({c: "editToken", id: token.id, image: image});
+                                    subMenu.push({text: image.substring(0, image.length - 4), callback: async function() {
+                                        await requestServer({c: "editToken", id: token.id, image: image});
                                         updateMapData();
                                     }});
                                 }
@@ -1665,23 +1662,23 @@ function drawTokens()
                         {
                             menuOptions.push({text: "Group options", hasSubMenu: true, callback: async function() {
                                 let subMenuOptions = [
-                                    {text: "Rotate left 90°", callback: function() {
-                                        requestServer({c:"rotateDeg", id: token.id, angle: 90});
+                                    {text: "Rotate left 90°", callback: async function() {
+                                        await requestServer({c:"rotateDeg", id: token.id, angle: 90});
                                         updateMapData();
                                     }},
-                                    {text: "Rotate right 90°", callback: function() {
-                                        requestServer({c:"rotateDeg", id: token.id, angle: -90});
+                                    {text: "Rotate right 90°", callback: async function() {
+                                        await requestServer({c:"rotateDeg", id: token.id, angle: -90});
                                         updateMapData();
                                     }},
-                                    {text: "Rotate 180°", callback: function() {
-                                        requestServer({c:"rotateDeg", id: token.id, angle: 180});
+                                    {text: "Rotate 180°", callback: async function() {
+                                        await requestServer({c:"rotateDeg", id: token.id, angle: 180});
                                         updateMapData();
                                     }},
-                                    {text: "Rotate by °", callback: function() {
+                                    {text: "Rotate by °", callback: async function() {
                                         let Angle = parseFloat(prompt("Enter the amount of degrees to rotate the group by:"));
                                         if (!isNaN(Angle))
                                         {
-                                            requestServer({c:"rotateDeg", id: token.id, angle: Angle});
+                                            await requestServer({c:"rotateDeg", id: token.id, angle: Angle});
                                             updateMapData();
                                         }
                                     }}
@@ -1710,12 +1707,11 @@ function drawTokens()
                                         }
                                         updateMapData(true);
                                     }})
-                                    subMenuOptions.push({text: "Toggle DM only", callback: function() {
+                                    subMenuOptions.push({text: "Toggle DM only", callback: async function() {
                                         for (let a = 0; a < mapData.tokens.length; a++)
                                         {
-                                            if (mapData.tokens[a].group == token.group) {
-                                                requestServer({c:"editToken", id: mapData.tokens[a].id, dm: !token.dm});
-                                            }
+                                            if (mapData.tokens[a].group == token.group)
+                                                await requestServer({c:"editToken", id: mapData.tokens[a].id, dm: !token.dm});
                                         }
                                         updateMapData(true);
                                     }})
@@ -1947,14 +1943,11 @@ function DetailsToggleButtonsUpdate(concentrating, hide)
 
 //#region Menu events
 document.getElementById("openBulkGenerator").onclick = function() {
-    if (displayMapSettings) {
+    if (displayMapSettings)
         document.getElementById("toggleSettingsButton").click();
-    }
-    
-    if (bulkInitGeneratorScreen.style.display=="none" || bulkInitGeneratorScreen.style.display=="")
-        bulkInitGeneratorScreen.style.display = "block";
-    else
-        bulkInitGeneratorScreen.style.display = "none";
+    colorPicker.style.display = "none";
+
+    bulkInitGeneratorScreen.style.display = (bulkInitGeneratorScreen.style.display=="none" || bulkInitGeneratorScreen.style.display=="")?"block":"none";
 }
 
 document.getElementById("sortTracker").onclick = async function() {
@@ -2016,14 +2009,11 @@ document.getElementById("toggleSnapButton").onclick = function() {
     updateButtonColors();
 }
 
-quickPolyButton.onclick = function() {
+quickPolyButton.onclick = async function() {
     if (isDM) {
         if (quickPolyBlockerMode) {
-            if(confirm("Add the new blocker?")) {
-                if (newPolyBlockerVerts.length>2) {
-                    requestServer({c: "addCustomPolyBlocker", newPolyBlockerVerts: JSON.stringify(newPolyBlockerVerts)});
-                }
-            }
+            if(confirm("Add the new blocker?") && newPolyBlockerVerts.length>2)
+                await requestServer({c: "addCustomPolyBlocker", newPolyBlockerVerts: JSON.stringify(newPolyBlockerVerts)});
             quickPolyBlockerMode = false;
             newPolyBlockerVerts = [];
             DrawNewPolyMarkers();
@@ -2041,17 +2031,19 @@ let mapOptionsMenu = document.getElementById("mapOptionsMenu");
 document.getElementById("toggleSettingsButton").onclick = function() {
     if (isDM)
     {
-        if (!(bulkInitGeneratorScreen.style.display=="none" || bulkInitGeneratorScreen.style.display=="")) {
-            document.getElementById("openBulkGenerator").click();
-        }
-        
-        if (displayMapSettings)
-            mapOptionsMenu.style.display = "none";
-        else
-            mapOptionsMenu.style.display = "flex";
+        bulkInitGeneratorScreen.style.display = "none";
+        colorPicker.style.display = "none";
+        mapOptionsMenu.style.display = displayMapSettings? "none": "flex";
         displayMapSettings =! displayMapSettings;
     }
     updateButtonColors();
+}
+
+colorPickerButton.onclick = function() {
+    if (displayMapSettings)
+        document.getElementById("toggleSettingsButton").click();
+    bulkInitGeneratorScreen.style.display = "none";
+    colorPicker.style.display = colorPicker.style.display=="block"?"none":"block"
 }
 
 document.getElementById("toggleBlockerEditing").onclick = function() {
@@ -2068,25 +2060,64 @@ detailsIcon.onclick = function() {
         noteEditor.style.display = "flex";
     displayNoteEditor =! displayNoteEditor;
 }
+//#endregion
 
-let colorPicker = document.getElementById("shapeColorPicker");
-colorPicker.onchange = function(e) {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    let transparacyText = prompt("Please enter the the desired transparancy level (0-255): ", "255");
-    if (transparacyText!=null)
-    {
-        let transparancy = parseInt(transparacyText);
-        if (!isNaN(transparancy))
-        {
-            shapeColor = colorPicker.value + transparancy.toString(16);
-            setCookie("shapeColor", shapeColor);
-        }
-        else
-        {
-            colorPicker.value = shapeColor.substr(0, shapeColor.length-2);
-        }
-    }
+//#region Color picker
+let colorPicker = document.getElementById("color_picker");
+let colorPickerPreview = document.getElementById("shapeColorPicker");
+let redSlider = document.getElementById("redSlider");
+let greenSlider = document.getElementById("greenSlider");
+let blueSlider = document.getElementById("blueSlider");
+let opacitySlider = document.getElementById("opacitySlider");
+redSlider.oninput = updateColorPreview;
+greenSlider.oninput = updateColorPreview;
+blueSlider.oninput = updateColorPreview;
+opacitySlider.oninput = updateColorPreview;
+
+redSlider.oninput = updateColor;
+greenSlider.onchange = updateColor;
+blueSlider.onchange = updateColor;
+opacitySlider.onchange = updateColor;
+
+function componentToHex(c, isAlpha) {
+    if (isAlpha)
+        c = parseInt(c*255);
+    let hex = c.toString(16);
+    return hex.length == 1 ? "0" + hex : hex;
+}
+  
+function rgbaToHex(r, g, b, a) {
+    return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b) + componentToHex(a, true);
+}
+
+function hexToRgba(hex) {
+    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+        a: parseInt(result[4], 16)
+    } : null;
+}
+
+function setColor(hexValue) {
+    shapeColor = hexValue;
+    let components = hexToRgba(hexValue);
+    redSlider.value = components.r;
+    greenSlider.value = components.g;
+    blueSlider.value = components.b;
+    opacitySlider.value = components.a/255;
+    colorPickerPreview.style.backgroundColor = "rgba("+redSlider.value+","+greenSlider.value+","+blueSlider.value+","+opacitySlider.value+")";
+}
+
+function updateColorPreview() {
+    colorPickerPreview.style.backgroundColor = "rgba("+redSlider.value+","+greenSlider.value+","+blueSlider.value+","+opacitySlider.value+")";
+}
+
+function updateColor() {
+    shapeColor = rgbaToHex(parseInt(redSlider.value), parseInt(greenSlider.value), parseInt(blueSlider.value), parseFloat(opacitySlider.value));
+    colorPickerPreview.style.backgroundColor = "rgba("+redSlider.value+","+greenSlider.value+","+blueSlider.value+","+opacitySlider.value+")";
+    setCookie("shapeColor", shapeColor);
 }
 //#endregion
 
@@ -2198,26 +2229,26 @@ concentratingInput.onclick = async function() {
 //#endregion
 
 //#region DM Menu
-document.getElementById("clearTokensButton").onclick = function() {
+document.getElementById("clearTokensButton").onclick = async function() {
     if (confirm("Do you really want to remove all the tokens?") && isDM)
     {
-        requestServer({c:"clearTokens"});
+        await requestServer({c:"clearTokens"});
         updateMapData(true);
     }
 }
 
-document.getElementById("clearDrawingsButton").onclick = function() {
+document.getElementById("clearDrawingsButton").onclick = async function() {
     if (confirm("Do you really want to remove all the drawings?") && isDM)
     {
-        requestServer({c:"clearDrawings"});
+        await requestServer({c:"clearDrawings"});
         updateMapData(true);
     }
 }
 
-document.getElementById("clearBlockersButton").onclick = function() {
+document.getElementById("clearBlockersButton").onclick = async function() {
     if (confirm("Do you really want to remove all the blockers?") && isDM)
     {
-        requestServer({c:"clearBlockers"});
+        await requestServer({c:"clearBlockers"});
         updateMapData(true);
     }
 }
@@ -2235,20 +2266,20 @@ document.getElementById("switchBlockerTypeButton").onclick = async function() {
             quickPolyBlockerMode = false;
             quickPolyButton.style.display = "";
         }
-        requestServer({c:"switchBlockerType"});
+        await requestServer({c:"switchBlockerType"});
     }
     await updateMapData(true);
 }
 
-document.getElementById("invertBlockerButton").onclick = function() {
+document.getElementById("invertBlockerButton").onclick = async function() {
     if (confirm("Do you really want to invert the blockers?") && isDM)
     {
-        requestServer({c: "invertBlockers"});
+        await requestServer({c: "invertBlockers"});
         updateMapData(true);
     }
 }
 
-document.getElementById("togglePlayerMode").onclick = function() {
+document.getElementById("togglePlayerMode").onclick = async function() {
     playerMode = !playerMode;
     if (!playerMode)
     {
@@ -2264,8 +2295,8 @@ document.getElementById("togglePlayerMode").onclick = function() {
     updateMapData(true);
 }
 
-document.getElementById("clearPortals").onclick = function() {
-    requestServer({c: "clearPortals"});
+document.getElementById("clearPortals").onclick = async function() {
+    await requestServer({c: "clearPortals"});
     updateMapData(true);
 }
 
@@ -2294,11 +2325,8 @@ document.getElementById("startAlignTool").onclick = function() {
     alert("Click on a intersection in the top left of the pre-existing grid.");
 }
 
-document.getElementById("hideInits").onclick = function() {
-    if (mapData.hideInit)
-        requestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: false});
-    else
-        requestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: true});
+document.getElementById("hideInits").onclick = async function() {
+    await requestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: !mapData.hideInit});
     updateMapData();
 }
 
@@ -2311,8 +2339,8 @@ document.getElementById("fileImport").onchange = function() {
     updateMapData(true);
 }
 
-document.getElementById("exportMap").onclick = function() {
-    requestServer({c: "exportMap"});
+document.getElementById("exportMap").onclick = async function() {
+    await requestServer({c: "exportMap"});
     window.open("/public/export/export.json");
 }
 
@@ -2438,12 +2466,11 @@ window.addEventListener("mouseup", async function(e) {
 
         if (isDraggingBlocker && mapData.usePolyBlockers)
         {
-            polyBlockerHandles.style.visibility = "";
             let moveX = -polyDragOffset.x + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20));
             let moveY = -polyDragOffset.y + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
             if (moveX!=0 && moveY!=0)
             {
-                requestServer({c: "movePolyBlocker", id: draggedPolygonId, offsetX: moveX, offsetY: moveY});
+                await requestServer({c: "movePolyBlocker", id: draggedPolygonId, offsetX: moveX, offsetY: moveY});
                 updateMapData();
             }
             draggedPolygonId = -1;
@@ -2463,7 +2490,7 @@ window.addEventListener("mouseup", async function(e) {
                 document.body.style.cursor = "default";
                 if (CheckAntiBlockerPixel(e) || (isDM&&!playerMode))
                 {
-                    requestServer({c: "editDrawing", id: movingShapeId, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + shapeDragOffset.x, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)) + shapeDragOffset.y, both: true, moveShapeGroup: e.ctrlKey});
+                    await requestServer({c: "editDrawing", id: movingShapeId, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + shapeDragOffset.x, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)) + shapeDragOffset.y, both: true, moveShapeGroup: e.ctrlKey});
                 }
                 updateMapData();
             }
@@ -2475,7 +2502,7 @@ window.addEventListener("mouseup", async function(e) {
                 let angle = mapData.drawings[movingShapeId].angle + (Math.atan2((((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)) - shapeDragOffset.y), (((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) - shapeDragOffset.x)) - shapeDragStartAngle);
                 if (angle<0)
                     angle+=2*Math.PI;
-                requestServer({c: "editDrawing", id: movingShapeId, angle: angle});
+                await requestServer({c: "editDrawing", id: movingShapeId, angle: angle});
                 updateMapData();
             }
 
@@ -2486,7 +2513,7 @@ window.addEventListener("mouseup", async function(e) {
                 let angle = mapData.drawings[movingShapeId].angle + (Math.atan2((((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)) - shapeDragOffset.y), (((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) - shapeDragOffset.x)) - shapeDragStartAngle);
                 if (angle<0)
                     angle+=2*Math.PI;
-                requestServer({c: "editDrawing", id: movingShapeId, angle: angle});
+                await requestServer({c: "editDrawing", id: movingShapeId, angle: angle});
                 updateMapData();
             }
         }
@@ -2506,7 +2533,7 @@ document.body.addEventListener("keyup", async function(e) {
     {
         switch (e.code) {
             case "KeyC":
-                colorPicker.click();
+                colorPickerButton.click();
                 break;
 
             case "Digit0":
@@ -2992,36 +3019,32 @@ function shapeContextMenu(e, pixel)
         switch(selectedShape.shape)
         {
             case "5ftLine":
-                menuOptions.push({text: "Edit range", hasSubMenu: false, callback: function() {
+                menuOptions.push({text: "Edit range", hasSubMenu: false, callback: async function() {
                     let newRange = parseInt(prompt("Please enter the new range", selectedShape.range*feetPerSquare));
                     if (!isNaN(newRange))
                     {
                         newRange = newRange/feetPerSquare;
-                        requestServer({c: "editDrawing", range: newRange, id: shapeId});
+                        await requestServer({c: "editDrawing", range: newRange, id: shapeId});
                     }
                 }});
                 break;
             case "circle":
-                menuOptions.push({text: "Edit radius", hasSubMenu: false, callback: function() {
+                menuOptions.push({text: "Edit radius", hasSubMenu: false, callback: async function() {
                     let newRange = parseInt(prompt("Please enter the new radius", selectedShape.range));
                     if (!isNaN(newRange))
                     {
-                        if (selectedShape.link!=null) {
-                            newRange = newRange/feetPerSquare + 0.5;
-                        } else {
-                            newRange = newRange/feetPerSquare;
-                        }
-                        requestServer({c: "editDrawing", radius: newRange, id: shapeId});
+                        newRange = selectedShape.link?newRange/feetPerSquare + 0.5:newRange/feetPerSquare;
+                        await requestServer({c: "editDrawing", radius: newRange, id: shapeId});
                     }
                 }});
                 break;
             case "cone":
-                menuOptions.push({text: "Edit range", hasSubMenu: false, callback: function() {
+                menuOptions.push({text: "Edit range", hasSubMenu: false, callback: async function() {
                     let newRange = parseInt(prompt("Please enter the new range", selectedShape.range*feetPerSquare));
                     if (!isNaN(newRange))
                     {
                         newRange = newRange/feetPerSquare;
-                        requestServer({c: "editDrawing", range: newRange, id: shapeId});
+                        await requestServer({c: "editDrawing", range: newRange, id: shapeId});
                     }
                 }});
                 break;
@@ -3037,7 +3060,7 @@ function displayContextMenu(e)
             let subMenu = [];
             let tokenList = mapData.tokenList;
             let dmTokenList = mapData.dmTokenList;
-            let textToken = {text: "Text token", callback: function() {
+            let textToken = {text: "Text token", callback: async function() {
                 let textToDisplay = prompt("Enter the text to display on the text token:");
                 if (textToDisplay!="")
                 {
@@ -3052,31 +3075,23 @@ function displayContextMenu(e)
                         {
                             if (tokenSize < 20 && tokenSize > 0)
                             {
-                                if (confirm("Make this a DM token?"))
-                                    requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 1, dm: true})
-                                else
-                                    requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 1, dm: false})
-                                
+                                await requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 1, dm: confirm("Make this a DM token?")})
                                 console.log("Placing text token with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                                 updateMapData();
                             }
                             else
-                            {
                                 alert("The desired size is too large or invalid");
-                            }
                         }
                         else
                         {
                             if (tokenSize < 6 && tokenSize > 0)
                             {
-                                requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 1, dm: false})
+                                await requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 1, dm: false})
                                 console.log("Placing text token with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                                 updateMapData();
                             }
                             else
-                            {
                                 alert("That token size isn't allowed for players");
-                            }
                         }
                     }
                 }
@@ -3086,7 +3101,7 @@ function displayContextMenu(e)
             {
                 let tmpElement = {};
                 tmpElement.text = tokenList[i].substring(0, tokenList[i].length - 4);
-                tmpElement.callback = function() 
+                tmpElement.callback = async function() 
                 {
                     let tokenSize = parseFloat(prompt("Please enter the size of the token"));
                     if (isNaN(tokenSize))
@@ -3099,7 +3114,7 @@ function displayContextMenu(e)
                         {
                             if (tokenSize < 20 && tokenSize > 0)
                             {
-                                requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", layer: 1, dm: false})
+                                await requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", layer: 1, dm: false})
                                 console.log("Placing " + tokenList[i] + " with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                                 updateMapData();
                             }
@@ -3112,7 +3127,7 @@ function displayContextMenu(e)
                         {
                             if (tokenSize < 6 && tokenSize > 0)
                             {
-                                requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", layer: 1, dm: false})
+                                await requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", layer: 1, dm: false})
                                 console.log("Placing " + tokenList[i] + " with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                                 updateMapData();
                             }
@@ -3131,7 +3146,7 @@ function displayContextMenu(e)
                 {
                     let tmpElement = {};
                     tmpElement.text = dmTokenList[i].substring(0, dmTokenList[i].length - 4);
-                    tmpElement.callback = function() 
+                    tmpElement.callback = async function() 
                     {
                         let tokenSize = parseFloat(prompt("Please enter the size of the token"));
                         if (isNaN(tokenSize))
@@ -3140,7 +3155,7 @@ function displayContextMenu(e)
                         }
                         else
                         {
-                            requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: dmTokenList[i], size: tokenSize, status: "", layer: 1, dm: true})
+                            await requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: dmTokenList[i], size: tokenSize, status: "", layer: 1, dm: true})
                             console.log("Placing " + dmTokenList[i] + " with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                             updateMapData();
                         }
@@ -3152,18 +3167,14 @@ function displayContextMenu(e)
         }},
         {text: "Draw Shape", description: "Pick a shape to draw", hasSubMenu: true, callback: function() {
             let subMenuOptions = [
-                {text: "Draw Circle", callback: function() {
+                {text: "Draw Circle", callback: async function() {
                     let radiusInput = parseFloat(prompt("Please enter the desired radius in feet for your circle(s)"));
                     if (!isNaN(radiusInput))
                     {
                         circleMarkers.radius = radiusInput / feetPerSquare;
                         circleMarkers.x = ((e.pageX+ viewport.scrollLeft)/(1+extraZoom/20));
                         circleMarkers.y = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
-                        let shapeIsVisible = true;
-                        if (isDM) {
-                            shapeIsVisible = confirm("Should the shape be visible?");
-                        }
-                        requestServer({c: "addDrawing", shape: "circle", x: circleMarkers.x, y: circleMarkers.y, radius: circleMarkers.radius, trueColor: shapeColor, visible: shapeIsVisible});
+                        await requestServer({c: "addDrawing", shape: "circle", x: circleMarkers.x, y: circleMarkers.y, radius: circleMarkers.radius, trueColor: shapeColor, visible: isDM?confirm("Should the shape be visible?"):true});
                         updateMapData();
                     }    
                 }},
@@ -3186,31 +3197,23 @@ function displayContextMenu(e)
     let DMoptions = [
         {text: "Place hidden Token", hasSubMenu: true, callback: async function() {
             let subMenu = [];
-            let textToken = {text: "Text token", callback: function() {
+            let textToken = {text: "Text token", callback: async function() {
                 let textToDisplay = prompt("Enter the text to display on the text token:");
                 if (textToDisplay!="")
                 {
                     let tokenSize = parseFloat(prompt("Please enter the size of the token"));
                     if (isNaN(tokenSize))
-                    {
                         alert("That wasn't a valid size! Please try again!");
-                    }
                     else
                     {
                         if (tokenSize < 20 && tokenSize > 0)
                         {
-                            if (confirm("Make this a DM token?"))
-                                requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 1, dm: true, hidden: true})
-                            else
-                                requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 1, dm: false, hidden: true})
-                            
+                            await requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 1, dm: confirm("Make this a DM token?"), hidden: true})                            
                             console.log("Placing text token with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                             updateMapData();
                         }
                         else
-                        {
                             alert("The desired size is too large or invalid");
-                        }
                     }
                 }
             }};
@@ -3221,25 +3224,21 @@ function displayContextMenu(e)
             {
                 let tmpElement = {};
                 tmpElement.text = tokenList[i].substring(0, tokenList[i].length - 4);
-                tmpElement.callback = function() 
+                tmpElement.callback = async function() 
                 {
                     let tokenSize = parseFloat(prompt("Please enter the size of the token"));
                     if (isNaN(tokenSize))
-                    {
                         alert("That wasn't a valid size! Please try again!");
-                    }
                     else
                     {
                         if (tokenSize < 20 && tokenSize > 0)
                         {
-                            requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", hidden: true, layer: 1, dm: true})
+                            await requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", hidden: true, layer: 1, dm: true})
                             console.log("Placing hidden " + tokenList[i] + " with size " + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                             updateMapData();
                         }
                         else
-                        {
                             alert("The desired size is too large or invalid");
-                        }
                     }
                 }
                 subMenu.push(tmpElement);
@@ -3248,16 +3247,14 @@ function displayContextMenu(e)
             {
                 let tmpElement = {};
                 tmpElement.text = dmTokenList[i].substring(0, dmTokenList[i].length - 4);
-                tmpElement.callback = function() 
+                tmpElement.callback = async function() 
                 {
                     let tokenSize = parseFloat(prompt("Please enter the size of the token"));
                     if (isNaN(tokenSize))
-                    {
                         alert("That wasn't a valid size! Please try again!");
-                    }
                     else
                     {
-                        requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: dmTokenList[i], size: tokenSize, status: "", hidden: true, layer: 1, dm: true})
+                        await requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: dmTokenList[i], size: tokenSize, status: "", hidden: true, layer: 1, dm: true})
                         console.log("Placing " + dmTokenList[i] + " with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                         updateMapData();
                     }
@@ -3275,7 +3272,7 @@ function displayContextMenu(e)
             titleText = "Create Anti Blocker";
         }
         DMoptions.push({text: titleText, description: "Creates a blockers with 3 verts at the current position", hasSubMenu: false, callback: async function() {
-            requestServer({c: "addPolyBlocker", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), offset: gridSize});
+            await requestServer({c: "addPolyBlocker", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), offset: gridSize});
             updateMapData();
         }})
     }
@@ -3298,8 +3295,10 @@ window.onclick = function(event)
 {
     let ancestry = getAncestry(event.target);
     let shouldCloseMenus = true;
+    let shouldCloseColorPicker = true;
     for (let element of ancestry)
     {
+        if (element.id == "color_picker" || element.id == "colorPickerButton") { shouldCloseColorPicker = false; }
         try {
             if (element.className.includes("custom-menu")) { shouldCloseMenus = false; }
         }
@@ -3311,6 +3310,8 @@ window.onclick = function(event)
         closeMenu();
         closeSubMenu();
     }
+    if (shouldCloseColorPicker)
+        colorPicker.style.display = "none";
 }
 
 let isDraggingToken = false;
@@ -3344,15 +3345,15 @@ document.body.ondrop = async function(e)
             let tY;
             if (draggingTokenData.size >= 1)
             {
-                tX = Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridX * draggingTokenData.size)/gridX) * gridX + 0.5 * gridX * draggingTokenData.size + GridLineWidth + offsetX;
-                tY = Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridY * draggingTokenData.size)/gridY) * gridY + 0.5 * gridY * draggingTokenData.size + GridLineWidth + offsetY;
+                tX = Math.round(Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridX * draggingTokenData.size)/gridX) * gridX + 0.5 * gridX * draggingTokenData.size + offsetX);
+                tY = Math.round(Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridY * draggingTokenData.size)/gridY) * gridY + 0.5 * gridY * draggingTokenData.size + offsetY);
             }
             else
             {
-                tX = Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridX * draggingTokenData.size) / (gridX * draggingTokenData.size)) * (gridX * draggingTokenData.size) + 0.5 * gridX * draggingTokenData.size + GridLineWidth + offsetX;
-                tY = Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridY * draggingTokenData.size) / (gridY * draggingTokenData.size)) * (gridY * draggingTokenData.size) + 0.5 * gridY * draggingTokenData.size + GridLineWidth + offsetY;
+                tX = Math.round(Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridX * draggingTokenData.size) / (gridX * draggingTokenData.size)) * (gridX * draggingTokenData.size) + 0.5 * gridX * draggingTokenData.size + offsetX);
+                tY = Math.round(Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridY * draggingTokenData.size) / (gridY * draggingTokenData.size)) * (gridY * draggingTokenData.size) + 0.5 * gridY * draggingTokenData.size + offsetY);
             }
-            if (tX != draggingTokenData.x || tY != draggingTokenData.y)
+            if (tX!= draggingTokenData.x || tY != draggingTokenData.y)
                 await requestServer({c: "moveToken", id: draggingToken, x: tX, y: tY, bypassLink: !controlPressed});
         }
         else

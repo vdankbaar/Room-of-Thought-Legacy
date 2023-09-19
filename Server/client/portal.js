@@ -79,7 +79,13 @@ async function updateLinks(force)
                 }
                 else
                 {
-                    alert("The portal has collapsed! Error: "+mapData.portalData[portalSelect.value].crash)
+                    if (!JSON.parse(previousMapData).portalData[portalSelect.value].crash)
+                        alert("The portal has collapsed! Error: "+mapData.portalData[portalSelect.value].crash)
+                    else
+                    {
+                        await requestServer({c: "clearPortals"});
+                        updateLinks();
+                    }
                 }
             }
         }

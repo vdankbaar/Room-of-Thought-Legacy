@@ -29,10 +29,16 @@
             <div id="toggleButtonList">
                 <button class="toggleButton" id="toggleGridButton" title="Toggle Grid (G)"><object type="image/svg+xml" data="images/grid_on-24px.svg"></object></button>
                 <button class="toggleButton" id="toggleSnapButton" title="Toggle Grid Snapping (S)"><object type="image/svg+xml" data="images/magnet-solid.svg"></object></button>
-                <label  id="colorPickerButton" class="toggleButton" for="shapeColorPicker"><input type="color" id="shapeColorPicker"></label>
+                <label id="colorPickerButton" class="toggleButton" for="shapeColorPicker"><div id="shapeColorPicker"></div></label>
                 <button class="toggleButton dmOnly" id="toggleBlockerEditing" title="Edit blockers (B)"><object type="image/svg+xml" data="images/construction-24px.svg"></object></button>
                 <button class="toggleButton dmOnly" id="toggleSettingsButton" title="DM Settings"><object type="image/svg+xml" data="images/settings-24px.svg"></object></button>
                 <button class="toggleButton dmOnly" id="quickPolyButton" title="Quick add polyblocker(P)"><object type="image/svg+xml" data="images/group_work-24px.svg"></object></button>
+            </div>
+            <div id="color_picker">
+                <input type="range" class="colorrgba" id="redSlider" min="0" max="255" value="255">
+                <input type="range" class="colorrgba" id="greenSlider" min="0" max="255" value="0">
+                <input type="range" class="colorrgba" id="blueSlider" min="0" max="255" value="0">
+                <input type="range" class="colorrgba" id="opacitySlider" min="0.5" max="1" step="0.01" value="1">
             </div>
             <div id="mapOptionsMenu">
                 <label for="mapSelect">Current map:</label>
@@ -99,9 +105,9 @@
                 <object id="armorIcon" type="image/svg+xml" data="images/security-24px.svg"></object>
                 <input id="armorClass" autocomplete="off" spellcheck="false">
                 <p style="grid-area: name; margin: 0px;">Name:</p>
-                <input type="text" id="detailsNameInput" autocomplete="off" spellcheck="false">
+                <input type="text" id="detailsNameInput" autocomplete="off" spellcheck="false" placeholder="No name">
                 <p style="grid-area: status; margin: 0px;">Status:</p>
-                <input type="text" id="detailsStatusInput" autocomplete="off" spellcheck="false">
+                <input type="text" id="detailsStatusInput" placeholder="No status" autocomplete="off" spellcheck="false">
                 <p style="grid-area: initiative; margin: 0px;">Initiative:</p>
                 <p style="grid-area: group; margin: 0px;">Group:</p>
                 <input type="text" id="detailsInitiative" class="detailsBottom" autocomplete="off" spellcheck="false">

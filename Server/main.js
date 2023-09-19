@@ -420,23 +420,23 @@ app.post("/api", function(request, response) {
             {
                 case "circle":
                     isShape = true;
-                    tmpDrawing.x = request.body.x;
-                    tmpDrawing.y = request.body.y;
+                    tmpDrawing.x = Math.round(request.body.x);
+                    tmpDrawing.y = Math.round(request.body.y);
                     tmpDrawing.radius = request.body.radius;
                     break;
                 case "square":
                     isShape = true;
-                    tmpDrawing.x = request.body.x;
-                    tmpDrawing.y = request.body.y;
-                    tmpDrawing.width = request.body.width;
-                    tmpDrawing.height = request.body.height;
+                    tmpDrawing.x = Math.round(request.body.x);
+                    tmpDrawing.y = Math.round(request.body.y);
+                    tmpDrawing.width = Math.round(request.body.width);
+                    tmpDrawing.height = Math.round(request.body.height);
                     break;
                 case "line":
                     isShape = true;
-                    tmpDrawing.x = request.body.x;
-                    tmpDrawing.y = request.body.y;
-                    tmpDrawing.destX = request.body.destX;
-                    tmpDrawing.destY = request.body.destY;
+                    tmpDrawing.x = Math.round(request.body.x);
+                    tmpDrawing.y = Math.round(request.body.y);
+                    tmpDrawing.destX = Math.round(request.body.destX);
+                    tmpDrawing.destY = Math.round(request.body.destY);
                     break;
                 case "vertexLine":
                     isShape = true;
@@ -444,15 +444,15 @@ app.post("/api", function(request, response) {
                     break;
                 case "5ftLine":
                     isShape = true;
-                    tmpDrawing.x = request.body.x;
-                    tmpDrawing.y = request.body.y;
+                    tmpDrawing.x = Math.round(request.body.x);
+                    tmpDrawing.y = Math.round(request.body.y);
                     tmpDrawing.range = request.body.range;
                     tmpDrawing.angle = request.body.angle;
                     break;
                 case "cone":
                     isShape = true;
-                    tmpDrawing.x = request.body.x;
-                    tmpDrawing.y = request.body.y;
+                    tmpDrawing.x = Math.round(request.body.x);
+                    tmpDrawing.y = Math.round(request.body.y);
                     tmpDrawing.is90Deg = request.body.is90Deg;
                     tmpDrawing.angle = request.body.angle;
                     tmpDrawing.range = request.body.range;
@@ -496,8 +496,8 @@ app.post("/api", function(request, response) {
                             }
                             for (let i = 0; i < currentDrawing.points.length; i++)
                             {
-                                currentDrawing.points[i].x = currentDrawing.points[i].x + dx;
-                                currentDrawing.points[i].y = currentDrawing.points[i].y + dy;
+                                currentDrawing.points[i].x = Math.round(currentDrawing.points[i].x + dx);
+                                currentDrawing.points[i].y = Math.round(currentDrawing.points[i].y + dy);
                             }   
                         }
                     }
@@ -512,13 +512,13 @@ app.post("/api", function(request, response) {
                         if (request.body.points!=null)
                         { currentMap.drawings[i].points = request.body.points; }
                         if (request.body.destX!=null)
-                        { currentMap.drawings[i].destX = request.body.destX; }
+                        { currentMap.drawings[i].destX = Math.round(request.body.destX); }
                         if (request.body.destY!=null)
-                        { currentMap.drawings[i].destY = request.body.destY; }
+                        { currentMap.drawings[i].destY = Math.round(request.body.destY); }
                         if (request.body.x!=null)
-                        {currentMap.drawings[i].x = request.body.x;} 
+                        {currentMap.drawings[i].x = Math.round(request.body.x);} 
                         if (request.body.y!=null)
-                        { currentMap.drawings[i].y = request.body.y; }
+                        { currentMap.drawings[i].y = Math.round(request.body.y); }
                         if (request.body.range!=null)
                         { currentMap.drawings[i].range = request.body.range; }
                         if (request.body.radius!=null)
