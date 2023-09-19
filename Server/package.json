@@ -2,9 +2,9 @@
   "name": "room-of-thought",
   "version": "1.0.0",
   "description": "A dnd gridmap player",
-  "main": "index.js",
+  "main": "main.js",
   "scripts": {
-    "test": "node index.js"
+    "test": "node main.js"
   },
   "author": "",
   "license": "ISC",

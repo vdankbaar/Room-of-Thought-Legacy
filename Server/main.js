@@ -137,6 +137,8 @@ app.post("/api", function(request, response) {
                     tmpToken.ac = request.body.ac;
                 if (request.body.hp != null)
                     tmpToken.hp = request.body.hp;    
+                if (request.body.group != null)
+                    tmpToken.group = request.body.group;
                 currentMap.tokens.push(tmpToken);
                 response.send("[true]");
                 saveCurrentMap();
@@ -200,6 +202,8 @@ app.post("/api", function(request, response) {
                         currentMap.tokens[i].notes = request.body.notes;
                     if (request.body.image != null)
                         currentMap.tokens[i].image = request.body.image;
+                    if (request.body.text != null)
+                        currentMap.tokens[i].text = request.body.text;
                 }
             }
             saveCurrentMap();
@@ -477,6 +481,13 @@ app.post("/api", function(request, response) {
             copyFile(dataFolder + selectedMap + ".json", publicFolder + "export/export.json");
             response.send("[true]");
             break;
+
+        case "clearTokens":
+            loadCurrentMap();
+            currentMap.tokens = [];
+            saveCurrentMap();
+            response.send("[true]");
+            break;
     }
 });
 
@@ -515,17 +526,6 @@ function moveLinkedShapes(tokenData)
         }
     }
 }
-
-/*function updateLinkedShapes(oldId, newId) {
-    for (let i = 0; i < currentMap.drawings.length; i++)
-    {
-        if (currentMap.drawings[i].link == oldId)
-        {
-            currentMap.drawings[i].link = newId;
-        }
-    }
-    saveCurrentMap();
-}*/
 
 function removeDrawingById(targetId) {
     let shapeFound = 0;

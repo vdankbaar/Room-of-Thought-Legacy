@@ -14,7 +14,7 @@ body {
 
 #board {
     position: fixed;
-    width: 87.2vw; /*100 - 12 (van sidebar) - 2*0.3 (van sidebar padding)*/
+    width: 87.2vw;
     height: 100vh;
     overflow: auto;
 }
@@ -615,10 +615,10 @@ body {
 
 .custom-menu {
     margin: 0px;
-    overflow-y: scroll;
+    overflow-y: overlay;
     overflow-x: hidden;
     width: 10vw;
-    height: 25vh;
+    height: 24vh;
     display: none;
     z-index: 1000;
     position: absolute;
@@ -657,5 +657,5 @@ body {
     cursor: pointer;
     
     width: 10vw;
-    height: 5vh;
+    height: 4vh;
 }

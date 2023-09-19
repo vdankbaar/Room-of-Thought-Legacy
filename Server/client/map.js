@@ -562,7 +562,6 @@ function drawBlockers()
             tmpBlocker.style.height = currentBlocker.height + "px";
             if (isDM)
             {
-                tmpBlocker.style.resize = "both";
                 extraBlocker.style.width = currentBlocker.width + "px";
                 extraBlocker.style.height = currentBlocker.height + "px";
                 if (blockerEditMode)
@@ -920,81 +919,105 @@ function createToken(token)
                 }
             }},
             {text: "Edit token", hasSubMenu: true, callback: function() {
-                let subMenuOptions = [
-                    {text: "Change size", callback: function() {
-                        let tokenSize = parseFloat(prompt("Please enter the size of the token"));
-                        if (!isNaN(tokenSize))
-                        {
-                            if (isDM)
+                if ((token.dm && isDM) || !token.dm)
+                {
+                    let subMenuOptions = [
+                        {text: "Change size", callback: function() {
+                            let tokenSize = parseFloat(prompt("Please enter the new size of the token"));
+                            if (!isNaN(tokenSize))
                             {
-                                if (tokenSize < 20 && tokenSize > 0)
+                                if (isDM)
                                 {
-                                    requestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, group: token.group});
+                                    if (tokenSize < 20 && tokenSize > 0)
+                                    {
+                                        requestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, group: token.group});
+                                    }
+                                    else
+                                    {
+                                        alert("The desired size is too large or invalid");
+                                    }
                                 }
                                 else
                                 {
-                                    alert("The desired size is too large or invalid");
-                                }
+                                    if (tokenSize < 6 && tokenSize > 0)
+                                    {
+                                        requestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, group: token.group});
+                                    }
+                                    else
+                                    {
+                                        alert("That token size isn't allowed for players");
+                                    }
+                                }   
+                                updateMapData();
+                            }
+                        }},
+                        {text: "Change layer", callback: function() {
+                            let newLayer = parseInt(prompt("Please enter the new layer"));
+                            if (!isNaN(newLayer) && newLayer>=0 && newLayer<50)
+                            {
+                                requestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: newLayer, group: token.group});
+                                updateMapData();
                             }
                             else
                             {
-                                if (tokenSize < 6 && tokenSize > 0)
-                                {
-                                    requestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, group: token.group});
-                                }
-                                else
-                                {
-                                    alert("That token size isn't allowed for players");
-                                }
-                            }   
-                            updateMapData();
-                        }
-                    }},
-                    {text: "Change layer", callback: function() {
-                        let newLayer = parseInt(prompt("Please enter the desired height level"));
-                        if (!isNaN(newLayer) && newLayer>=0 && newLayer<50)
-                        {
-                            requestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: newLayer, group: token.group});
-                            updateMapData();
-                        }
-                        else
-                        {
-                            alert("Layer must be > -1 and < 51 ");
-                        }
-                    }}
-                ];
-                displaySubMenu(e, subMenuOptions);
+                                alert("Layer must be > -1 and < 51 ");
+                            }
+                        }}
+                    ];
+                    if (token.text != null)
+                    {
+                        subMenuOptions.push({text: "Edit text", callback: function() {
+                            let newText = prompt("Please enter the new text for the token:", token.text);
+                            if (newText!=null)
+                            {
+                                requestServer({c:"editToken", id: token.id, text: newText});
+                            }
+                        }});
+                    }
+                    displaySubMenu(e, subMenuOptions);
+                }
+                else
+                {
+                    alert("Players aren't allowed to edit DM tokens!");
+                }
             }},
             {text: "Change image", hasSubMenu: true, callback: function() {
-                let subMenu = [];
-                let tokenList = mapData.tokenList;
-                let dmTokenList = mapData.dmTokenList;
-                for (let i in tokenList)
+                if ((token.dm && isDM) || !token.dm)
                 {
-                    let tmpElement = {};
-                    tmpElement.text = tokenList[i].substring(0, tokenList[i].length - 4);
-                    tmpElement.callback = function() 
-                    {
-                        requestServer({c: "editToken", id: token.id, image: tokenList[i]});
-                        updateMapData();
-                    }
-                    subMenu.push(tmpElement);
-                }
-                if (isDM)
-                {
-                    for (let i in dmTokenList)
+                    let subMenu = [];
+                    let tokenList = mapData.tokenList;
+                    let dmTokenList = mapData.dmTokenList;
+                    for (let i in tokenList)
                     {
                         let tmpElement = {};
-                        tmpElement.text = dmTokenList[i].substring(0, dmTokenList[i].length - 4);
+                        tmpElement.text = tokenList[i].substring(0, tokenList[i].length - 4);
                         tmpElement.callback = function() 
                         {
-                            requestServer({c: "editToken", id: token.id, image: dmTokenList[i]})
+                            requestServer({c: "editToken", id: token.id, image: tokenList[i]});
                             updateMapData();
                         }
                         subMenu.push(tmpElement);
                     }
+                    if (isDM)
+                    {
+                        for (let i in dmTokenList)
+                        {
+                            let tmpElement = {};
+                            tmpElement.text = dmTokenList[i].substring(0, dmTokenList[i].length - 4);
+                            tmpElement.callback = function() 
+                            {
+                                requestServer({c: "editToken", id: token.id, image: dmTokenList[i]})
+                                updateMapData();
+                            }
+                            subMenu.push(tmpElement);
+                        }
+                    }
+                    displaySubMenu(e, subMenu);
                 }
-                displaySubMenu(e, subMenu);
+                else
+                {
+                    alert("Players aren't allowed to edit DM tokens!");
+                }
             }},
             {text: "Draw Shape", description: "Pick a shape to draw", hasSubMenu: true, callback: function() {
                 let subMenuOptions = [
@@ -1026,24 +1049,48 @@ function createToken(token)
         ];
         if (token.group != null)
         {
-            let groupOptions = {text: "Group options", hasSubMenu: true, callback: async function() {
-                let subMenuOptions = [
-                    {text: "Rotate group left", callback: function() {
-                        requestServer({c:"rotateLeft", id: token.id});
-                        updateMapData();
-                    }},
-                    {text: "Rotate group right", callback: function() {
-                        requestServer({c:"rotateRight", id: token.id});
-                        updateMapData();
-                    }},
-                    {text: "Unlink token", callback: function() {
-                        requestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: token.layer, group: ""})
-                        updateMapData();
-                    }}
-                ];
-                displaySubMenu(e, subMenuOptions);
-            }}
-            menuOptions.push(groupOptions);
+            if ((token.dm && isDM) || !token.dm)
+            {
+                let groupOptions = {text: "Group options", hasSubMenu: true, callback: async function() {
+                    let subMenuOptions = [
+                        {text: "Rotate group left", callback: function() {
+                            requestServer({c:"rotateLeft", id: token.id});
+                            updateMapData();
+                        }},
+                        {text: "Rotate group right", callback: function() {
+                            requestServer({c:"rotateRight", id: token.id});
+                            updateMapData();
+                        }},
+                        {text: "Unlink token", callback: function() {
+                            requestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: token.layer, group: ""})
+                            updateMapData();
+                        }}
+                    ];
+                    if (isDM)
+                    {
+                        subMenuOptions.push({text: "Hide tokens", callback: function() {
+                            for (let a = 0; a < mapData.tokens.length; a++)
+                            {
+                                if (mapData.tokens[a].group == token.group) {
+                                    requestServer({c:"setTokenHidden", id: mapData.tokens[a].id, hidden: true});
+                                    updateMapData(true);
+                                }
+                            }
+                        }})
+                        subMenuOptions.push({text: "Reveal tokens", callback: function() {
+                            for (let a = 0; a < mapData.tokens.length; a++)
+                            {
+                                if (mapData.tokens[a].group == token.group) {
+                                    requestServer({c:"setTokenHidden", id: mapData.tokens[a].id, hidden: false});
+                                    updateMapData(true);
+                                }
+                            }
+                        }})
+                    }
+                    displaySubMenu(e, subMenuOptions);
+                }}
+                menuOptions.push(groupOptions);
+            }
         }
         if (isDM)
         {
@@ -1434,6 +1481,14 @@ document.getElementById("openBulkGenerator").onclick = function() {
         bulkInitGeneratorScreen.style.display = "none";
 }
 
+document.getElementById("clearTokensButton").onclick = function() {
+    if (confirm("Do you really want to remove all the tokens?"))
+    {
+        requestServer({c:"clearTokens"});
+        updateMapData(true);
+    }
+}
+
 bulkTokenConfirm.onclick = function() {
     let tokensToPlace = parseInt(bulkTokenAmountInput.value);
     if (isNaN(tokensToPlace) || tokensToPlace<1)
@@ -1571,7 +1626,17 @@ shapeMap.addEventListener("mousedown", function(e) {
                 if (isNaN(dexBonus))
                     return;
             }
+            
+            let setGroup = confirm("Automatically add new tokens to the same group?");
+            let groupNum;
+            if (setGroup)
+            {
+                groupNum = parseInt(prompt("Enter the group number"));
+                if (isNaN(groupNum))
+                    return;
+            }
 
+            let hideTokens = confirm("Should the tokens be hidden?");
             if (bulkInitSettings.image=="number")
             {
                 
@@ -1587,20 +1652,41 @@ shapeMap.addEventListener("mousedown", function(e) {
                     {
                         tokenText = f.toString();
                     }
-                    if (autoGenInit)
-                        requestServer({c: "createToken", text: tokenText, x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: Math.ceil(Math.random()*20)+dexBonus})
+                    if (setGroup)
+                    {
+                        if (autoGenInit)
+                            requestServer({c: "createToken", text: tokenText, x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: Math.ceil(Math.random()*20)+dexBonus, hidden: hideTokens, group: groupNum})
+                        else
+                            requestServer({c: "createToken", text: tokenText, x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), hidden: hideTokens, hidden: hideTokens, group: groupNum})
+                    }
                     else
-                        requestServer({c: "createToken", text: tokenText, x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString()})
+                    {
+                        if (autoGenInit)
+                            requestServer({c: "createToken", text: tokenText, x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: Math.ceil(Math.random()*20)+dexBonus, hidden: hideTokens})
+                        else
+                            requestServer({c: "createToken", text: tokenText, x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), hidden: hideTokens, hidden: hideTokens})
+                    }
+                    
                 }
             }
             else
             {
                 for (let f = 1; f <= bulkInitSettings.tokenAmount; f++)
                 {
-                    if (autoGenInit)
-                        requestServer({c: "createToken", x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: Math.ceil(Math.random()*20)+dexBonus})
+                    if (setGroup)
+                    {
+                        if (autoGenInit)
+                            requestServer({c: "createToken", x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: Math.ceil(Math.random()*20)+dexBonus, hidden: hideTokens, group: groupNum})
+                        else
+                            requestServer({c: "createToken", x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), hidden: hideTokens, group: groupNum})    
+                    }
                     else
-                        requestServer({c: "createToken", x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString()})
+                    {
+                        if (autoGenInit)
+                            requestServer({c: "createToken", x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: Math.ceil(Math.random()*20)+dexBonus, hidden: hideTokens})
+                        else
+                            requestServer({c: "createToken", x: (e.pageX + board.scrollLeft) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: (e.pageY + board.scrollTop), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), hidden: hideTokens})
+                    }
                 }
             }
             placingBulkOrigin = false;
@@ -2066,15 +2152,15 @@ window.onclick = function(event)
         customMenu.innerHTML = "";
         if (listData.length > 0)
         {
-            let tmpHeight = listData.length * 5;
-            if (tmpHeight > 25)
+            let tmpHeight = listData.length * 4;
+            if (tmpHeight > 24)
             {
-                tmpHeight = 25;
+                tmpHeight = 24;
                 customMenu.style.overflowY = "scroll";
             }
             else
             {
-                customMenu.style.overflowY = "auto";
+                customMenu.style.overflowY = "hidden";
             }
             customMenu.style.display = "block";
             let testx = (event.pageX + board.scrollLeft);
@@ -2121,15 +2207,15 @@ window.onclick = function(event)
         customSubMenu.innerHTML = "";
         if (listData.length > 0)
         {
-            let tmpHeight = listData.length * 5;
-            if (tmpHeight > 25)
+            let tmpHeight = listData.length * 4;
+            if (tmpHeight > 24)
             {
-                tmpHeight = 25;
+                tmpHeight = 24;
                 customSubMenu.style.overflowY = "scroll";
             }
             else
             {
-                customSubMenu.style.overflowY = "auto";
+                customSubMenu.style.overflowY = "hidden";
             }
             customSubMenu.style.display = "block";
             customSubMenu.style.height = tmpHeight + "vh";
