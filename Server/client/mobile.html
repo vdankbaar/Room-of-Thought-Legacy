@@ -4,29 +4,14 @@
         <title>Initiative tracker</title>
         <link rel="icon" href="images/Favicon.png">
         <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' >
+        <script src="/socket.io/socket.io.js"></script>
     </head>
     
     <body>
         <div id="tracker">
             <input class="dmOnly" type="text" id="initSearch" placeholder="Search..." autocomplete="off" spellcheck="false">
-            <div id="initiativeTracker">
-                <div class="initiativeItem oneLineInitiative">
-                    <div class="initiative">21</div>
-                    <div class="trackerName">Yike</div>
-                    <div class="trackerArmorClass">15</div>
-                    <div class="trackerArmorClassText">AC</div>
-                    <div class="trackerHitpointsSection">
-                        <div class="trackerHitpointsMax">77</div>
-                        /
-                        <div class="trackerHitpoints">45</div>
-                        <button class="trackerDamageButton">
-                            <img src="images/swap_vert-24px.svg">
-                        </button>
-                    </div>
-                    <div class="trackerHealthText">HP</div>
-                </div>
-            </div>
-    
+            <div id="initiativeTracker"></div>
+            
             <div id="detailsScreen" style="display: grid;">
                 <h3 style="grid-area: title; margin: 0px;"></h3>
                 <div id="detailsIcon"><img src="public/blankToken.png"></div>

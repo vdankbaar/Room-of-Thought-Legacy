@@ -4,6 +4,7 @@
         <title>Map view</title>
         <link rel="icon" href="images/Favicon.png">
         <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' >
+        <script src="/socket.io/socket.io.js"></script>
     </head>
     
     <body>
@@ -21,10 +22,9 @@
                 <canvas id="antiBlockerMap"></canvas>
                 <canvas id="lightingMap"></canvas>
                 <canvas id="shapeMap"></canvas>
-                <canvas id="map"></canvas>
+                <canvas id="gridMap"></canvas>
+                <img id="mapImage">
                 <canvas id="hitboxMap"></canvas>
-                
-                <img id="hiddenMapLoader" width="0" height="0" src="">
                 <ul id="contextMenu" class='custom-menu' oncontextmenu="event.preventDefault();"></ul>
                 <ul id="subContextMenu" class='custom-menu' oncontextmenu="event.preventDefault();"></ul>
             </div>
@@ -69,21 +69,13 @@
                 <select id="blockerType" class="dmOnly">
                     <option value="0">Square</option>
                     <option value="1">Poly</option>
-                    <option value="2">Dynamic (walls)</option>
                 </select>
                 <input id="clearTokensButton" class="dmOnly" type="button" value="Clear all tokens">
                 <input id="clearDrawingsButton" class="dmOnly" type="button" value="Clear all drawings">
                 <input id="clearBlockersButton" class="dmOnly" type="button" value="Clear all blockers">
                 <input id="invertBlockerButton" class="dmOnly" type="button" value="Invert blockers">
                 <input id="togglePlayerMode" class="dmOnly" type="button" value="Toggle player mode (M)">
-                <input id="clearPortals" class="dmOnly" type="button" value="Clear portal data">
-                <input id="toggleExtraOptions" class="dmOnly" type="button" value="Toggle extra options">
-                <!--
-                OLD options: these have proven to be less useful than expected so they have been disabled by default to reduce clutter and make space for newer options -->
                 <input id="startAlignTool" class="dmOnly" type="button" value="Start Align Tool" style="display: none">
-                <input id="importMap" class="dmOnly" type="button" value="Upload JSON file" style="display: none">
-                <input id="exportMap" class="dmOnly" type="button" value="Export JSON file" style="display: none">
-                <input id="hideInits" class="dmOnly" type="button" value="Hide/Reveal initiatives"  style="display: none">
             </div>
             <div id="bulkInitGeneratorScreen">
                 <a>Bulk initiative generator</a>
@@ -132,18 +124,8 @@
                 </div>
             </div>
         </div>
-        <script>
-            let hbMap = document.getElementById("hitboxMap");
-            function showHitmap() {
-                hbMap.style.top = document.getElementById("map").clientHeight;
-            }
-            function hideHitmap() {
-                hbMap.style.top = 0;
-            }
-        </script>
         <iframe style="display:none;" id="hiddenFrame"></iframe>
         <script type="module" src="map.js"></script>
-        <!--<script src="DragDropTouch.js"></script>-->
         <form id="fileForm" style="visibility:hidden;" action='/upload' method='post' encType="multipart/form-data" target="hiddenFrame">
             <input id="fileImport" name="mapFile" type="file" accept=".json">
             <br>

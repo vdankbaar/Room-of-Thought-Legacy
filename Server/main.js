@@ -2,918 +2,622 @@
 let port = 80;
 
 const fs = require('fs');
-const pathLib = require('path');
-var express = require("express");
-var bodyParser = require("body-parser");
-const fileUpload = require('express-fileupload');
-var app = express();
-let dataFolder = __dirname + "/data/";
+const express = require('express');
+const http = require('http');
+const socketIO = require('socket.io');
+const bodyParser = require('body-parser');
+
+const app = express();
+const server = http.createServer(app);
+const io = new socketIO.Server(server);
+
 let publicFolder = __dirname + "/client/public/";
 let selectedMap = "currentSettings";
 var currentMap;
-app.use(bodyParser.urlencoded({extended: false}));
-app.use(bodyParser.json());
-app.use(fileUpload());
 loadCurrentMap();
-
-//Backwards compatibility
-for (let token of currentMap.tokens)
-    if (token.dm==null)
-        token.dm = currentMap.dmTokenList.includes(currentMap.tokens[i].image);
-
-for (let drawing of currentMap.drawings)
-    if (drawing.visible == null)
-        drawing.visible = true;
-
-//Reset non permanent vars
-currentMap.portalData = [];
-saveCurrentMap();
 
 let removedTokens = 0;
 let previousRemovedTokenId = -1;
 let removedDrawings = 0;
 let previousRemovedDrawingId = -1;
-let playerNameList = [];
-let nonLoggedCommands = ["currentMapData", "setLiftedMinis", "setPortalData"]
 
-app.post("/api", function(request, response) {
-    let playerName = GetCookie(request, "playerName");
-    if (!playerNameList.includes(playerName) && playerName)
-    {
-        console.log("A new player has connected: " + playerName);
-        playerNameList.push(playerName);
-        console.log("Currently connected: " + JSON.stringify(playerNameList));
-    }
+app.use(bodyParser.json());
+app.use(express.static('client'));
 
-    if (!nonLoggedCommands.includes(request.body.c) && playerName)
-        console.log(playerName + ": " + JSON.stringify(request.body));
+io.on('connection', (socket) => {
+    console.log('Client connected!');
+    socket.emit('currentMapData', JSON.stringify(currentMap));
 
-    switch(request.body.c)
-    {
-        case "log":
-            console.log(request.body.data);
-            response.send(true);
-            break;
+    socket.on('disconnect', () => {
+        socket.broadcast.to('receiveViewports').emit("clearViewport", JSON.stringify({origin: socket.id}))
+        console.log('Client disconnected!');
+    })
 
-        case "currentMapData":
-            loadCurrentMap();
-            currentMap.removedTokens = removedTokens;
-            currentMap.removedDrawings = removedDrawings;
-            if ((currentMap.mapX!=request.body.x && request.body.x!=null && request.body.x != 0) || (currentMap.mapY != request.body.y && request.body.y!=null && request.body.y != 0))
-            {
-                currentMap.mapX = request.body.x;
-                currentMap.mapY = request.body.y;
-                saveCurrentMap();
+    socket.on('toggleViewportRoom', () => {
+        if (socket.rooms.has("receiveViewports"))
+            socket.leave("receiveViewports")
+        else
+            socket.join("receiveViewports");
+    })
+
+    socket.on('shareViewportBounds', (body) => {
+        socket.broadcast.to('receiveViewports').emit("drawViewport", JSON.stringify({origin: socket.id, left: body.left, top: body.top, height: body.height, width: body.width}));
+    })
+
+    socket.on('setMapData', (body) => {
+        if (body.map!=null) {currentMap.map = body.map;}
+        if (body.x!=null) {currentMap.x = body.x;}
+        if (body.y!=null) {currentMap.y = body.y;}
+        if (body.offsetX!=null) {currentMap.offsetX = body.offsetX;}
+        if (body.offsetY!=null) {currentMap.offsetY = body.offsetY;}
+        if (body.gridColor!=null) {currentMap.gridColor = body.gridColor;}
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('changeSelectedMap', (body) => {
+        selectedMap = body.selectedMap;
+        loadCurrentMap();
+        broadcastMap();
+    });
+
+    socket.on('createToken', (body) => {
+        if (minMax(body.size, 0, 50))
+        {
+            let tmpToken = {};
+            let tmpTokens = [];
+            let newId = 0;
+            //Deep copy
+            tmpTokens = JSON.parse(JSON.stringify(currentMap.tokens));
+            tmpTokens.sort(function(a,b){return a.id - b.id;});
+            for (let token of tmpTokens)
+                if (token.id > -1 && token.id == newId)
+                    newId++;
+            tmpToken.id = newId;
+            tmpToken.x = body.x;
+            tmpToken.y = body.y;
+            tmpToken.image = body.image;
+            tmpToken.size = body.size;
+            tmpToken.status = body.status;
+            tmpToken.layer = body.layer;
+            if (body.dm != null) {tmpToken.dm = body.dm;}
+            if (body.text != null) {
+                if (body.name == null)
+                    tmpToken.name = body.text;
+                tmpToken.text = body.text;
             }
-            response.send(JSON.stringify(currentMap));
-            break;
-        
-        case "setMapData":
-            loadCurrentMap();
-            if (request.body.map!=null) {currentMap.map = request.body.map;}
-            if (request.body.x!=null) {currentMap.x = request.body.x;}
-            if (request.body.y!=null) {currentMap.y = request.body.y;}
-            if (request.body.offsetX!=null) {currentMap.offsetX = request.body.offsetX;}
-            if (request.body.offsetY!=null) {currentMap.offsetY = request.body.offsetY;}
-            if (request.body.hideInit!=null) {currentMap.hideInit = request.body.hideInit;}
-            if (request.body.gridColor!=null) {currentMap.gridColor = request.body.gridColor;}
+            if (body.hidden != null) {tmpToken.hidden = body.hidden;}
+            if (body.initiative != null) {tmpToken.initiative = body.initiative;}
+            if (body.name != null) {tmpToken.name = body.name;}
+            if (body.ac != null) {tmpToken.ac = body.ac;}
+            if (body.hp != null) {tmpToken.hp = body.hp;}
+            if (body.group != null) {tmpToken.group = body.group;}
+            if (body.hideTracker != null) {tmpToken.hideTracker = body.hideTracker;}
+            if (body.notes != null) {tmpToken.notes = body.notes;}
+            currentMap.tokens.push(tmpToken);
+            broadcastMap();
             saveCurrentMap();
-            response.send(true);
-            break;
+        }
+    });
 
-        case "changeSelectedMap":
-            selectedMap = request.body.selectedMap;    
-            loadCurrentMap();
-            currentMap.portalData = [];
-            saveCurrentMap();
-            response.send(true);
-            break
-
-        case "createToken":
-            if (minMax(request.body.size, 0, 50))
+    socket.on('setTokenHidden', (body) => {
+        for (let currentToken of currentMap.tokens)
+        {
+            if (currentToken.id == body.id)
             {
-                let tmpToken = {};
-                let tmpTokens = [];
-                var newId = 0;
-                tmpTokens = JSON.parse(JSON.stringify(currentMap.tokens));
-                tmpTokens.sort(function(a,b){
-                    return a.id - b.id; 
-                });
-                for (let token of tmpTokens) {
-                    if (token.id > -1 && token.id == newId)
-                        newId++;
+                currentToken.hidden = body.hidden;
+                for (let currentDrawing of currentMap.drawings)
+                    if (currentDrawing.link == currentToken.id)
+                        currentDrawing.visible = !currentToken.hidden;
+            }
+        }
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('toggleGroupLock', (body) => {
+        loadCurrentMap();
+        if (body.group!=null)
+        {
+            if (currentMap.groupLock.includes(body.group))
+                currentMap.groupLock.splice(currentMap.groupLock.indexOf(body.group), 1);
+            else
+                currentMap.groupLock.push(body.group);
+        }
+        checkGroupLock();
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('editToken', (body) => {
+        for (let token of currentMap.tokens)
+        {
+            if (token.id == body.id)
+            {    
+                if (body.size != null)
+                    if (minMax(body.size, 0, 50))
+                    {
+                        updateTokenCircleRange(token, body.size);
+                        token.size = body.size;
+                    }
+                if (body.status != null) {token.status = body.status;}     
+                if (body.layer != null) {token.layer = body.layer;}
+                if (body.notes != null) {token.notes = body.notes;}
+                if (body.text != null) {token.text = body.text;}    
+                if (body.dm != null) {token.dm = body.dm;}
+                if (body.concentrating != null) {token.concentrating = body.concentrating;}
+                if (body.hideTracker != null) {token.hideTracker = body.hideTracker;}
+                // Following parameters contain a ternary statement to allow resetting through a "" or false value.
+                if (body.group != null) {token.group = body.group ? body.group : null;}    
+                if (body.initiative != null) {token.initiative = body.initiative ? body.initiative : null;}
+                if (body.name != null) {token.name = body.name ? body.name : null;}
+                if (body.ac != null) {token.ac = body.ac ? body.ac : null;}    
+                if (body.hp != null) {token.hp = body.hp != "/" ? body.hp : null;}
+                if (body.image != null) {token.image = body.image ? body.image : null;}
+            }
+        }
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('removeToken', (body) => {
+        if (body.id == previousRemovedTokenId && body.tokensRemoved < removedTokens)
+        {
+            console.log("Two people removed a token at the same time!");
+            return
+        }
+        currentMap.tokens = currentMap.tokens.filter(token => token.id != body.id);
+        currentMap.drawings = currentMap.drawings.filter(drawing => drawing.link != body.id);
+        checkGroupLock();
+        broadcastMap();
+        saveCurrentMap();
+        removedTokens++;
+        previousRemovedTokenId = body.id;
+    });
+
+    socket.on('moveToken', (body) => {
+        let newX = parseFloat(body.x);
+        if (isNaN(newX) || newX < 0)
+            newX = 0;
+        body.x = newX;
+
+        let newY = parseFloat(body.y);
+        if (isNaN(newY) || newY < 0)
+            newY = 0;
+        body.y = newY;
+        for (let currentToken of currentMap.tokens)
+        {
+            if (currentToken.id != body.id)
+                continue;
+            let dx = body.x - currentToken.x;
+            let dy = body.y - currentToken.y;
+            if (currentToken.group != null && !body.bypassLink)
+            {
+                for (let otherToken of currentMap.tokens)
+                {
+                    if (currentToken.id != otherToken.id && otherToken.group == currentToken.group)
+                    {
+                        otherToken.x += dx;
+                        otherToken.y += dy;
+                        moveLinkedShapes(otherToken);
+                    }
                 }
-                tmpToken.id = newId;
-                tmpToken.x = request.body.x;
-                tmpToken.y = request.body.y;
-                tmpToken.image = request.body.image;
-                tmpToken.size = request.body.size;
-                tmpToken.status = request.body.status;
-                tmpToken.layer = request.body.layer;
-                if (request.body.viewRange != null)
-                    tmpToken.viewRange = request.body.viewRange;
-                if (request.body.dm != null)
-                    tmpToken.dm = request.body.dm;
-                if (request.body.text != null)
-                    tmpToken.text = request.body.text;
-                if (request.body.hidden != null)
-                    tmpToken.hidden = request.body.hidden;
-                if (request.body.initiative != null)
-                    tmpToken.initiative = request.body.initiative;
-                if (request.body.name != null)
-                    tmpToken.name = request.body.name;
-                if (request.body.ac != null)
-                    tmpToken.ac = request.body.ac;
-                if (request.body.hp != null)
-                    tmpToken.hp = request.body.hp;    
-                if (request.body.group != null)
-                    tmpToken.group = request.body.group;
-                if (request.body.hideTracker != null)
-                    tmpToken.hideTracker = request.body.hideTracker;
-                if (request.body.notes != null)
-                    tmpToken.notes = request.body.notes;
-                currentMap.tokens.push(tmpToken);
-                response.send(tmpToken.id.toString());
-                saveCurrentMap();
+            }
+            currentToken.x = body.x;
+            currentToken.y = body.y;
+            moveLinkedShapes(currentToken);
+        }
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('rotateDeg', (body) => {
+        for (let currentToken of currentMap.tokens)
+        {
+            if (currentToken.id != body.id)
+                continue;
+            let inputAngle = body.angle * -Math.PI / 180;
+            for (let otherToken of currentMap.tokens)
+            {
+                if (currentToken.objectLock)
+                    otherToken.rotation = otherToken.rotation == null ? parseInt(body.angle) : otherToken.rotation - parseInt(body.angle);
+                if (currentToken.id == otherToken.id || otherToken.group != currentToken.group)
+                    continue;
+                let oldX = otherToken.x - currentToken.x;
+                let oldY = otherToken.y - currentToken.y;
+                let radius = Math.sqrt(Math.pow(oldY, 2)+Math.pow(oldX, 2));
+                let currentAngle = Math.atan2(oldY, oldX);
+                let newX = Math.cos(currentAngle + inputAngle) * radius;
+                let newY = Math.sin(currentAngle + inputAngle) * radius;
+                otherToken.x = currentToken.x + newX;
+                otherToken.y = currentToken.y + newY;
+                moveLinkedShapes(otherToken);
+            }
+        }
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('addDrawing', (body) => {
+        let tmpDrawing = {};
+        let isShape = false;
+        switch(body.shape)
+        {
+            case "circle":
+                isShape = true;
+                tmpDrawing.x = Math.round(body.x);
+                tmpDrawing.y = Math.round(body.y);
+                tmpDrawing.radius = body.radius;
+                break;
+            case "square":
+                isShape = true;
+                tmpDrawing.x = Math.round(body.x);
+                tmpDrawing.y = Math.round(body.y);
+                tmpDrawing.width = Math.round(body.width);
+                tmpDrawing.height = Math.round(body.height);
+                break;
+            case "line":
+                isShape = true;
+                tmpDrawing.x = Math.round(body.x);
+                tmpDrawing.y = Math.round(body.y);
+                tmpDrawing.destX = Math.round(body.destX);
+                tmpDrawing.destY = Math.round(body.destY);
+                break;
+            case "vertexLine":
+                isShape = true;
+                tmpDrawing.points = body.points;
+                break;
+            case "5ftLine":
+                isShape = true;
+                tmpDrawing.x = Math.round(body.x);
+                tmpDrawing.y = Math.round(body.y);
+                tmpDrawing.range = body.range;
+                tmpDrawing.angle = body.angle;
+                break;
+            case "cone":
+                isShape = true;
+                tmpDrawing.x = Math.round(body.x);
+                tmpDrawing.y = Math.round(body.y);
+                tmpDrawing.is90Deg = body.is90Deg;
+                tmpDrawing.angle = body.angle;
+                tmpDrawing.range = body.range;
+                break;
+        }
+        if (!isShape)
+            return;
+        tmpDrawing.visible = body.visible;
+        tmpDrawing.shape = body.shape;
+        tmpDrawing.id = 0;
+        currentMap.drawings.sort(function(a,b){
+            return a.id - b.id; 
+        });
+        for (let drawing of currentMap.drawings) {
+            if (drawing.id > -1 && drawing.id == tmpDrawing.id)
+                tmpDrawing.id++;
+        }
+        tmpDrawing.trueColor = body.trueColor;
+        tmpDrawing.link = body.link;
+        currentMap.drawings.push(tmpDrawing);
+        for (let token of currentMap.tokens)
+            moveLinkedShapes(token);
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('editDrawing', (body) => {
+        for (let currentDrawing of currentMap.drawings)
+        {
+            if (currentDrawing.id != body.id)
+                continue;
+            if (currentDrawing.shape == "vertexLine" && body.both)
+            {
+                if (body.x == null || body.y == null)
+                    continue;
+                let dx = body.x - currentDrawing.points[0].x;
+                let dy = body.y - currentDrawing.points[0].y;
+                if (body.moveShapeGroup) { moveShapeGroup(currentDrawing.id, dx, dy, currentDrawing.shapeGroup); }
+                for (let currentPoint of currentDrawing.points)
+                {
+                    currentPoint.x = Math.round(currentPoint.x + dx);
+                    currentPoint.y = Math.round(currentPoint.y + dy);
+                }
             }
             else
             {
-                response.send("[false]");
-            }
-            break;
-
-        case "setTokenHidden":
-            loadCurrentMap();
-            for (let currentToken of currentMap.tokens)
-            {
-                if (currentToken.id == request.body.id)
+                if ((body.x != null || body.y != null) && body.moveShapeGroup)
                 {
-                    currentToken.hidden = request.body.hidden;
-                    for (let currentDrawing of currentMap.drawings)
-                        if (currentDrawing.link == currentToken.id)
-                            currentDrawing.visible = !currentToken.hidden;
+                    let dx = body.x - currentDrawing.x;
+                    let dy = body.y - currentDrawing.y;
+                    moveShapeGroup(currentDrawing.id, dx, dy, currentDrawing.shapeGroup);
                 }
+                if (body.shapeGroup!=null) { currentDrawing.shapeGroup = body.shapeGroup == "null" ? null : body.shapeGroup; }
+                if (body.visible!=null) { currentDrawing.visible = body.visible; }
+                if (body.points!=null) { currentDrawing.points = body.points; }
+                if (body.radius!=null) { currentDrawing.radius = body.radius; }
+                if (body.angle!=null) { currentDrawing.angle = body.angle; }
+                if (body.destX!=null) { currentDrawing.destX = Math.round(body.destX); }
+                if (body.destY!=null) { currentDrawing.destY = Math.round(body.destY); }
+                if (body.range!=null) { currentDrawing.range = body.range; }
+                if (body.x!=null) { currentDrawing.x = Math.round(body.x); }
+                if (body.y!=null) { currentDrawing.y = Math.round(body.y); }
             }
-            saveCurrentMap();
-            response.send("[true]");
-            break;
+        }
+        broadcastMap();
+        saveCurrentMap();
+    });
 
-        case "toggleGroupLock":
-            loadCurrentMap();
-            if (request.body.group!=null)
-            {
-                if (currentMap.groupLock.includes(request.body.group))
-                    currentMap.groupLock.splice(currentMap.groupLock.indexOf(request.body.group), 1);
-                else
-                    currentMap.groupLock.push(request.body.group);
-            }
-            checkGroupLock();
-            saveCurrentMap();
-            response.send("[true]");
-            break;
+    socket.on('removeDrawing', (body) => {
+        if (body.id == previousRemovedDrawingId && body.drawingsRemoved < removedDrawings)
+            return;
+        currentMap.drawings = currentMap.drawings.filter(drawing => drawing.id != body.id);
+        previousRemovedDrawingId = body.id;
+        removedDrawings++;
+        broadcastMap();
+        saveCurrentMap();
+    });
 
-        case "editToken":
-            loadCurrentMap();
-            for (let token of currentMap.tokens)
-            {
-                if (token.id == request.body.id)
-                {
-                    if (request.body.status != null)
-                        token.status = request.body.status;
-                    if (request.body.size != null)
-                        if (minMax(request.body.size, 0, 50))
-                        {
-                            updateTokenCircleRange(token, request.body.size);
-                            token.size = request.body.size;
-                        }
-                            
-                    if (request.body.layer != null)
-                        token.layer = request.body.layer;
-                    if (request.body.viewRange != null)
-                        token.viewRange = request.body.viewRange;
-                    if (request.body.group != null)
-                        token.group = request.body.group ? request.body.group : null;
-                    if (request.body.initiative != null)
-                        token.initiative = request.body.initiative ? request.body.initiative : null;
-                    if (request.body.name != null)
-                        token.name = request.body.name ? request.body.name : null;
-                    if (request.body.ac != null)
-                        token.ac = request.body.ac == "" ? null : request.body.ac;
-                    if (request.body.hp != null)
-                        token.hp = request.body.hp == "/" ? null : request.body.hp;
-                    if (request.body.notes != null)
-                        token.notes = request.body.notes;
-                    if (request.body.image != null)
-                        token.image = request.body.image ? request.body.image : null;
-                    if (request.body.text != null)
-                        token.text = request.body.text;
-                    if (request.body.dm != null)
-                        token.dm = request.body.dm;
-                    if (request.body.concentrating != null)
-                        token.concentrating = request.body.concentrating;
-                    if (request.body.hideTracker != null)
-                        token.hideTracker = request.body.hideTracker;
-                    if (request.body.objectLock != null)
-                        token.objectLock = request.body.objectLock;
-                }
-            }
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-
-        case "removeToken":
-            loadCurrentMap();
-            if (request.body.id == previousRemovedTokenId && request.body.tokensRemoved < removedTokens)
-            {
-                console.log("Two people removed a token at the same time!");
-                response.send("[false]");
-            }
-            else
-            {
-                currentMap.tokens = currentMap.tokens.filter(token => token.id != request.body.id);
-                currentMap.drawings = currentMap.drawings.filter(drawing => drawing.link != request.body.id);
-                checkGroupLock();
-                saveCurrentMap();
-                response.send("[true]");
-                removedTokens++;
-                previousRemovedTokenId = request.body.id;
-            }
-            break;
-
-        case "moveToken":
-            loadCurrentMap();
-            let newX = parseFloat(request.body.x);
-            let newY = parseFloat(request.body.y);
-            if (isNaN(newX) || newX < 0)
-                newX = 0;
-            if (isNaN(newY) || newY < 0)
-                newY = 0;
-            request.body.x = newX;
-            request.body.y = newY;
-            for (let currentToken of currentMap.tokens)
-            {
-                if (currentToken.id == request.body.id)
-                {
-                    if (!currentToken.objectLock || !request.body.bypassLink)
-                    {
-                        let dx = request.body.x - currentToken.x;
-                        let dy = request.body.y - currentToken.y;
-                        if (currentToken.group != null && !request.body.bypassLink)
-                        {
-                            for (let otherToken of currentMap.tokens)
-                            {
-                                if (currentToken.id != otherToken.id && otherToken.group == currentToken.group && (currentToken.objectLock || (!currentToken.objectLock && !otherToken.objectLock)))
-                                {
-                                    otherToken.x += dx;
-                                    otherToken.y += dy;
-                                    moveLinkedShapes(otherToken);
-                                }
-                            }
-                        }
-                        currentToken.x = request.body.x;
-                        currentToken.y = request.body.y;
-                        moveLinkedShapes(currentToken);
-                    }
-                }
-            }
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-        
-        case "rotateDeg":
-            loadCurrentMap();
-            for (let currentToken of currentMap.tokens)
-            {
-                if (currentToken.id == request.body.id)
-                {
-                    let inputAngle = request.body.angle * -Math.PI / 180;
-                    for (let otherToken of currentMap.tokens)
-                    {
-                        if (currentToken.objectLock)
-                            otherToken.rotation = otherToken.rotation == null ? parseInt(request.body.angle) : otherToken.rotation - parseInt(request.body.angle);
-                        if (currentToken.id != otherToken.id && otherToken.group == currentToken.group)
-                        {
-                            let oldX = otherToken.x - currentToken.x;
-                            let oldY = otherToken.y - currentToken.y;
-                            let radius = Math.sqrt(Math.pow(oldY, 2)+Math.pow(oldX, 2));
-                            let currentAngle = Math.atan2(oldY, oldX);
-                            let newX = Math.cos(currentAngle + inputAngle) * radius;
-                            let newY = Math.sin(currentAngle + inputAngle) * radius;
-                            otherToken.x = currentToken.x + newX;
-                            otherToken.y = currentToken.y + newY;
-                            moveLinkedShapes(otherToken);
-                        }
-                    }
-                }
-            }
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-        
-        case "addDrawing":
-            loadCurrentMap();
-            let tmpDrawing = {};
-            let isShape = false;
-            switch(request.body.shape)
-            {
-                case "circle":
-                    isShape = true;
-                    tmpDrawing.x = Math.round(request.body.x);
-                    tmpDrawing.y = Math.round(request.body.y);
-                    tmpDrawing.radius = request.body.radius;
-                    break;
-                case "square":
-                    isShape = true;
-                    tmpDrawing.x = Math.round(request.body.x);
-                    tmpDrawing.y = Math.round(request.body.y);
-                    tmpDrawing.width = Math.round(request.body.width);
-                    tmpDrawing.height = Math.round(request.body.height);
-                    break;
-                case "line":
-                    isShape = true;
-                    tmpDrawing.x = Math.round(request.body.x);
-                    tmpDrawing.y = Math.round(request.body.y);
-                    tmpDrawing.destX = Math.round(request.body.destX);
-                    tmpDrawing.destY = Math.round(request.body.destY);
-                    break;
-                case "vertexLine":
-                    isShape = true;
-                    tmpDrawing.points = request.body.points;
-                    break;
-                case "5ftLine":
-                    isShape = true;
-                    tmpDrawing.x = Math.round(request.body.x);
-                    tmpDrawing.y = Math.round(request.body.y);
-                    tmpDrawing.range = request.body.range;
-                    tmpDrawing.angle = request.body.angle;
-                    break;
-                case "cone":
-                    isShape = true;
-                    tmpDrawing.x = Math.round(request.body.x);
-                    tmpDrawing.y = Math.round(request.body.y);
-                    tmpDrawing.is90Deg = request.body.is90Deg;
-                    tmpDrawing.angle = request.body.angle;
-                    tmpDrawing.range = request.body.range;
-                    break;
-            }
-            if (isShape)
-            {
-                tmpDrawing.visible = request.body.visible;
-                tmpDrawing.shape = request.body.shape;
-                tmpDrawing.id = 0;
-                currentMap.drawings.sort(function(a,b){
-                    return a.id - b.id; 
-                });
-                for (let drawing of currentMap.drawings) {
-                    if (drawing.id > -1 && drawing.id == tmpDrawing.id) {
-                        tmpDrawing.id++;
-                    }
-                }
-                tmpDrawing.trueColor = request.body.trueColor;
-                tmpDrawing.link = request.body.link;
-                currentMap.drawings.push(tmpDrawing);
-                for (let token of currentMap.tokens)
-                    moveLinkedShapes(token);
-                saveCurrentMap();
-            }
-        
-        response.send("[true]");
-        break;
-
-        case "editDrawing":
-            loadCurrentMap();
-            for (let currentDrawing of currentMap.drawings)
-            {
-                if (currentDrawing.id == request.body.id)
-                {
-                    if (currentDrawing.shape == "vertexLine" && request.body.both)
-                    {
-                        if (request.body.x != null || request.body.y != null)
-                        {
-                            let dx = request.body.x - currentDrawing.points[0].x;
-                            let dy = request.body.y - currentDrawing.points[0].y;
-                            if (request.body.moveShapeGroup)
-                                moveShapeGroup(currentDrawing.id, dx, dy, currentDrawing.shapeGroup);
-
-                            for (let currentPoint of currentDrawing.points)
-                            {
-                                currentPoint.x = Math.round(currentPoint.x + dx);
-                                currentPoint.y = Math.round(currentPoint.y + dy);
-                            }   
-                        }
-                    }
-                    else
-                    {
-                        if ((request.body.x != null || request.body.y != null) && request.body.moveShapeGroup)
-                        {
-                            let dx = request.body.x - currentDrawing.x;
-                            let dy = request.body.y - currentDrawing.y;
-                            moveShapeGroup(currentDrawing.id, dx, dy, currentDrawing.shapeGroup);
-                        }
-                        if (request.body.points!=null)
-                            currentDrawing.points = request.body.points;
-                        
-                        if (request.body.destX!=null)
-                            currentDrawing.destX = Math.round(request.body.destX);
-                        
-                        if (request.body.destY!=null)
-                            currentDrawing.destY = Math.round(request.body.destY);
-                        
-                        if (request.body.x!=null)
-                            currentDrawing.x = Math.round(request.body.x);
-                        
-                        if (request.body.y!=null)
-                            currentDrawing.y = Math.round(request.body.y);
-                        
-                        if (request.body.range!=null)
-                            currentDrawing.range = request.body.range;
-
-                        if (request.body.radius!=null)
-                            currentDrawing.radius = request.body.radius;
-                        
-                        if (request.body.angle!=null)
-                            currentDrawing.angle = request.body.angle;
-                        
-                        if (request.body.visible!=null)
-                            currentDrawing.visible = request.body.visible;
-                        
-                        if (request.body.shapeGroup!=null)
-                            currentDrawing.shapeGroup = request.body.shapeGroup == "null" ? null : request.body.shapeGroup;
-                    }
-                }
-            }
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-
-        case "removeDrawing":
-            loadCurrentMap();    
-            if (request.body.id == previousRemovedDrawingId && request.body.drawingsRemoved < removedDrawings)
-            {
-                response.send("[false]");
-            }
-            else
-            {
-                currentMap.drawings = currentMap.drawings.filter(drawing => drawing.id != request.body.id);
-                previousRemovedDrawingId = request.body.id;
-                removedDrawings++;
-                saveCurrentMap();
-                response.send("[true]");
-            }
-            break;
-
-        case "addBlocker":
-            if (request.body.width != 0 && request.body.height != 0)
-            {
-                loadCurrentMap();    
-                let tmpBlocker = {};
-                tmpBlocker.id = currentMap.blockers.length;
-                tmpBlocker.x = request.body.x;
-                tmpBlocker.y = request.body.y;
-                if (request.body.width>0)
-                {
-                    if (request.body.height<0)
-                    {
-                        tmpBlocker.y = tmpBlocker.y + request.body.height;
-                        tmpBlocker.width = request.body.width;
-                        tmpBlocker.height = Math.abs(request.body.height);
-                    }
-                    else
-                    {
-                        tmpBlocker.width = request.body.width;
-                        tmpBlocker.height = request.body.height;
-                    }
-                }
-                else
-                {
-                    if (request.body.height>0)
-                    {
-                        tmpBlocker.x = tmpBlocker.x + request.body.width;
-                        tmpBlocker.width = Math.abs(request.body.width);
-                        tmpBlocker.height = request.body.height;
-                    }
-                    else
-                    {
-                        tmpBlocker.y = tmpBlocker.y + request.body.height;
-                        tmpBlocker.x = tmpBlocker.x + request.body.width;
-                        tmpBlocker.width = Math.abs(request.body.width);
-                        tmpBlocker.height = Math.abs(request.body.height);
-                    }
-                }
-                
-                currentMap.blockers.push(tmpBlocker);
-                response.send("[true]");
-                saveCurrentMap();
-            }
-            break;
-        
-        case "editBlocker":
-            loadCurrentMap();
-            for (let currentBlocker of currentMap.blockers)
-            {
-                if (currentBlocker.id == request.body.id)
-                {
-                    currentBlocker.x = request.body.x;
-                    currentBlocker.y = request.body.y;
-                    currentBlocker.width = request.body.width;
-                    currentBlocker.height = request.body.height;
-                }
-            }
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-        
-        case "removeBlocker":
-            loadCurrentMap();
-            let blockerFound = 0;
-            for (let i in currentMap.blockers)
-            {
-                let currentBlocker = currentMap.blockers[i];
-                if (currentBlocker.id == request.body.id)
-                {
-                    blockerFound = i;
-                    currentMap.blockers.splice(i, 1);
-                }
-            }
-            for (let i = blockerFound; i < currentMap.blockers.length; i++)
-                currentMap.blockers[i].id = currentMap.blockers[i].id - 1;
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-
-        case "addWallSegment":
-            loadCurrentMap();
-            let newSegment = request.body.segment;
-            for (let segment of currentMap.walls)
-            {
-                if (Math.sqrt(Math.pow(segment.a.x - newSegment.a.x, 2) + Math.pow(segment.a.y - newSegment.a.y, 2)) < 5)
-                {
-                    newSegment.a.x = segment.a.x
-                    newSegment.a.y = segment.a.y
-                }
-                if (Math.sqrt(Math.pow(segment.b.x - newSegment.b.x, 2) + Math.pow(segment.b.y - newSegment.b.y, 2)) < 5)
-                {
-                    newSegment.b.x = segment.b.x
-                    newSegment.b.y = segment.b.y
-                }
-            }
-            currentMap.walls.push(request.body.segment);
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-
-        case "moveWallPoint":
-            loadCurrentMap();
-            for (let derp of currentMap.walls)
-            {
-                if (derp.a.x === request.body.point.x && derp.a.y === request.body.point.y)
-                {
-                    derp.a.x = request.body.newPoint.x;
-                    derp.a.y = request.body.newPoint.y;
-                }
-                    
-                if (derp.b.x === request.body.point.x && derp.b.y === request.body.point.y)
-                {
-                    derp.b.x = request.body.newPoint.x;
-                    derp.b.y = request.body.newPoint.y;
-                }
-            }
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-
-        case "removeWallPoint":
-            loadCurrentMap();
-            for (let [i, segment] of currentMap.walls.entries())
-            {
-                if ((segment.a.x == request.body.point.x && segment.a.y == request.body.point.y) || (segment.b.x == request.body.point.x && segment.b.y == request.body.point.y))
-                    currentMap.walls.splice(i, 1);
-            }
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-
-
-        case "addPolyBlocker":
-            loadCurrentMap();
-            let tmpPoly = {id: currentMap.polyBlockers.length, verts: []};
-            tmpPoly.verts.push({x: request.body.x-request.body.offset.min, y: request.body.y+request.body.offset.min});
-            tmpPoly.verts.push({x: request.body.x+request.body.offset.min, y: request.body.y+request.body.offset.min});
-            tmpPoly.verts.push({x: request.body.x+request.body.offset.min, y: request.body.y-request.body.offset.min});
-            tmpPoly.verts.push({x: request.body.x-request.body.offset.min, y: request.body.y-request.body.offset.min});
-            currentMap.polyBlockers.push(tmpPoly);
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-        
-        case "togglePolyBlocker":
-            loadCurrentMap();
-            for (let currentBlocker of currentMap.polyBlockers)
-                if (currentBlocker.id == request.body.id)
-                    currentBlocker.inactive = !currentBlocker.inactive;
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-
-        case "editVert":
-            loadCurrentMap();
-            for (let currentBlocker of currentMap.polyBlockers)
-            {
-                if (currentBlocker.id == request.body.id)
-                {
-                    currentBlocker.verts[request.body.vertIndex].x = request.body.x;
-                    currentBlocker.verts[request.body.vertIndex].y = request.body.y;
-                }
-            }
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-
-        case "movePolyBlocker":
-            loadCurrentMap();
-            for (let currentBlocker of currentMap.polyBlockers)
-            {
-                if (currentBlocker.id == request.body.id)
-                {
-                    for (let currentVert of currentBlocker.verts)
-                    {
-                        currentVert.x = currentVert.x + request.body.offsetX;
-                        currentVert.y = currentVert.y + request.body.offsetY;
-                    }
-                }
-            }
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-
-        case "addCustomPolyBlocker":
-            loadCurrentMap();
-            let newPolyBlocker = {id: currentMap.polyBlockers.length, verts: JSON.parse(request.body.newPolyBlockerVerts)};
-            currentMap.polyBlockers.push(newPolyBlocker);
-            saveCurrentMap();
-            response.send("[true]");
-            break;
+    socket.on('addBlocker', (body) => {
+        if (body.width == 0 && body.height == 0)
+            return;
             
-        case "addVert":
-            loadCurrentMap();
-            for (let currentBlocker of currentMap.polyBlockers)
+        let tmpBlocker = {};
+        tmpBlocker.id = currentMap.blockers.length;
+        tmpBlocker.x = body.x;
+        tmpBlocker.y = body.y;
+        if (body.width>0)
+        {
+            if (body.height<0)
             {
-                if (currentBlocker.id == request.body.id)
+                tmpBlocker.y = tmpBlocker.y + body.height;
+                tmpBlocker.width = body.width;
+                tmpBlocker.height = Math.abs(body.height);
+            }
+            else
+            {
+                tmpBlocker.width = body.width;
+                tmpBlocker.height = body.height;
+            }
+        }
+        else
+        {
+            if (body.height>0)
+            {
+                tmpBlocker.x = tmpBlocker.x + body.width;
+                tmpBlocker.width = Math.abs(body.width);
+                tmpBlocker.height = body.height;
+            }
+            else
+            {
+                tmpBlocker.y = tmpBlocker.y + body.height;
+                tmpBlocker.x = tmpBlocker.x + body.width;
+                tmpBlocker.width = Math.abs(body.width);
+                tmpBlocker.height = Math.abs(body.height);
+            }
+        }
+        currentMap.blockers.push(tmpBlocker);
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('editBlocker', (body) => {
+        for (let currentBlocker of currentMap.blockers) {
+            if (currentBlocker.id != body.id)
+                continue;
+            currentBlocker.x = body.x;
+            currentBlocker.y = body.y;
+            currentBlocker.width = body.width;
+            currentBlocker.height = body.height;
+        }
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('removeBlocker', (body) => {
+        let blockerFound = 0;
+        for (let [currentBlocker, i] in currentMap.blockers.entries()) {
+            if (currentBlocker.id == body.id) {
+                blockerFound = i;
+                currentMap.blockers.splice(i, 1);
+            }
+        }
+        for (let i = blockerFound; i < currentMap.blockers.length; i++)
+            currentMap.blockers[i].id = currentMap.blockers[i].id - 1;
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('addPolyBlocker', (body) => {
+        let tmpPoly = {id: currentMap.polyBlockers.length, verts: []};
+        tmpPoly.verts.push({x: body.x-body.offset.min, y: body.y+body.offset.min});
+        tmpPoly.verts.push({x: body.x+body.offset.min, y: body.y+body.offset.min});
+        tmpPoly.verts.push({x: body.x+body.offset.min, y: body.y-body.offset.min});
+        tmpPoly.verts.push({x: body.x-body.offset.min, y: body.y-body.offset.min});
+        currentMap.polyBlockers.push(tmpPoly);
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('togglePolyBlocker', (body) => {
+        for (let currentBlocker of currentMap.polyBlockers)
+            if (currentBlocker.id == body.id)
+                currentBlocker.inactive = !currentBlocker.inactive;
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('editVert', (body) => {
+        for (let currentBlocker of currentMap.polyBlockers) {
+            if (currentBlocker.id == body.id) {
+                currentBlocker.verts[body.vertIndex].x = body.x;
+                currentBlocker.verts[body.vertIndex].y = body.y;
+            }
+        }
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('movePolyBlocker', (body) => {
+        for (let currentBlocker of currentMap.polyBlockers) {
+            if (currentBlocker.id != body.id)
+                continue;
+            for (let currentVert of currentBlocker.verts) {
+                currentVert.x = currentVert.x + body.offsetX;
+                currentVert.y = currentVert.y + body.offsetY;
+            }
+        }
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('addCustomPolyBlocker', (body) => {
+        let newPolyBlocker = {id: currentMap.polyBlockers.length, verts: JSON.parse(body.newPolyBlockerVerts)};
+        currentMap.polyBlockers.push(newPolyBlocker);
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('addVert', (body) => {
+        for (let currentBlocker of currentMap.polyBlockers) {
+            if (currentBlocker.id != body.id)
+                continue;
+            let prevVert = currentBlocker.verts[body.vertId];
+            let nextVertId = (nextVertId>=currentBlocker.verts.length) ? body.vertId+1 : 0;
+            let nextVert = currentBlocker.verts[nextVertId];
+            let newVert = {x: (prevVert.x+nextVert.x)/2, y: (prevVert.y+nextVert.y)/2};
+            currentBlocker.verts.splice(nextVertId, 0, newVert);
+        }
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('removeVert', (body) => {
+        for (let currentBlocker of currentMap.polyBlockers)
+            if (currentBlocker.id == body.id)
+                currentBlocker.verts.splice(body.vertId, 1);
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('removePolyBlocker', (body) => {
+        let polyBlockerFound = 0;
+        for (let [i, currentBlocker] of Object.entries(currentMap.polyBlockers)) {
+            if (currentBlocker.id == body.id) {
+                polyBlockerFound = i;
+                currentMap.polyBlockers.splice(i, 1);
+            }
+        }
+        for (let i = polyBlockerFound; i < currentMap.polyBlockers.length; i++)
+            currentMap.polyBlockers[i].id = currentMap.polyBlockers[i].id - 1;
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('invertBlockers', (body) => {
+        currentMap.antiBlockerOn = !currentMap.antiBlockerOn;
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('clearTokens', (body) => {
+        currentMap.tokens = [];
+        for (let targetDrawing of currentMap.drawings) {
+            if (targetDrawing.link==null)
+                continue;
+            currentMap.drawings = currentMap.drawings.filter(drawing => drawing.id != targetDrawing.link);
+            previousRemovedDrawingId = targetDrawing.link;
+            removedDrawings++;
+        }
+        saveCurrentMap();
+    });
+
+    socket.on('clearDrawings', (body) => {
+        currentMap.drawings = [];
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('clearBlockers', (body) => {
+        currentMap.blockers = [];
+        currentMap.polyBlockers = [];
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('sortTracker', (body) => {
+        if (currentMap.tokens.length>0)
+        {
+            let tmpTokens = [];
+            tmpTokens.push(currentMap.tokens[0]);
+            if (currentMap.tokens.length>1)
+            {
+                for (let f = 1; f < currentMap.tokens.length; f++)
                 {
-                    let prevVert = currentBlocker.verts[request.body.vertId];
-                    let nextVertId = request.body.vertId+1;
-                    if (nextVertId>=currentBlocker.verts.length)
-                        nextVertId = 0;
-                    let nextVert = currentBlocker.verts[nextVertId];
-                    let newVert = {x: (prevVert.x+nextVert.x)/2, y: (prevVert.y+nextVert.y)/2};
-                    currentBlocker.verts.splice(nextVertId, 0, newVert);
-                }
-            }
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-
-        case "removeVert":
-            loadCurrentMap();
-            for (let currentBlocker of currentMap.polyBlockers)
-                if (currentBlocker.id == request.body.id)
-                    currentBlocker.verts.splice(request.body.vertId, 1);
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-
-        case "removePolyBlocker":
-            loadCurrentMap();
-            let polyBlockerFound = 0;
-            for (let [i, currentBlocker] of Object.entries(currentMap.polyBlockers))
-            {
-                if (currentBlocker.id == request.body.id)
-                {
-                    polyBlockerFound = i;
-                    currentMap.polyBlockers.splice(i, 1);
-                }
-            }
-            for (let i = polyBlockerFound; i < currentMap.polyBlockers.length; i++)
-            {
-                currentMap.polyBlockers[i].id = currentMap.polyBlockers[i].id - 1;
-            }
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-        
-        case "invertBlockers":
-            loadCurrentMap();
-            currentMap.antiBlockerOn = !currentMap.antiBlockerOn;
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-
-        case "exportMap":
-            console.log("Exporting: " + selectedMap);
-            copyFile(dataFolder + selectedMap + ".json", publicFolder + "export/export.json");
-            response.send("[true]");
-            break;
-
-        case "clearTokens":
-            loadCurrentMap();
-            currentMap.tokens = [];
-            for (let targetDrawing of currentMap.drawings)
-            {
-                if (targetDrawing.link!=null)
-                {
-                    currentMap.drawings = currentMap.drawings.filter(drawing => drawing.id != targetDrawing.link);
-                    previousRemovedDrawingId = targetDrawing.link;
-                    removedDrawings++;
-                }
-            }
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-
-        case "clearDrawings":
-            loadCurrentMap();
-            currentMap.drawings = [];
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-
-        case "clearBlockers":
-            loadCurrentMap();
-            currentMap.blockers = [];
-            currentMap.polyBlockers = [];
-            currentMap.walls = [];
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-
-        case "switchBlockerType":
-            loadCurrentMap();
-            if (!isNaN(parseInt(request.body.type)))
-            {
-                currentMap.blockerType = parseInt(request.body.type);
-                currentMap.usePolyBlockers = currentMap.blockerType == 1;
-            }
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-    
-        case "sortTracker":
-            loadCurrentMap();
-            if (currentMap.tokens.length>0)
-            {
-                let tmpTokens = [];
-                tmpTokens.push(currentMap.tokens[0]);
-                if (currentMap.tokens.length>1)
-                {
-                    for (let f = 1; f < currentMap.tokens.length; f++)
+                    let currentLength = tmpTokens.length;
+                    for (let g = 0; g < currentLength; g++)
                     {
-                        let currentLength = tmpTokens.length;
-                        for (let g = 0; g < currentLength; g++)
+                        if (currentMap.tokens[f].initiative==null)
                         {
-                            if (currentMap.tokens[f].initiative==null)
+                            tmpTokens.push(currentMap.tokens[f]);
+                            g = currentLength;
+                        }
+                        else
+                        {
+                            if (tmpTokens[g].initiative < currentMap.tokens[f].initiative || tmpTokens[g].initiative == null)
                             {
-                                tmpTokens.push(currentMap.tokens[f]);
+                                tmpTokens.splice(g, 0, currentMap.tokens[f]);
                                 g = currentLength;
                             }
                             else
                             {
-                                if (tmpTokens[g].initiative < currentMap.tokens[f].initiative || tmpTokens[g].initiative == null)
+                                if (g==tmpTokens.length-1)
                                 {
-                                    tmpTokens.splice(g, 0, currentMap.tokens[f]);
-                                    g = currentLength;
-                                }
-                                else
-                                {
-                                    if (g==tmpTokens.length-1)
-                                    {
-                                        tmpTokens.push(currentMap.tokens[f]);
-                                        g=currentLength;
-                                    }
+                                    tmpTokens.push(currentMap.tokens[f]);
+                                    g=currentLength;
                                 }
                             }
                         }
                     }
-                    currentMap.tokens = tmpTokens;
                 }
+                currentMap.tokens = tmpTokens;
             }
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-    
-        case "switchTrackerPosition":
-            loadCurrentMap();
-            let origin = parseInt(request.body.origin);
-            let target = parseInt(request.body.target);
-            if (origin<target)
-            {
-                currentMap.tokens.splice(target+1, 0, currentMap.tokens[origin]);
-                currentMap.tokens.splice(origin, 1);
-            }
-            else
-            {
-                currentMap.tokens.splice(target, 0, currentMap.tokens[origin]);
-                currentMap.tokens.splice(origin+1, 1);
-            }
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-
-        case "setLiftedMinis":
-            loadCurrentMap();
-            if (request.body.id != null) {
-                let selectedPortal = parseInt(request.body.id);
-                if (!isNaN(selectedPortal))
-                {
-                    if (selectedPortal==-1 || selectedPortal>=currentMap.portalData.length)
-                        selectedPortal = currentMap.portalData.push({}) - 1
-
-                    if (request.body.lifted != null)
-                        currentMap.portalData[selectedPortal].lifted = JSON.parse(request.body.lifted);
-                        
-                    response.send(selectedPortal.toString());
-                }
-            }
-            else
-            {
-                response.send(false);
-            }
-            saveCurrentMap();
-            break;
-
-        case "setPortalData":
-            loadCurrentMap();
-            if (request.body.id != null) {
-                let selectedPortal = parseInt(request.body.id);
-                if (!isNaN(selectedPortal))
-                {
-                    if (selectedPortal==-1 || selectedPortal>=currentMap.portalData.length) {
-                        selectedPortal = currentMap.portalData.push({}) - 1
-                    }
-                    if (request.body.links != null)
-                    { currentMap.portalData[selectedPortal].links = JSON.parse(request.body.links); }
-                    if (request.body.name != null)
-                    { currentMap.portalData[selectedPortal].name = request.body.name; }
-                    if (!isNaN(parseInt(request.body.x)))
-                    { currentMap.portalData[selectedPortal].portalX = parseInt(request.body.x); }
-                    if (!isNaN(parseInt(request.body.y)))
-                    { currentMap.portalData[selectedPortal].portalY = parseInt(request.body.y); }
-                    if (!isNaN(parseInt(request.body.originX)))
-                    { currentMap.portalData[selectedPortal].originX = parseInt(request.body.originX); }
-                    if (!isNaN(parseInt(request.body.originY)))
-                    { currentMap.portalData[selectedPortal].originY = parseInt(request.body.originY); }
-                    if (request.body.lifted != null)
-                    { currentMap.portalData[selectedPortal].lifted = JSON.parse(request.body.lifted); }
-                    if (request.body.crash != null)
-                    { currentMap.portalData[selectedPortal].crash = request.body.crash; }
-                    response.send(selectedPortal.toString());
-                }
-            }
-            else
-            {
-                response.send(false);
-            }
-            saveCurrentMap();
-            break;
-
-        case "clearPortals":
-            loadCurrentMap();
-            currentMap.portalData = [];
-            response.send(true);
-            saveCurrentMap();
-            break;
-    }
-});
-
-app.post("/ls", function(request, response) {
-    if (request.body.path != null && request.body.filter != null)
-        response.send(readDirectory(__dirname + "/" + request.body.path, request.body.filter, true));
-});
-
-app.post("/export", function(request, response) {
-    if (request.body.path != null)
-    {
-        response.download(__dirname + "/" + request.body.path);
-    }
-});
-
-app.post('/upload', function(req, res) {
-    if (!req.files || Object.keys(req.files).length === 0)
-    {
-        return res.status(400).send('No files were uploaded.');
-    }
-    if (fs.existsSync(__dirname + "/" + req.body.folder + "/" + req.files.newFile.name))
-        fs.rmSync(__dirname + "/" + req.body.folder + "/" + req.files.newFile.name);
-    let sampleFile = req.files.newFile;
-    sampleFile.mv(__dirname + "/" + req.body.folder + "/" + req.files.newFile.name, function(err)
-    {
-        if (err)
-            return res.status(500).send(err);
-        res.redirect("manage.html");
+        }
+        broadcastMap();
+        saveCurrentMap();
     });
-});
 
-app.use(express.static('client'));
-app.listen(port);
+    socket.on('switchTrackerPosition', (body) => {
+        let origin = parseInt(body.origin);
+        let target = parseInt(body.target);
+        if (origin<target)
+        {
+            currentMap.tokens.splice(target+1, 0, currentMap.tokens[origin]);
+            currentMap.tokens.splice(origin, 1);
+        }
+        else
+        {
+            currentMap.tokens.splice(target, 0, currentMap.tokens[origin]);
+            currentMap.tokens.splice(origin+1, 1);
+        }
+        broadcastMap();
+        saveCurrentMap();
+    });
+
+    socket.on('switchBlockerType', (body) => {
+        if (!isNaN(parseInt(body.type)))
+        {
+            currentMap.blockerType = parseInt(body.type);
+            currentMap.usePolyBlockers = currentMap.blockerType == 1;
+        }
+        broadcastMap();
+        saveCurrentMap();
+    })
+
+    socket.on('requestPing', (body) => {
+        io.sockets.emit('pingAt', JSON.stringify({pingX: body.pingX, pingY: body.pingY}));
+    });
+})
+
+server.listen(port);
 
 function checkGroupLock()
 {
@@ -925,26 +629,18 @@ function checkGroupLock()
         {
             if (currentToken.group==currentMap.groupLock[i])
             {
-                if (maxLayerInGroup<currentToken.layer)
-                    maxLayerInGroup = currentToken.layer;
-                if (currentToken.layer<maxLayerInGroup)
-                    currentToken.layer = maxLayerInGroup;
+                if (maxLayerInGroup<currentToken.layer) { maxLayerInGroup = currentToken.layer; }
+                if (currentToken.layer<maxLayerInGroup) { currentToken.layer = maxLayerInGroup; }
                 groupActive = true;
             }
         }
-        if (!groupActive)
-            currentMap.groupLock.splice(i, 1);
-        else
-        {
+        if (groupActive) {
             for (let currentToken of currentMap.tokens)
-            {
-                if (currentToken.group!=currentMap.groupLock[i])
-                {
-                    if (currentToken.layer <= maxLayerInGroup)
-                        currentToken.layer = maxLayerInGroup+1;
-                }
-            }
+                if (currentToken.group!=currentMap.groupLock[i] && currentToken.layer <= maxLayerInGroup)
+                    currentToken.layer = maxLayerInGroup+1;
+            return;
         }
+        currentMap.groupLock.splice(i, 1);
     }
 }
 
@@ -991,62 +687,37 @@ function moveLinkedShapes(tokenData)
 
 function updateTokenCircleRange(tokenData, newSize) {
     for (let i = 0; i < currentMap.drawings.length; i++)
-    {
         if (currentMap.drawings[i].link == tokenData.id && currentMap.drawings[i].shape == "circle")
-        {
             currentMap.drawings[i].radius += (newSize-tokenData.size)*0.5;
-        }
-    } 
 }
 
 function loadCurrentMap() 
 {
     currentMap = JSON.parse(readFile("data/" + selectedMap + ".json"));
-    if (currentMap.offsetX == null)
-        currentMap.offsetX = 0;
-    if (currentMap.antiBlockerOn == null)
-        currentMap.antiBlockerOn = false;
-    if (currentMap.offsetY == null)
-        currentMap.offsetY = 0;
-    if (currentMap.gridColor == null)
-        currentMap.gridColor = "#222222FF";
-    if (currentMap.usePolyBlockers == null)
-        currentMap.usePolyBlockers = false;
-    if (currentMap.polyBlockers == null)
-        currentMap.polyBlockers = [];
-    if (currentMap.portalX != null)
-        delete currentMap.portalX;
-    if (currentMap.portalY != null)
-        delete currentMap.portalY;
-    if (currentMap.groupLock == null)
-        currentMap.groupLock = [];
-    if (currentMap.portalData == null || currentMap.portalData=="")
-        currentMap.portalData = [];
-    if (currentMap.groupPresets == null)
-        currentMap.groupPresets = [];
-    if (currentMap.walls == null)
-        currentMap.walls = [];
-    if (currentMap.blockerType == null)
-        currentMap.blockerType = currentMap.usePolyBlockers ? 1 : 0;
-        
+    if (currentMap.offsetX == null) { currentMap.offsetX = 0; }
+    if (currentMap.antiBlockerOn == null) { currentMap.antiBlockerOn = false; }
+    if (currentMap.offsetY == null) { currentMap.offsetY = 0; }
+    if (currentMap.gridColor == null) { currentMap.gridColor = "#222222FF"; }
+    if (currentMap.usePolyBlockers == null) { currentMap.usePolyBlockers = false; }
+    if (currentMap.polyBlockers == null) { currentMap.polyBlockers = []; }
+    if (currentMap.groupLock == null) { currentMap.groupLock = []; }
+    if (currentMap.groupPresets == null) { currentMap.groupPresets = []; }
+    if (currentMap.blockerType == null) { currentMap.blockerType = currentMap.usePolyBlockers ? 1 : 0; }
     currentMap.mapName = selectedMap;
     currentMap.tokenList = readDirectory(publicFolder + "tokens", "jpg|png|jpeg|gif", false);
     currentMap.dmTokenList = readDirectory(publicFolder + "dmTokens", "jpg|png|jpeg|gif", false);
-    currentMap.mapSourceList = readDirectory(publicFolder + "maps", "jpg|png|jpeg|gif", false);
-    currentMap.maps = returnMaps();
-}
-
-function saveCurrentMap() 
-{
-    writeFile("data/" + selectedMap + ".json", JSON.stringify(currentMap, null, 4));
-}
-
-function returnMaps() 
-{
+    currentMap.mapSourceList = readDirectory(publicFolder + "maps", "jpg|png|jpeg|gif|webm|mp4", false);
     let tmpMaps = readDirectory("data/", "json", false);
-    for (let i in tmpMaps)
-        tmpMaps[i] = tmpMaps[i].split(".")[0];
-    return tmpMaps;
+    for (let i in tmpMaps) { tmpMaps[i] = tmpMaps[i].split(".")[0]; }
+    currentMap.maps = tmpMaps;
+}
+
+function broadcastMap() {
+    io.sockets.emit('currentMapData', JSON.stringify(currentMap));
+}
+
+function saveCurrentMap() {   
+    writeFile("data/" + selectedMap + ".json", JSON.stringify(currentMap, null, 4));
 }
 
 //#region Low level functions
@@ -1191,28 +862,4 @@ function deleteDirectory(path)
     return true;
 }
 
-//#endregion
-
-//#region
-function logError(err) {
-    if (logerrors)
-        console.log(err);
-}
-//#endregion
-
-//#region Cookies
-function GetCookie(request, cookieName) 
-{
-    if (request.headers.cookie)
-    {
-        let cookies = request.headers.cookie.replace(/ /g, '').split(";");
-        for (let i in cookies)
-        {
-            let splitCookie = cookies[i].split("=");
-            if (splitCookie[0] == cookieName)
-                return splitCookie[1];
-        }
-    }
-    return "No cookie!";
-}
 //#endregion

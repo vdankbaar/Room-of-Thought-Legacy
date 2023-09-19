@@ -1,3 +1,4 @@
+var socket = io();
 let initTracker = document.getElementById("initiativeTracker");
 let initSearch = document.getElementById("initSearch");
 let mapUpdateInterval = 1000;

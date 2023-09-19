@@ -23,6 +23,33 @@ body label {user-select: none;}
 body a {user-select: none;}
 body h3 {user-select: none;}
 
+.otherViewport {
+    position: absolute;
+    z-index: 9998;
+    pointer-events: none;
+    background-color: transparent;
+    border: 0.15vw solid greenyellow;
+}
+
+.ping {
+    position: absolute;
+    transform-origin: center;
+    pointer-events: none;
+    z-index: 9999;
+    animation: pulse 1s infinite;
+    width: 2vw;
+    height: 2vw;
+    background-color: transparent;
+    border-radius: 50%;
+    border: 0.2vw solid red;
+}
+
+@keyframes pulse {
+    0% {border: 0.2vw solid red; width: 2vw; height: 2vw;}
+    50% {border: 0.3vw solid orange; width: 2.5vw; height: 2.5vw;}
+    100% {border: 0.2vw solid red; width: 2vw; height: 2vw;}
+}
+
 #antiBlockerMap {
     pointer-events: none;
     z-index: 500;
@@ -102,7 +129,7 @@ body h3 {user-select: none;}
     z-index: 441;
 }
 
-#map {
+#mapImage {
     user-select: none;
     -moz-user-select: none;
     -webkit-user-drag: none;
@@ -112,6 +139,14 @@ body h3 {user-select: none;}
     margin: 0px;
     padding: 0px;
     z-index: 0;
+}
+
+#gridMap {
+    position: absolute;
+    pointer-events: none;
+    z-index: 1;
+    margin: 0px;
+    padding: 0px;
 }
 /* #endregion */
 
@@ -534,7 +569,7 @@ body h3 {user-select: none;}
     padding: 0;
     font-size: 1vw;
     width: 100%;
-    height: 4.5vh;
+    height: 3.5vh;
     margin: 0px auto 0.5vh auto;
     border: none;
 }

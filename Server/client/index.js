@@ -1,5 +1,5 @@
-let playerNameInput = document.getElementById("playerNameInput");
 let isDMInput = document.getElementById("isDMInput");
+
 document.getElementById("enterButton").onclick = function() {
     if (isDMInput.checked)
     {
@@ -33,7 +33,6 @@ document.getElementById("mobileButton").onclick = function() {
 }
 
 window.onload = function() {
-    playerNameInput.value = getCookie("playerName");
     if (getCookie("isDM") == 1) {
         document.body.style.setProperty("background-image", "url(images/Dungeonmaster.jpg)");
         isDMInput.checked = true;
@@ -46,10 +45,6 @@ window.onload = function() {
         document.body.style.setProperty("background-image", "url(images/Player.jpg)");
         setCookie("isDM", 0);
     }
-}
-
-playerNameInput.onchange = function() {
-    setCookie("playerName", playerNameInput.value);
 }
 
 isDMInput.onchange = function() {
