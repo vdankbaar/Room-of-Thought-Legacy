@@ -1,5 +1,5 @@
 //Mocht port 80 geblokeerd zijn door windows, voer de command 'net stop http' uit in een shell met admin
-let port = 6969;
+let port = 80;
 
 const fs = require('fs');
 const pathLib = require('path');
