@@ -34,14 +34,15 @@
                 <label for="gridColorPicker">Grid color:</label>
                 <input type="color" id="gridColorPicker" value="#222222">
                 <div id="optionsGridDisplay">
-                    <label for="mapX">Grid X:<input type="number" id="mapX"></label>
-                    <label for="mapY">Grid Y:<input type="number" id="mapY"></label>
+                    <label for="mapX">Grid X:<input type="number" id="mapX" step="0.1"></label>
+                    <label for="mapY">Grid Y:<input type="number" id="mapY" step="0.1"></label>
                     <label for="offsetX">X offset:<input type="number" id="offsetX"></label>
                     <label for="offsetY">Y offset:<input type="number" id="offsetY"></label>
                 </div>
+                <input id="startAlignTool" class="dmOnly" type="button" value="Start Align Tool">
                 <input id="importMap" class="dmOnly" type="button" value="Upload JSON file">
                 <input id="exportMap" class="dmOnly" type="button" value="Export JSON file">
-                <input id="hideInits" class="dmOnly" type="button" value="Toggle initiatives">
+                <input id="hideInits" class="dmOnly" type="button" value="Hide/Reveal initiatives">
                 <input id="clearTokensButton" class="dmOnly" type="button" value="Clear all tokens">
                 <input id="clearDrawingsButton" class="dmOnly" type="button" value="Clear all drawings">
                 <input id="clearBlockersButton" class="dmOnly" type="button" value="Clear all blockers">
@@ -54,7 +55,7 @@
             <div id="bulkInitGeneratorScreen">
                 <a>Bulk initiative generator</a>
                 <label for="bulkTokenSelect">Token image:<select id="bulkTokenSelect"></select></label>
-                <label for="bulkTokenNameInput">Common name:<input type="text" id="bulkTokenNameInput" autocomplete="off"></select></label>
+                <label for="bulkTokenNameInput">Common name:<input type="text" id="bulkTokenNameInput" autocomplete="off" spellcheck="false"></select></label>
                 <label for="bulkTokenAmountInput">Tokens to place:<input type="number" id="bulkTokenAmountInput" value="1"></label>
                 <input id="bulkTokenConfirm" type="button" value="Start placing">
             </div>
@@ -64,6 +65,7 @@
                 <h3>Initiative Tracker</h3>
                 <input class="dmOnly" id="openBulkGenerator" type="button" value="+">
             </div>
+            <input type="text" id="initSearch" placeholder="Search..." autocomplete="off" spellcheck="false">
             <div id="initiativeTracker">
             </div>
             <div id="detailsScreen" style="display: none;">
@@ -71,20 +73,20 @@
                 <div id="detailsIcon" title="Click to open notes!"><img></div>
                 <img id="hitpointsIcon" title="Click here to deduct HP" type="image/svg+xml" src="images/favorite-24px.svg"></img>
                 <div id="detailsHitpoints">
-                    <input id="currentHitpoints" autocomplete="off">
+                    <input id="currentHitpoints" autocomplete="off" spellcheck="false">
                     <p>/</p>
-                    <input id="maxHitpoints" autocomplete="off">
+                    <input id="maxHitpoints" autocomplete="off" spellcheck="false">
                 </div>
                 <object id="armorIcon" type="image/svg+xml" data="images/security-24px.svg"></object>
-                <input id="armorClass" autocomplete="off">
+                <input id="armorClass" autocomplete="off" spellcheck="false">
                 <p style="grid-area: name; margin: 0px;">Name:</p>
-                <input type="text" id="detailsNameInput" autocomplete="off">
+                <input type="text" id="detailsNameInput" autocomplete="off" spellcheck="false">
                 <p style="grid-area: status; margin: 0px;">Status:</p>
-                <input type="text" id="detailsStatusInput" autocomplete="off">
+                <input type="text" id="detailsStatusInput" autocomplete="off" spellcheck="false">
                 <p style="grid-area: initiative; margin: 0px;">Initiative:</p>
                 <p style="grid-area: group; margin: 0px;">Group:</p>
-                <input type="text" id="detailsInitiative" class="detailsBottom" autocomplete="off">
-                <input type="text" id="detailsGroup" class="detailsBottom" autocomplete="off">
+                <input type="text" id="detailsInitiative" class="detailsBottom" autocomplete="off" spellcheck="false">
+                <input type="text" id="detailsGroup" class="detailsBottom" autocomplete="off" spellcheck="false">
             </div>
         </div>
         <script>

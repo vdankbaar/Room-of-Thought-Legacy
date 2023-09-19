@@ -1,0 +1,36 @@
+Step 1: Use the align tool to get a ballpark for the settings
+(Tip: for the following steps it can help to set a new grid colour)
+
+Aligning the vertical lines:
+
+Step 2: Scroll to the most left line on the pre-existing grid and compare it to the line on the new grid.
+- Is the new line too far to left? Decrease Grid-x
+- Is the new line too far to the right? Increase Grid-x
+Change Grid-x in this way until the vertical lines on both the new grid and the pre-existing grid match exactly.
+(If you have done this step correctly the line to the right should also almost be aligned)
+
+Step 3: Scroll to the right side of the map and compare the vertical lines of the new grid with the lines of the pre-existing grid.
+- Are the new lines slipping to the right? Increase Grid-x and add to X-offset to compensate so the left side of the map stays accurate.
+- Are the new lines slipping to the left? Decrease Grid-x and subtract from X-offset to compensate so the left side of the map stays accurate.
+Repeat this step until all the vertical lines match exactly.
+
+Aligning the horizontal lines:
+
+Step 4: Scroll up to the most top horizontal line on the pre-existing grid and compare it to the line on the new grid.
+- Is the new line too far up? Decrease Grid-y
+- Is the new line too far down? Increase Grid-y
+Change Grid-y in this way until the lines match exactly.
+
+Step 5: Scroll to the bottom of the map and compare the horizontal lines of the new grid with the lines of the pre-existing grid.
+- Are the new lines too low? Increase Grid-y and add to Y-offset to compensate so the lines at the top of the map stay accurate.
+- Are the new lines too high? Decrease Grid-y and subtract from Y-offset to compensate so the lines at the top of the map stay accurate.
+Repeat this step until all the vertical lines match exactly.
+
+When you have completed these steps the grids should match exactly.
+
+
+
+
+
+
+

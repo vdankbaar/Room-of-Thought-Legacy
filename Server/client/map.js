@@ -45,6 +45,7 @@ let polyBlockers = document.getElementById("polyBlockers");
 let polyBlockerHandles = document.getElementById("polyBlockerHandles");
 let shapeHandles = document.getElementById("shapeHandles");
 let antiBlockerMap = document.getElementById("antiBlockerMap");
+let initSearch = document.getElementById("initSearch");
 let noteArea = noteEditor.children[0];
 let mapCanvas;
 let shapeCanvas;
@@ -93,8 +94,8 @@ let selectedToken;
 let selectedTokenData;
 let selectedBlocker;
 let selectedShapeId = -1;
-let oldData;
-let oldParsedData;
+let oldData = "";
+let oldParsedData = null;
 let resizingSideMenu = false;
 let controlPressed = false;
 let placingBulkOrigin = false;
@@ -104,6 +105,8 @@ let shapeDragStartAngle = 0;
 let polyDragOffset = {x: 0, y: 0};
 let draggedPolygonId;
 let selectedVertHandle = -1;
+let alignToolStep = 0;
+let gridToolData = {startX: 0, startY: 0, gridX: 0, gridY: 0, endX: 0, endY: 0, }
 
 window.onload = function() {
     if (getCookie("isDM") == 1)
@@ -156,9 +159,6 @@ async function updateMapData(force)
     if (oldData != stringData || force)
     {
         console.log("Data is not identical or update has been forced, updating map!");
-        if (oldData)
-            oldParsedData = JSON.parse(oldData);
-        
         GridColor = mapData.gridColor;
         if (mapData.antiBlockerOn)
         {
@@ -244,8 +244,11 @@ async function updateMapData(force)
         loadedMap.onload = function() 
         {
             drawCanvas();
+            oldData = stringData;
+            if (oldData) {
+                oldParsedData = JSON.parse(oldData);
+            }
         }
-        oldData = stringData;
     }
     else
     {
@@ -430,27 +433,29 @@ function drawShapes()
     for (let k in mapData.drawings)
     {
         let currentShape = mapData.drawings[k];
-        switch (currentShape.shape)
-        {
-            case "circle":
-                drawCircle(k, currentShape);
-                break;
-            
-            case "square":
-                drawSquare(k, currentShape);
-                break;
-
-            case "line":
-                drawLine(k, currentShape);
-                break;
-
-            case "cone":
-                drawCone(k, currentShape);
-                break;
-            
-            case "5ftLine":
-                draw5Line(k, currentShape);
-                break;
+        if (currentShape.visible || isDM) {
+            switch (currentShape.shape)
+            {
+                case "circle":
+                    drawCircle(k, currentShape);
+                    break;
+                
+                case "square":
+                    drawSquare(k, currentShape);
+                    break;
+    
+                case "line":
+                    drawLine(k, currentShape);
+                    break;
+    
+                case "cone":
+                    drawCone(k, currentShape);
+                    break;
+                
+                case "5ftLine":
+                    draw5Line(k, currentShape);
+                    break;
+            }
         }
     }
 }
@@ -1419,8 +1424,12 @@ function createToken(token)
                             let radiusInput = parseFloat(prompt("Please enter the desired radius in feet for your circle(s)"));
                             if (!isNaN(radiusInput))
                             {
+                                let shapeIsVisible = true;
+                                if (isDM) {
+                                    shapeIsVisible = confirm("Should the shape be visible?");
+                                }
                                 circleMarkers.radius = (radiusInput + (feetPerSquare / 2) * token.size) / feetPerSquare;
-                                requestServer({c: "addDrawing", shape: "circle", link: token.id, x: token.x, y: token.y, radius: circleMarkers.radius, trueColor: shapeColor});
+                                requestServer({c: "addDrawing", shape: "circle", link: token.id, x: token.x, y: token.y, radius: circleMarkers.radius, trueColor: shapeColor, visible: shapeIsVisible});
                                 updateMapData();
                                 closeMenu();
                                 closeSubMenu();
@@ -1711,15 +1720,24 @@ function updateTracker()
     {
         if (JSON.stringify(oldParsedData.tokens) == JSON.stringify(mapData.tokens) && oldParsedData.hideInit == mapData.hideInit)
         {
+            console.log("Cancel tracker update!");
             return;
         }
     }
+    console.log("Continue tracker update!");
     initiativeTrackerDiv.innerHTML = "";
     for (let i in mapData.tokens)
     {
         if (CheckTokenPermission(mapData.tokens[i]))
         {
-            createTracker(mapData.tokens[i]);
+            if (initSearch.value!="") {
+                if (mapData.tokens[i].name.includes(initSearch.value) || !mapData.tokens[i].dm) {
+                    createTracker(mapData.tokens[i]);
+                }
+            } else {
+                createTracker(mapData.tokens[i]);
+            }
+            
         }
     }
     if (initiativeTrackerDiv.children.length>0)
@@ -1850,7 +1868,7 @@ function createTracker(trackerData)
                 {
                     e.preventDefault();
                     e.stopPropagation();
-                    let damage = parseInt(prompt("Enter the damage to reduct from this token: "));
+                    let damage = parseInt(prompt("Enter the damage to deal to this token: "));
                     if (!isNaN(damage))
                     {
                         if (trackerData.hp != null)
@@ -1996,6 +2014,11 @@ document.body.ondrop = async function(e)
 //#endregion
 
 //#region Menu events
+document.getElementById("startAlignTool").onclick = function() {
+    alignToolStep = 1;
+    alert("Click on a intersection in the top left of the pre-existing grid.");
+}
+
 document.getElementById("invertBlockerButton").onclick = function() {
     requestServer({c: "invertBlockers"});
     updateMapData(true);
@@ -2039,7 +2062,7 @@ document.getElementById("switchBlockerTypeButton").onclick = function() {
 
 document.getElementById("hitpointsIcon").onclick = async function() {
     updateSelectedTokenData();
-    let damage = parseInt(prompt("Enter the damage to reduct from this token: "));
+    let damage = parseInt(prompt("Enter the damage to deal to this token: "));
     if (!isNaN(damage))
     {
         if (selectedTokenData.hp != null)
@@ -2092,6 +2115,10 @@ initiativeInput.oninput = function() {
         }
     }   
     updateMapData();
+}
+
+initSearch.oninput = function() {
+    updateTracker();
 }
 
 nameInput.oninput = function() {
@@ -2253,7 +2280,7 @@ window.addEventListener("mouseup", async function(e) {
             let moveY = -polyDragOffset.y + (e.pageY + board.scrollTop);
             if (moveX!=0 && moveY!=0)
             {
-                await requestServer({c: "movePolyBlocker", id: draggedPolygonId, offsetX: moveX, offsetY: moveY});
+                requestServer({c: "movePolyBlocker", id: draggedPolygonId, offsetX: moveX, offsetY: moveY});
                 updateMapData();
             }
             draggedPolygonId = -1;
@@ -2311,7 +2338,7 @@ window.addEventListener("mouseup", async function(e) {
     }
 })
 
-document.body.addEventListener("keyup", function(e) {
+document.body.addEventListener("keyup", async function(e) {
     if (document.activeElement.tagName!="INPUT")
     {
         switch (e.code) {
@@ -2334,6 +2361,25 @@ document.body.addEventListener("keyup", function(e) {
                     drawCanvas();
                 }
                 break;
+            
+            case "Delete":
+                if (isDM)
+                {
+                    if (selectedToken!=-1)
+                    {
+                        let result = await requestServer({c: "removeToken", id: selectedToken, tokensRemoved: mapData.removedTokens});
+                        selectedToken = -1;
+                        if(result[0] == true)
+                        {
+                            updateMapData();
+                        }
+                        else
+                        {
+                            alert("That token has already been removed by someone else");
+                        }
+                    }
+                }
+                break;
         }
     }
 })
@@ -2347,6 +2393,43 @@ shapeMap.addEventListener("mousedown", function(e) {
         displayNoteEditor = false;
         noteEditor.style.display = "none";
         hideDetailsScreen();
+        if (alignToolStep == 1) {
+            gridToolData.startX = (e.pageX + board.scrollLeft);
+            gridToolData.startY = (e.pageY + board.scrollTop);
+            alert("Now click on the intersection to the bottom right of that one. (2;2)")
+            alignToolStep = 2;
+            return;
+        }
+
+        if (alignToolStep == 2) {
+            gridToolData.gridX = (e.pageX + board.scrollLeft) - gridToolData.startX;
+            gridToolData.gridY = (e.pageY + board.scrollTop) - gridToolData.startY;
+            alert("Now click on last visible intersection in the bottom right of the pre-existing grid.");
+            alignToolStep = 3;
+            return;
+        }
+
+        if (alignToolStep == 3) {
+            gridToolData.endX = (e.pageX + board.scrollLeft);
+            gridToolData.endY = (e.pageY + board.scrollTop);
+            let Xcount = Math.round((gridToolData.endX - gridToolData.startX)/gridToolData.gridX) + 1;
+            let Ycount = Math.round((gridToolData.endY - gridToolData.startY)/gridToolData.gridY) + 1;
+            if (gridToolData.startX/gridToolData.gridX>1) {
+                Xcount += Math.floor(gridToolData.startX/gridToolData.gridX);
+                gridToolData.startX -= gridToolData.gridX*Math.floor(gridToolData.startX/gridToolData.gridX);
+            }
+            if (gridToolData.startY/gridToolData.gridY>1) {
+                Ycount += Math.floor(gridToolData.startY/gridToolData.gridY);
+                gridToolData.startY -= gridToolData.gridY*Math.floor(gridToolData.startY/gridToolData.gridY);
+            }
+            Xcount += (map.width - gridToolData.endX)/gridToolData.gridX;
+            Ycount += (map.height - gridToolData.endY)/gridToolData.gridY;
+            requestServer({c: "setMapData", map: mapData.map, x: Xcount, y: Ycount, offsetX: (gridToolData.startX - gridToolData.gridX), offsetY: (gridToolData.startY - gridToolData.gridY), hideInit: mapData.hideInit});
+            updateMapData();
+            alignToolStep = 0;
+            return;
+        }
+
         if (placingBulkOrigin)
         {
             let autoGenInit = confirm("Automatically generate initiatives for the new tokens?");
@@ -2402,17 +2485,17 @@ shapeMap.addEventListener("mousedown", function(e) {
             }
             for (let f = 1; f <= bulkInitSettings.tokenAmount; f++)
             {
+                if (autoGenInit && !sameInit)
+                {
+                    tmpInit = Math.ceil(Math.random()*20)+parseInt(dexMod);
+                    if (isNaN(tmpInit))
+                    {
+                        placingBulkOrigin = false;
+                        return;
+                    }
+                }
                 if (bulkInitSettings.image=="number")
                 {
-                    if (autoGenInit && !sameInit)
-                    {
-                        tmpInit = Math.ceil(Math.random()*20)+parseInt(dexMod);
-                        if (isNaN(tmpInit))
-                        {
-                            placingBulkOrigin = false;
-                            return;
-                        }
-                    }
                     let tokenText;
                     if (commonNameInText)
                     {
@@ -2450,7 +2533,11 @@ shapeMap.addEventListener("mousedown", function(e) {
             {
                 if (isDM || CheckAntiBlockerPixel(e))
                 {
-                    requestServer({c: "addDrawing", shape: "square", x: squareMarkers.x, y: squareMarkers.y, width: squareMarkers.width, height: squareMarkers.height, trueColor: shapeColor});
+                    let shapeIsVisible = true;
+                    if (isDM) {
+                        shapeIsVisible = confirm("Should the shape be visible?");
+                    }
+                    requestServer({c: "addDrawing", shape: "square", x: squareMarkers.x, y: squareMarkers.y, width: squareMarkers.width, height: squareMarkers.height, trueColor: shapeColor, visible: shapeIsVisible});
                 }
                 updateMapData();
             }
@@ -2488,7 +2575,11 @@ shapeMap.addEventListener("mousedown", function(e) {
             }
             if (isDM || CheckAntiBlockerPixel(e))
             {
-                requestServer({c: "addDrawing", shape: "line", x: lineMarkers.x, y: lineMarkers.y, destX: lineMarkers.destX, destY: lineMarkers.destY, trueColor: shapeColor});
+                let shapeIsVisible = true;
+                if (isDM) {
+                    shapeIsVisible = confirm("Should the shape be visible?");
+                }
+                requestServer({c: "addDrawing", shape: "line", x: lineMarkers.x, y: lineMarkers.y, destX: lineMarkers.destX, destY: lineMarkers.destY, trueColor: shapeColor, visible: shapeIsVisible});
             }
             updateMapData();
             isPlacingLine = false;
@@ -2499,9 +2590,12 @@ shapeMap.addEventListener("mousedown", function(e) {
             let destX = (e.pageX + board.scrollLeft);
             let destY = (e.pageY + board.scrollTop);
             let angle = Math.atan2((destY - thickLineMarkers.y), (destX - thickLineMarkers.x));
-            if (angle<0)
-                angle+=2*Math.PI;
-            requestServer({c: "addDrawing", shape: "5ftLine", x: thickLineMarkers.x, y: thickLineMarkers.y, angle: angle, trueColor: shapeColor, link: thickLineMarkers.linkId, range: thickLineMarkers.range});
+            if (angle<0) { angle+=2*Math.PI; }
+            let shapeIsVisible = true;
+            if (isDM) {
+                shapeIsVisible = confirm("Should the shape be visible?");
+            }
+            requestServer({c: "addDrawing", shape: "5ftLine", x: thickLineMarkers.x, y: thickLineMarkers.y, angle: angle, trueColor: shapeColor, link: thickLineMarkers.linkId, range: thickLineMarkers.range, visible: shapeIsVisible});
             updateMapData();
             isPlacing5ftLine = false;
             return;
@@ -2511,9 +2605,12 @@ shapeMap.addEventListener("mousedown", function(e) {
             let destX = e.pageX + board.scrollLeft;
             let destY = e.pageY + board.scrollTop;
             let angle = Math.atan2((destY - coneMarkers.y), (destX - coneMarkers.x));
-            if (angle<0)
-                angle+=2*Math.PI;
-            requestServer({c: "addDrawing", shape: "cone", link: coneMarkers.linkId, x: coneMarkers.x, y: coneMarkers.y, angle: angle, range: coneMarkers.range, trueColor: shapeColor});
+            if (angle<0) { angle+=2*Math.PI; }
+            let shapeIsVisible = true;
+            if (isDM) {
+                shapeIsVisible = confirm("Should the shape be visible?");
+            }
+            requestServer({c: "addDrawing", shape: "cone", link: coneMarkers.linkId, x: coneMarkers.x, y: coneMarkers.y, angle: angle, range: coneMarkers.range, trueColor: shapeColor, visible: shapeIsVisible});
             updateMapData();
             isPlacingCone = false;
             return;
@@ -2819,7 +2916,11 @@ function displayContextMenu(e)
                         circleMarkers.radius = radiusInput / feetPerSquare;
                         circleMarkers.x = e.pageX + board.scrollLeft;
                         circleMarkers.y = e.pageY + board.scrollTop;
-                        requestServer({c: "addDrawing", shape: "circle", x: circleMarkers.x, y: circleMarkers.y, radius: circleMarkers.radius, trueColor: shapeColor});
+                        let shapeIsVisible = true;
+                        if (isDM) {
+                            shapeIsVisible = confirm("Should the shape be visible?");
+                        }
+                        requestServer({c: "addDrawing", shape: "circle", x: circleMarkers.x, y: circleMarkers.y, radius: circleMarkers.radius, trueColor: shapeColor, visible: shapeIsVisible});
                         updateMapData();
                     }    
                 }},

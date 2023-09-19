@@ -25,6 +25,12 @@ for (let i = 0; i<currentMap.tokens.length; i++)
             currentMap.tokens[i].dm = false;
     }
 }
+
+for (let i = 0; i<currentMap.drawings.length; i++) {
+    if (currentMap.drawings[i].visible == null) {
+        currentMap.drawings[i].visible = true;
+    }
+}
 saveCurrentMap();
 let removedTokens = 0;
 let previousRemovedTokenId = -1;
@@ -350,6 +356,7 @@ app.post("/api", function(request, response) {
             }
             if (isShape)
             {
+                tmpDrawing.visible = request.body.visible;
                 tmpDrawing.shape = request.body.shape;
                 tmpDrawing.id = currentMap.drawings.length;
                 tmpDrawing.trueColor = request.body.trueColor;
