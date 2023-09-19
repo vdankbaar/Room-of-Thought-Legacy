@@ -15,9 +15,16 @@ let removedTokens = 0;
 let previousRemovedTokenId = -1;
 let removedDrawings = 0;
 let previousRemovedDrawingId = -1;
+let playerNameList = [];
 
 app.post("/api", function(request, response) {
     let playerName = GetCookie(request, "playerName");
+    if (!playerNameList.includes(playerName))
+    {
+        console.log("A new player has connected: "+playerName);
+        playerNameList.push(playerName);
+        console.log("Currently connected: "+JSON.stringify(playerNameList));
+    }
     if (request.body.c!="currentMapData")
         console.log(playerName+": "+JSON.stringify(request.body));
     switch(request.body.c) 
@@ -51,6 +58,21 @@ app.post("/api", function(request, response) {
             }
             break;
         
+        case "setTokenHidden":
+            LoadCurrentMap();
+            for (let i in currentMap.tokens)
+            {
+                let currentToken = currentMap.tokens[i];
+                if (currentToken.id == request.body.id)
+                {
+                    currentToken.hidden = request.body.hidden;
+                    console.log("Changed to: "+request.body.hidden);
+                }
+            }
+            SaveCurrentMap();
+            response.send("[true]");
+            break;
+
         case "editToken":
             LoadCurrentMap();
             for (let i in currentMap.tokens)

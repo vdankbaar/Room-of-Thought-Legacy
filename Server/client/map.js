@@ -366,16 +366,19 @@ function createToken(token)
     imageElement.draggable = true;
     if (token.hidden!=null)
     {
-        if (!isDM)
-            return;
-        let hiddenImage = document.createElement("img");
-        hiddenImage.src = "public/hidden.png";
-        hiddenImage.className = "hiddenToken";
-        hiddenImage.style.width = (token.size * gridSize/3).toString()+"px";
-        hiddenImage.style.height = (token.size * gridSize/3).toString()+"px";
-        hiddenImage.style.top = token.y - (gridSize*token.size)/2;
-        hiddenImage.style.left = token.x - (gridSize*token.size)/2;
-        tokensDiv.appendChild(hiddenImage);
+        if (token.hidden == true)
+        {
+            if (!isDM)
+                return;
+            let hiddenImage = document.createElement("img");
+            hiddenImage.src = "public/hidden.png";
+            hiddenImage.className = "hiddenToken";
+            hiddenImage.style.width = (token.size * gridSize/3).toString()+"px";
+            hiddenImage.style.height = (token.size * gridSize/3).toString()+"px";
+            hiddenImage.style.top = token.y - (gridSize*token.size)/2;
+            hiddenImage.style.left = token.x - (gridSize*token.size)/2;
+            tokensDiv.appendChild(hiddenImage);
+        }
     }
     
 
@@ -435,6 +438,24 @@ function createToken(token)
                 DisplaySubMenu(e, subMenuOptions);
             }}
         ]
+        if (isDM)
+        {
+            if (token.hidden!=null && token.hidden == true)
+            {
+                menuOptions.push({text: "Reveal token", hasSubMenu: false, callback: async function() {
+                    await RequestServer({c: "setTokenHidden", id: token.id, hidden: false});
+                    UpdateMapData();
+                }})
+            }
+            else
+            {
+                menuOptions.push({text: "Hide token", hasSubMenu: false, callback: async function() {
+                    await RequestServer({c: "setTokenHidden", id: token.id, hidden: true});
+                    UpdateMapData();
+                }})
+            }
+            
+        }
         DisplayMenu(e, menuOptions);
     })
     tokensDiv.appendChild(imageElement);
