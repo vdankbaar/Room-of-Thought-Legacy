@@ -2375,7 +2375,7 @@ function CheckTokenPermission(token) {
     }
 }
 
-function DrawNewPolyMarkers() {
+function DrawNewPolyMarkers(activateMousedown) {
     console.log(newPolyBlockerVerts);
     newPolyBlockerHandles.innerHTML = "";
     for (let j = 0; j < newPolyBlockerVerts.length; j++)
@@ -2387,7 +2387,6 @@ function DrawNewPolyMarkers() {
         editHandleContainer.style.top = vert.y;
         let editHandle = document.createElement("div");
         editHandle.className = "newPolyBlockerHandle";
-        editHandle.draggable = true;
         editHandle.style.left = "-0.35vw";
         editHandle.style.top = "-0.35vw";
         editHandle.title = (j+1).toString();
@@ -2403,11 +2402,17 @@ function DrawNewPolyMarkers() {
             displayMenu(e, menuOptions);
         });
 
-        editHandle.addEventListener("dragover", function(e) {
-            e.preventDefault();
+        function handleMouseMovement(e) {
+            editHandleContainer.style.left = e.clientX + board.scrollLeft;
+            editHandleContainer.style.top = e.clientY + board.scrollTop;
+        }
+
+        editHandle.addEventListener("mousedown", function() {
+            document.body.addEventListener("mousemove", handleMouseMovement);
         });
 
-        editHandle.addEventListener("dragend", function(e) {
+        editHandle.addEventListener("mouseup", function(e) {
+            document.body.removeEventListener("mousemove", handleMouseMovement);
             if ((e.clientX + board.scrollLeft)!=vert.x && (e.clientY + board.scrollTop)!=vert.y)
             {
                 vert.x = e.clientX + board.scrollLeft;
@@ -2415,8 +2420,17 @@ function DrawNewPolyMarkers() {
                 DrawNewPolyMarkers();
             }
         });
+
+        editHandle.addEventListener("dragover", function(e) {
+            e.preventDefault();
+        });
+
         editHandleContainer.appendChild(editHandle);
         newPolyBlockerHandles.appendChild(editHandleContainer);
+        if (j==newPolyBlockerVerts.length-1 && activateMousedown)
+        {
+            editHandle.dispatchEvent(new Event('mousedown'));
+        }
     }
 }
 
@@ -2720,7 +2734,7 @@ shapeMap.addEventListener("mousedown", function(e) {
 
         if (quickPolyBlockerMode) {
             newPolyBlockerVerts.push({x: e.pageX+board.scrollLeft, y: e.pageY + board.scrollTop});
-            DrawNewPolyMarkers();
+            DrawNewPolyMarkers(true);
             return;
         }
 
