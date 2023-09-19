@@ -739,7 +739,7 @@ app.post("/api", function(request, response) {
                             }
                             else
                             {
-                                if (tmpTokens[g].initiative < currentMap.tokens[f].initiative)
+                                if (tmpTokens[g].initiative < currentMap.tokens[f].initiative || tmpTokens[g].initiative == null)
                                 {
                                     tmpTokens.splice(g, 0, currentMap.tokens[f]);
                                     g = currentLength;

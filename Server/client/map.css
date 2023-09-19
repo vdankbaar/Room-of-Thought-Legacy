@@ -347,7 +347,7 @@ body h3 {user-select: none;}
     height: 19.5vw;
     width: 15vw;
     position: fixed;
-    right: 14vw;
+    right: calc(var(--sidemenu-width) + 2vw);
     z-index: 999;
     font-size: 1vw;
 }
