@@ -3341,19 +3341,16 @@ document.body.ondrop = async function(e)
             let tY;
             if (draggingTokenData.size >= 1)
             {
-                tX = Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridX * draggingTokenData.size)/gridX) * gridX + 0.5 * gridX * draggingTokenData.size + GridLineWidth;
-                tY = Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridY * draggingTokenData.size)/gridY) * gridY + 0.5 * gridY * draggingTokenData.size + GridLineWidth;
+                tX = Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridX * draggingTokenData.size)/gridX) * gridX + 0.5 * gridX * draggingTokenData.size + GridLineWidth + offsetX;
+                tY = Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridY * draggingTokenData.size)/gridY) * gridY + 0.5 * gridY * draggingTokenData.size + GridLineWidth + offsetY;
             }
             else
             {
-                tX = Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridX * draggingTokenData.size) / (gridX * draggingTokenData.size)) * (gridX * draggingTokenData.size) + 0.5 * gridX * draggingTokenData.size + offsetX + 1;
-                tY = Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridY * draggingTokenData.size) / (gridY * draggingTokenData.size)) * (gridY * draggingTokenData.size) + 0.5 * gridY * draggingTokenData.size + offsetY;
+                tX = Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridX * draggingTokenData.size) / (gridX * draggingTokenData.size)) * (gridX * draggingTokenData.size) + 0.5 * gridX * draggingTokenData.size + GridLineWidth + offsetX;
+                tY = Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridY * draggingTokenData.size) / (gridY * draggingTokenData.size)) * (gridY * draggingTokenData.size) + 0.5 * gridY * draggingTokenData.size + GridLineWidth + offsetY;
             }
             if (tX != draggingTokenData.x || tY != draggingTokenData.y)
-            {
                 await requestServer({c: "moveToken", id: draggingToken, x: tX, y: tY, bypassLink: !controlPressed});
-            }
-                
         }
         else
         {
