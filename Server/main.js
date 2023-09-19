@@ -1,5 +1,5 @@
 //Mocht port 80 geblokeerd zijn door windows, voer de command 'net stop http' uit in een shell met admin
-let port = 80;
+let port = 7979;
 
 const fs = require('fs');
 const pathLib = require('path');
@@ -149,7 +149,6 @@ app.post("/api", function(request, response) {
             }
             break;
 
-
         case "setTokenHidden":
             loadCurrentMap();
             for (let i in currentMap.tokens)
@@ -204,6 +203,8 @@ app.post("/api", function(request, response) {
                         currentMap.tokens[i].image = request.body.image;
                     if (request.body.text != null)
                         currentMap.tokens[i].text = request.body.text;
+                    if (request.body.dm != null)
+                        currentMap.tokens[i].dm = request.body.dm;
                 }
             }
             saveCurrentMap();
@@ -299,31 +300,30 @@ app.post("/api", function(request, response) {
             response.send("[true]");
             break;
 
-            case "rotateRight":
-                loadCurrentMap();
-                for (let i in currentMap.tokens)
+        case "rotateRight":
+            loadCurrentMap();
+            for (let i in currentMap.tokens)
+            {
+                let currentToken = currentMap.tokens[i];
+                if (currentToken.id == request.body.id)
                 {
-                    let currentToken = currentMap.tokens[i];
-                    if (currentToken.id == request.body.id)
+                    for (let j in currentMap.tokens)
                     {
-                        for (let j in currentMap.tokens)
+                        if (j != i && currentMap.tokens[j].group == currentMap.tokens[i].group)
                         {
-                            if (j != i && currentMap.tokens[j].group == currentMap.tokens[i].group)
-                            {
-                                let dx = currentMap.tokens[j].x - currentMap.tokens[i].x;
-                                let dy = currentMap.tokens[j].y - currentMap.tokens[i].y;
-                                currentMap.tokens[j].x = currentMap.tokens[i].x - dy;
-                                currentMap.tokens[j].y = currentMap.tokens[i].y + dx;
-                                moveLinkedShapes(currentMap.tokens[j]);
-                            }
+                            let dx = currentMap.tokens[j].x - currentMap.tokens[i].x;
+                            let dy = currentMap.tokens[j].y - currentMap.tokens[i].y;
+                            currentMap.tokens[j].x = currentMap.tokens[i].x - dy;
+                            currentMap.tokens[j].y = currentMap.tokens[i].y + dx;
+                            moveLinkedShapes(currentMap.tokens[j]);
                         }
                     }
                 }
-                saveCurrentMap();
-                response.send("[true]");
-                break;
+            }
+            saveCurrentMap();
+            response.send("[true]");
+            break;
         
-
         case "addDrawing":
             loadCurrentMap();
             let tmpDrawing = {};
@@ -420,16 +420,48 @@ app.post("/api", function(request, response) {
             break;
 
         case "addBlocker":
-            loadCurrentMap();    
-            let tmpBlocker = {};
-            tmpBlocker.id = currentMap.blockers.length;
-            tmpBlocker.x = request.body.x;
-            tmpBlocker.y = request.body.y;
-            tmpBlocker.width = request.body.width;
-            tmpBlocker.height = request.body.height;
-            currentMap.blockers.push(tmpBlocker);
-            response.send("[true]");
-            saveCurrentMap();
+            if (request.body.width != 0 && request.body.height != 0)
+            {
+                loadCurrentMap();    
+                let tmpBlocker = {};
+                tmpBlocker.id = currentMap.blockers.length;
+                tmpBlocker.x = request.body.x;
+                tmpBlocker.y = request.body.y;
+                if (request.body.width>0)
+                {
+                    if (request.body.height<0)
+                    {
+                        tmpBlocker.y = tmpBlocker.y + request.body.height;
+                        tmpBlocker.width = request.body.width;
+                        tmpBlocker.height = Math.abs(request.body.height);
+                    }
+                    else
+                    {
+                        tmpBlocker.width = request.body.width;
+                        tmpBlocker.height = request.body.height;
+                    }
+                }
+                else
+                {
+                    if (request.body.height>0)
+                    {
+                        tmpBlocker.x = tmpBlocker.x + request.body.width;
+                        tmpBlocker.width = Math.abs(request.body.width);
+                        tmpBlocker.height = request.body.height;
+                    }
+                    else
+                    {
+                        tmpBlocker.y = tmpBlocker.y + request.body.height;
+                        tmpBlocker.x = tmpBlocker.x + request.body.width;
+                        tmpBlocker.width = Math.abs(request.body.width);
+                        tmpBlocker.height = Math.abs(request.body.height);
+                    }
+                }
+                
+                currentMap.blockers.push(tmpBlocker);
+                response.send("[true]");
+                saveCurrentMap();
+            }
             break;
         
         case "editBlocker":
