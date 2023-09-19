@@ -87,6 +87,7 @@ let placingBulkOrigin = false;
 let baseTokenIndex = 4;
 let previousSelectedBlocker;
 let draggingToken = -1;
+let shapeDragStartAngle = 0;
 
 window.onload = function() {
     if (getCookie("isDM") == 1)
@@ -771,6 +772,11 @@ function createToken(token)
         }
     }
     
+    if (isPlacingCone || isPlacingLine || isPlacingSquare)
+    {
+        imageElement.style.pointerEvents = "none";
+    }
+
     imageElement.className = "token";
     imageElement.style.top = token.y - (gridSize * token.size) / 2 + "px";
     imageElement.style.left = token.x - (gridSize * token.size) / 2 + "px";
@@ -962,6 +968,7 @@ function createToken(token)
                             coneMarkers.range = rangeInput / feetPerSquare;
                             coneMarkers.linkId = token.id;
                             isPlacingCone = true;
+                            drawCanvas();
                         }
                     }}
                 ];
@@ -1552,6 +1559,14 @@ document.getElementById("clearTokensButton").onclick = function() {
     }
 }
 
+document.getElementById("clearDrawingsButton").onclick = function() {
+    if (confirm("Do you really want to remove all the drawings?"))
+    {
+        requestServer({c:"clearDrawings"});
+        updateMapData(true);
+    }
+}
+
 bulkTokenConfirm.onclick = function() {
     let tokensToPlace = parseInt(bulkTokenAmountInput.value);
     if (isNaN(tokensToPlace) || tokensToPlace<1)
@@ -1857,9 +1872,11 @@ shapeMap.addEventListener("mousedown", function(e) {
                 {
                     if (mapData.drawings[shapeId].shape=="cone")
                     {
+                        //JUMP 1
                         document.body.style.cursor = "pointer";
                         shapeDragOffset.x = mapData.drawings[shapeId].x;
                         shapeDragOffset.y = mapData.drawings[shapeId].y;
+                        shapeDragStartAngle = Math.atan2(((e.pageY + board.scrollTop) - shapeDragOffset.y), ((e.pageX + board.scrollLeft) - shapeDragOffset.x));
                         movingShapeId = shapeId;
                         isMovingCone = true;
                     }
@@ -1899,9 +1916,8 @@ shapeMap.addEventListener("mouseup", function(e) {
         if (isMovingCone)
         {
             isMovingCone = false;
-            console.log("Changing cone angle!");
             document.body.style.cursor = "default";
-            let angle = Math.atan2(((e.pageY + board.scrollTop) - shapeDragOffset.y), ((e.pageX + board.scrollLeft) - shapeDragOffset.x));
+            let angle = mapData.drawings[movingShapeId].angle + (Math.atan2(((e.pageY + board.scrollTop) - shapeDragOffset.y), ((e.pageX + board.scrollLeft) - shapeDragOffset.x)) - shapeDragStartAngle);
             if (angle<0)
                 angle+=2*Math.PI;
             requestServer({c: "editDrawing", id: movingShapeId, angle: angle});
@@ -2099,6 +2115,7 @@ function displayContextMenu(e)
                     squareMarkers.x = e.pageX + board.scrollLeft;
                     squareMarkers.y = e.pageY + board.scrollTop;
                     isPlacingSquare = true;
+                    drawCanvas();
                 }},
                 {text: "Draw Line", callback: function() {
                     let rangeInput = parseFloat(prompt("Please enter the desired range of the line in feet, leave blank for no range limit"));
@@ -2113,6 +2130,7 @@ function displayContextMenu(e)
                     lineMarkers.x = e.pageX + board.scrollLeft;
                     lineMarkers.y = e.pageY + board.scrollTop;
                     isPlacingLine = true;
+                    drawCanvas();
                 }}
             ];
             displaySubMenu(e, subMenuOptions);

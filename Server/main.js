@@ -1,5 +1,5 @@
 //Mocht port 80 geblokeerd zijn door windows, voer de command 'net stop http' uit in een shell met admin
-let port = 7979;
+let port = 80;
 
 const fs = require('fs');
 const pathLib = require('path');
@@ -517,6 +517,20 @@ app.post("/api", function(request, response) {
         case "clearTokens":
             loadCurrentMap();
             currentMap.tokens = [];
+            for (let i = 0; i < currentMap.drawings.length; i++)
+            {
+                if (currentMap.drawings[i].link!=null)
+                {
+                    removeDrawingById(currentMap.drawings[i].link);
+                }
+            }
+            saveCurrentMap();
+            response.send("[true]");
+            break;
+
+        case "clearDrawings":
+            loadCurrentMap();
+            currentMap.drawings = [];
             saveCurrentMap();
             response.send("[true]");
             break;
