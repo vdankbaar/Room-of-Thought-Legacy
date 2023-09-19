@@ -12,6 +12,29 @@ body {
     z-index: -2;
 }
 
+#polyBlockers {
+    pointer-events: none;
+    position: absolute;
+    z-index: 50;
+}
+
+.polyBlockerHandle {
+    z-index: 501;
+    border-radius: 50%;
+    cursor: grab;
+    position: absolute;
+    width: 0.5vw;
+    height: 0.5vw;
+    background-color: violet;
+}
+
+.polyBlocker {
+    pointer-events: visiblePainted;
+    z-index: 50;
+    overflow: hidden;
+    fill: var(--blocker-color);
+}
+
 #board {
     position: fixed;
     width: 87.2vw;

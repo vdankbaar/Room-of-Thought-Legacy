@@ -480,14 +480,7 @@ app.post("/api", function(request, response) {
             saveCurrentMap();
             response.send("[true]");
             break;
-
-        case "invertBlockers":
-            loadCurrentMap();
-            currentMap.antiBlockerOn = !currentMap.antiBlockerOn;
-            saveCurrentMap();
-            response.send("[true]");
-            break;
-
+        
         case "removeBlocker":
             loadCurrentMap();
             let blockerFound = 0;
@@ -504,6 +497,112 @@ app.post("/api", function(request, response) {
             {
                 currentMap.blockers[i].id = currentMap.blockers[i].id - 1;
             }
+            saveCurrentMap();
+            response.send("[true]");
+            break;
+
+        case "addPolyBlocker":
+            loadCurrentMap();
+            let tmpPoly = {id: currentMap.polyBlockers.length, verts: []};
+            tmpPoly.verts.push({x: request.body.x, y: request.body.y+request.body.offset});
+            tmpPoly.verts.push({x: request.body.x+request.body.offset, y: request.body.y});
+            tmpPoly.verts.push({x: request.body.x-request.body.offset, y: request.body.y});
+            currentMap.polyBlockers.push(tmpPoly);
+            saveCurrentMap();
+            response.send("[true]");
+            break;
+        
+        case "editVert":
+            loadCurrentMap();
+            for (let i in currentMap.polyBlockers)
+            {
+                let currentBlocker = currentMap.polyBlockers[i];
+                if (currentBlocker.id == request.body.id)
+                {
+                    currentBlocker.verts[request.body.vertIndex].x = request.body.x;
+                    currentBlocker.verts[request.body.vertIndex].y = request.body.y;
+                }
+            }
+            saveCurrentMap();
+            response.send("[true]");
+            break;
+
+        case "movePolyBlocker":
+            loadCurrentMap();
+            for (let i in currentMap.polyBlockers)
+            {
+                let currentBlocker = currentMap.polyBlockers[i];
+                if (currentBlocker.id == request.body.id)
+                {
+                    for (let j in currentBlocker.verts)
+                    {
+                        currentBlocker.verts[j].x = currentBlocker.verts[j].x + request.body.offsetX;
+                        currentBlocker.verts[j].y = currentBlocker.verts[j].y + request.body.offsetY;
+                    }
+                }
+            }
+            saveCurrentMap();
+            response.send("[true]");
+            break;
+
+        case "addVert":
+            loadCurrentMap();
+            for (let i in currentMap.polyBlockers)
+            {
+                let currentBlocker = currentMap.polyBlockers[i];
+                if (currentBlocker.id == request.body.id)
+                {
+                    let prevVert = currentBlocker.verts[request.body.vertId];
+                    let nextVertId = request.body.vertId+1;
+                    if (nextVertId>=currentBlocker.verts.length) {
+                        nextVertId = 0;
+                    }
+                    let nextVert = currentBlocker.verts[nextVertId];
+                    let newVert = {x: (prevVert.x+nextVert.x)/2, y: (prevVert.y+nextVert.y)/2};
+                    currentBlocker.verts.splice(nextVertId, 0, newVert);
+                }
+            }
+            saveCurrentMap();
+            response.send("[true]");
+            break;
+
+        case "removeVert":
+            loadCurrentMap();
+            for (let i in currentMap.polyBlockers)
+            {
+                let currentBlocker = currentMap.polyBlockers[i];
+                if (currentBlocker.id == request.body.id)
+                {
+                    currentBlocker.verts.splice(request.body.vertId, 1);
+                }
+            }
+            saveCurrentMap();
+            response.send("[true]");
+            break;
+
+        case "removePolyBlocker":
+            loadCurrentMap();
+            let polyBlockerFound = 0;
+            for (let i in currentMap.polyBlockers)
+            {
+                let currentBlocker = currentMap.polyBlockers[i];
+                if (currentBlocker.id == request.body.id)
+                {
+                    polyBlockerFound = i;
+                    currentMap.polyBlockers.splice(i, 1);
+                }
+            }
+            for (let i = polyBlockerFound; i < currentMap.polyBlockers.length; i++)
+            {
+                currentMap.polyBlockers[i].id = currentMap.polyBlockers[i].id - 1;
+            }
+            saveCurrentMap();
+            response.send("[true]");
+            break;
+        
+        case "invertBlockers":
+            loadCurrentMap();
+            currentMap.antiBlockerOn = !currentMap.antiBlockerOn;
             saveCurrentMap();
             response.send("[true]");
             break;
@@ -531,6 +630,21 @@ app.post("/api", function(request, response) {
         case "clearDrawings":
             loadCurrentMap();
             currentMap.drawings = [];
+            saveCurrentMap();
+            response.send("[true]");
+            break;
+
+        case "clearBlockers":
+            loadCurrentMap();
+            currentMap.blockers = [];
+            currentMap.polyBlockers = [];
+            saveCurrentMap();
+            response.send("[true]");
+            break;
+
+        case "switchBlockerType":
+            loadCurrentMap();
+            currentMap.usePolyBlockers = !currentMap.usePolyBlockers;
             saveCurrentMap();
             response.send("[true]");
             break;
@@ -603,6 +717,10 @@ function loadCurrentMap()
         currentMap.offsetY = 0;
     if (currentMap.gridColor == null)
         currentMap.gridColor = "#222222FF";
+    if (currentMap.usePolyBlockers == null)
+        currentMap.usePolyBlockers = false;
+    if (currentMap.polyBlockers == null)
+        currentMap.polyBlockers = [];
     currentMap.mapName = selectedMap;
     currentMap.tokenList = readDirectory(publicFolder + "tokens", "jpg|png");
     currentMap.dmTokenList = readDirectory(publicFolder + "dmTokens", "jpg|png");
