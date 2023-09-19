@@ -1728,6 +1728,8 @@ function createToken(token)
                         }
                         subMenu.push(tmpElement);
                     }
+                    if (isDM)
+                    {
                         for (let i in dmTokenList)
                         {
                             let tmpElement = {};
@@ -1739,6 +1741,7 @@ function createToken(token)
                             }
                             subMenu.push(tmpElement);
                         }
+                    }
                     displaySubMenu(e, subMenu);
                 }});
                 
