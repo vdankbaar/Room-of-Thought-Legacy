@@ -531,7 +531,7 @@ function drawCanvas(skipMap)
         mapCanvas.translate(0.5, 0.5);
         shapeCanvas.translate(0.5, 0.5);
         hitboxCanvas.translate(0.5, 0.5);
-        gridSize = Math.min(map.width / mapData.x, map.height / mapData.y);
+        gridSize = {x: (map.width-mapData.offsetX)/mapData.x, y: (map.height-mapData.offsetY)/mapData.y, min:Math.min((map.width-mapData.offsetX)/mapData.x, (map.height-mapData.offsetY)/mapData.y)}
     }
     mapData.usePolyBlockers ? drawPolyBlockers() : drawBlockers();
     if (!skipMap) {
@@ -682,7 +682,7 @@ function drawVertexLine(index, shape)
 
 function drawCircle(index, shape) 
 {
-    let trueRadius = shape.radius*gridSize;
+    let trueRadius = shape.radius*gridSize.min;
     shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
     shapeCanvas.beginPath();
@@ -728,11 +728,11 @@ function drawSquare(index, shape)
 }
 
 function draw5Line(index, shape) {
-    let lineOrigin = {x: shape.x + Math.cos(shape.angle)*gridSize*0.5, y: shape.y + Math.sin(shape.angle)*gridSize*0.5};
-    let topOriginCorner = {x: lineOrigin.x + Math.cos(shape.angle-0.5*Math.PI)*gridSize*0.5, y: lineOrigin.y + Math.sin(shape.angle-0.5*Math.PI)*gridSize*0.5};
-    let topTargetCorner = {x: topOriginCorner.x + Math.cos(shape.angle) * shape.range * gridSize, y: topOriginCorner.y + Math.sin(shape.angle) * shape.range * gridSize};
-    let bottomOriginCorner = {x: lineOrigin.x + Math.cos(shape.angle+0.5*Math.PI)*gridSize*0.5, y: lineOrigin.y + Math.sin(shape.angle+0.5*Math.PI)*gridSize*0.5};
-    let bottomTargetCorner = {x: bottomOriginCorner.x + Math.cos(shape.angle) * shape.range * gridSize, y: bottomOriginCorner.y + Math.sin(shape.angle) * shape.range * gridSize};
+    let lineOrigin = {x: Math.round(shape.x + Math.cos(shape.angle)*gridSize.x*0.5), y: Math.round(shape.y + Math.sin(shape.angle)*gridSize.y*0.5)};
+    let topOriginCorner = {x: Math.round(lineOrigin.x + Math.cos(shape.angle-0.5*Math.PI)*gridSize.x*0.5), y: Math.round(lineOrigin.y + Math.sin(shape.angle-0.5*Math.PI)*gridSize.y*0.5)};
+    let topTargetCorner = {x: Math.round(topOriginCorner.x + Math.cos(shape.angle) * shape.range * gridSize.x), y: Math.round(topOriginCorner.y + Math.sin(shape.angle) * shape.range * gridSize.y)};
+    let bottomOriginCorner = {x: Math.round(lineOrigin.x + Math.cos(shape.angle+0.5*Math.PI)*gridSize.x*0.5), y: Math.round(lineOrigin.y + Math.sin(shape.angle+0.5*Math.PI)*gridSize.y*0.5)};
+    let bottomTargetCorner = {x: Math.round(bottomOriginCorner.x + Math.cos(shape.angle) * shape.range * gridSize.x), y: Math.round(bottomOriginCorner.y + Math.sin(shape.angle) * shape.range * gridSize.y)};
     shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
     shapeCanvas.beginPath();
@@ -765,17 +765,17 @@ function drawCone(index, shape)
 {
     let angle = shape.angle;
     let linkedToken = returnToken(shape.link);
-    let originX = shape.x + Math.cos(angle)*0.5*linkedToken.size*gridSize;
-    let originY = shape.y +  Math.sin(angle)*0.5*linkedToken.size*gridSize;
+    let originX = Math.round(shape.x + Math.cos(angle)*0.5*linkedToken.size*gridSize.x);
+    let originY = Math.round(shape.y +  Math.sin(angle)*0.5*linkedToken.size*gridSize.y);
 
-    let centerY = originY + Math.sin(angle) * shape.range * gridSize;
-    let centerX = originX + Math.cos(angle) * shape.range * gridSize;
+    let centerY = Math.round(originY + Math.sin(angle) * shape.range * gridSize.y);
+    let centerX = Math.round(originX + Math.cos(angle) * shape.range * gridSize.x);
 
-    let destX1 = 0.5*(-centerY + originY) + centerX;
-    let destY1 = 0.5*(centerX - originX) + centerY;
+    let destX1 = Math.round(0.5*(-centerY + originY) + centerX);
+    let destY1 = Math.round(0.5*(centerX - originX) + centerY);
 
-    let destX2 = 0.5*(centerY - originY) + centerX;
-    let destY2 = 0.5*(-centerX + originX) + centerY;
+    let destX2 = Math.round(0.5*(centerY - originY) + centerX);
+    let destY2 = Math.round(0.5*(-centerX + originX) + centerY);
 
     shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
@@ -807,14 +807,14 @@ function drawCone(index, shape)
 function draw90Cone(index, shape) {
     let angle = shape.angle;
     let linkedToken = returnToken(shape.link);
-    let originX = shape.x + Math.cos(angle)*0.5*linkedToken.size*gridSize;
-    let originY = shape.y +  Math.sin(angle)*0.5*linkedToken.size*gridSize;
+    let originX = Math.round(shape.x + Math.cos(angle)*0.5*linkedToken.size*gridSize.x);
+    let originY = Math.round(shape.y +  Math.sin(angle)*0.5*linkedToken.size*gridSize.y);
 
-    let destX1 = originX + Math.cos(angle+0.25*Math.PI) * shape.range * gridSize;
-    let destY1 = originY + Math.sin(angle+0.25*Math.PI) * shape.range * gridSize;
+    let destX1 = Math.round(originX + Math.cos(angle+0.25*Math.PI) * shape.range * gridSize.x);
+    let destY1 = Math.round(originY + Math.sin(angle+0.25*Math.PI) * shape.range * gridSize.y);
 
-    let destX2 = originX + Math.cos(angle-0.25*Math.PI) * shape.range * gridSize;
-    let destY2 = originY + Math.sin(angle-0.25*Math.PI) * shape.range * gridSize;
+    let destX2 = Math.round(originX + Math.cos(angle-0.25*Math.PI) * shape.range * gridSize.x);
+    let destY2 = Math.round(originY + Math.sin(angle-0.25*Math.PI) * shape.range * gridSize.y);
 
     shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
@@ -852,6 +852,7 @@ function drawMap()
 }
 
 function drawPolyBlockers() {
+    antiBlockerCanvas.clearRect(0, 0, antiBlockerMap.width, antiBlockerMap.height);
     if (!isDraggingBlocker)
     {
         if (mapData.antiBlockerOn)
@@ -1027,6 +1028,7 @@ function drawPolyBlockers() {
 
 function drawBlockers() 
 {
+    antiBlockerCanvas.clearRect(0, 0, antiBlockerMap.width, antiBlockerMap.height);
     if (!isDraggingBlocker)
     {
         if (mapData.antiBlockerOn)
@@ -1189,7 +1191,6 @@ function updateHighlightedBlocker(reverse) {
 }
 
 function drawAntiBlocker() {
-    antiBlockerCanvas.clearRect(0, 0, antiBlockerMap.width, antiBlockerMap.height);
     if (!mapData.usePolyBlockers)
     {
         antiBlockerCanvas.fillStyle = document.body.style.getPropertyValue("--antiBlocker-color");
@@ -1222,17 +1223,15 @@ function drawAntiBlocker() {
 
 function drawGrid()
 {
-    let gridX = map.width / mapData.x;
-    let gridY = map.height / mapData.y;
     for (let x = 1; x <= mapData.x; x++)
     {
-        mapCanvas.moveTo(x * gridX + offsetX + 0.5, 0.5);
-        mapCanvas.lineTo(x * gridX + offsetX + 0.5, map.clientHeight + 0.5);
+        mapCanvas.moveTo(x * gridSize.x + offsetX + 0.5, 0.5);
+        mapCanvas.lineTo(x * gridSize.x + offsetX + 0.5, map.clientHeight + 0.5);
     }    
     for (let y = 1; y <= mapData.y; y++)
     {
-        mapCanvas.moveTo(0.5, y * gridY + offsetY + 0.5);
-        mapCanvas.lineTo(map.clientWidth + 0.5, y * gridY + offsetY + 0.5);
+        mapCanvas.moveTo(0.5, y * gridSize.y + offsetY + 0.5);
+        mapCanvas.lineTo(map.clientWidth + 0.5, y * gridSize.y + offsetY + 0.5);
     }
     mapCanvas.stroke();
 }
@@ -1243,7 +1242,7 @@ function LoadTokenData(token, force) {
         detailsIcon.src = mapData.tokenList.includes(token.image)?"public/tokens/" + token.image:mapData.dmTokenList.includes(token.image)?"public/dmTokens/" + token.image:"public/blankToken.png";
 
         if (document.activeElement!=nameInput || force)
-            nameInput.value = token.name;
+            nameInput.value = token.name?token.name:"";
     
         if (document.activeElement!=noteArea || force)
             noteArea.value = token.notes?token.notes:"";
@@ -1301,10 +1300,10 @@ function drawTokens()
                 imageElement.style.pointerEvents = "none";
     
             imageElement.className = "token";
-            imageElement.style.top = token.y - (gridSize * token.size) / 2 + 0.5*GridLineWidth + "px";
-            imageElement.style.left = token.x - (gridSize * token.size) / 2 + 0.5*GridLineWidth + "px";
-            imageElement.style.width = (token.size * gridSize).toString() + "px";
-            imageElement.style.height = (token.size * gridSize).toString() + "px";
+            imageElement.style.top = token.y - (gridSize.y * token.size) / 2 + 0.5*GridLineWidth + "px";
+            imageElement.style.left = token.x - (gridSize.x * token.size) / 2 + 0.5*GridLineWidth + "px";
+            imageElement.style.width = (token.size * gridSize.x).toString() + "px";
+            imageElement.style.height = (token.size * gridSize.y).toString() + "px";
     
             imageElement.style.zIndex = (token.layer + baseTokenIndex).toString();
             imageElement.title = token.status;
@@ -1314,10 +1313,10 @@ function drawTokens()
                 let hiddenImage = document.createElement("img");
                 hiddenImage.src = "images/hidden.png";
                 hiddenImage.className = "hiddenToken";
-                hiddenImage.style.width = (token.size * gridSize / 3).toString() + "px";
-                hiddenImage.style.height = (token.size * gridSize / 3).toString() + "px";
-                hiddenImage.style.top = token.y - (gridSize * token.size) / 2 + "px";
-                hiddenImage.style.left = token.x - (gridSize * token.size) / 2  + "px";
+                hiddenImage.style.width = (token.size * gridSize.x / 3).toString() + "px";
+                hiddenImage.style.height = (token.size * gridSize.y / 3).toString() + "px";
+                hiddenImage.style.top = token.y - (gridSize.y * token.size) / 2 + "px";
+                hiddenImage.style.left = token.x - (gridSize.x * token.size) / 2  + "px";
                 hiddenImage.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
                 tokensDiv.appendChild(hiddenImage);
             }
@@ -1329,8 +1328,8 @@ function drawTokens()
                     if (link.id == token.id)
                     {
                         let linkImage = document.createElement("img");
-                        let tokenX = Math.round((token.x-mapData.offsetX)/gridSize-0.5*token.size);
-                        let tokenY = Math.round((token.y-mapData.offsetY)/gridSize-0.5*token.size);
+                        let tokenX = Math.round((token.x-mapData.offsetX)/gridSize.x-0.5*token.size);
+                        let tokenY = Math.round((token.y-mapData.offsetY)/gridSize.y-0.5*token.size);
                         if (tokenX == (mapData.portalData[selectedPortal].originX+link.x) && tokenY == (mapData.portalData[selectedPortal].originY+link.y))
                         {
                             linkImage.src = "images/link.png";
@@ -1343,10 +1342,10 @@ function drawTokens()
     
                             let ghostElement = document.createElement("img");
                             ghostElement.className = "token";
-                            ghostElement.style.top = (link.y+mapData.portalData[selectedPortal].originY)*gridSize + "px";
-                            ghostElement.style.left = (link.x+mapData.portalData[selectedPortal].originX)*gridSize + "px";
-                            ghostElement.style.width = (token.size * gridSize).toString() + "px";
-                            ghostElement.style.height = (token.size * gridSize).toString() + "px";
+                            ghostElement.style.top = (link.y+mapData.portalData[selectedPortal].originY)*gridSize.y + "px";
+                            ghostElement.style.left = (link.x+mapData.portalData[selectedPortal].originX)*gridSize.x + "px";
+                            ghostElement.style.width = (token.size * gridSize.x).toString() + "px";
+                            ghostElement.style.height = (token.size * gridSize.y).toString() + "px";
                             ghostElement.style.opacity = "0.5";
                             ghostElement.style.pointerEvents = "none";
                             ghostElement.style.zIndex = (token.layer + baseTokenIndex).toString();
@@ -1356,10 +1355,10 @@ function drawTokens()
                             
                         linkImage.className = "linkImage";
                         tokensDiv.appendChild(linkImage);
-                        linkImage.style.width = (token.size * gridSize / 3).toString() + "px";
-                        linkImage.style.height = (token.size * gridSize / 3).toString() + "px";
-                        linkImage.style.top = token.y - (gridSize * token.size) / 2 + "px";
-                        linkImage.style.left = token.x + (gridSize * token.size) / 2 - linkImage.offsetWidth + "px";
+                        linkImage.style.width = (token.size * gridSize.x / 3).toString() + "px";
+                        linkImage.style.height = (token.size * gridSize.y / 3).toString() + "px";
+                        linkImage.style.top = token.y - (gridSize.y * token.size) / 2 + "px";
+                        linkImage.style.left = token.x + (gridSize.x * token.size) / 2 - linkImage.offsetWidth + "px";
                         linkImage.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
                     }
                 }
@@ -1373,10 +1372,10 @@ function drawTokens()
                     concentratingIcon.className = "concentratingText";
                     concentratingIcon.src = "images/literally_copyright.png";
                     tokensDiv.appendChild(concentratingIcon);
-                    concentratingIcon.style.width = (token.size * gridSize / 3).toString() + "px";
-                    concentratingIcon.style.height = (token.size * gridSize / 3).toString() + "px";
-                    concentratingIcon.style.top = token.y + (gridSize * token.size) / 2 - concentratingIcon.offsetHeight + "px";
-                    concentratingIcon.style.left = token.x - (gridSize * token.size) / 2 + "px";
+                    concentratingIcon.style.width = (token.size * gridSize.x / 3).toString() + "px";
+                    concentratingIcon.style.height = (token.size * gridSize.y / 3).toString() + "px";
+                    concentratingIcon.style.top = token.y + (gridSize.y * token.size) / 2 - concentratingIcon.offsetHeight + "px";
+                    concentratingIcon.style.left = token.x - (gridSize.x * token.size) / 2 + "px";
                     concentratingIcon.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
                 }
             }
@@ -1751,11 +1750,11 @@ function drawTokens()
             {
                 let textHolder = document.createElement("div");
                 textHolder.style.zIndex = parseInt(imageElement.style.zIndex);
-                textHolder.style.left = (token.x - 0.4*token.size*gridSize + 0.5*GridLineWidth).toString() + "px";
-                textHolder.style.top = (token.y - 0.25*token.size*gridSize + 0.5*GridLineWidth).toString() + "px";
-                textHolder.style.width = (token.size*gridSize*0.8).toString() + "px";
-                textHolder.style.height = (token.size*gridSize*0.5).toString() + "px";
-                textHolder.style.lineHeight = (token.size*gridSize*0.5).toString() + "px";
+                textHolder.style.left = (token.x - 0.4*token.size*gridSize.x + 0.5*GridLineWidth).toString() + "px";
+                textHolder.style.top = (token.y - 0.25*token.size*gridSize.y + 0.5*GridLineWidth).toString() + "px";
+                textHolder.style.width = (token.size*gridSize.x*0.8).toString() + "px";
+                textHolder.style.height = (token.size*gridSize.y*0.5).toString() + "px";
+                textHolder.style.lineHeight = (token.size*gridSize.y*0.5).toString() + "px";
                 let textElement = document.createElement("a");
                 textElement.innerText = token.text;
                 textElement.style.height = "100%";
@@ -1771,7 +1770,7 @@ function drawTokens()
                     textElement.style.fontSize = autoCalcSize;
                 else
                     textElement.style.fontSize = 0.8*imageElement.getBoundingClientRect().width;
-                textElement.style.width = (token.size*gridSize*0.8).toString() + "px";
+                textElement.style.width = (token.size*gridSize.x*0.8).toString() + "px";
             }
         }
     }
@@ -1827,8 +1826,8 @@ function createTracker(trackerData, index)
             }
         });
         initiativeItem.addEventListener("dblclick", function() {
-            viewport.scrollLeft = ((trackerData.x)/(1+extraZoom/20))-window.innerWidth*0.5+0.5*trackerData.size*gridSize;
-            viewport.scrollTop = ((trackerData.y)/(1+extraZoom/20))-window.innerHeight*0.5+0.5*trackerData.size*gridSize;
+            viewport.scrollLeft = ((trackerData.x)/(1+extraZoom/20))-window.innerWidth*0.5+0.5*trackerData.size*gridSize.x;
+            viewport.scrollTop = ((trackerData.y)/(1+extraZoom/20))-window.innerHeight*0.5+0.5*trackerData.size*gridSize.y;
         });
 
         initiativeItem.addEventListener("dragstart", function(e) {
@@ -2526,12 +2525,170 @@ window.addEventListener("mouseup", async function(e) {
             updateMapData();
         }
     }
-})
+});
+
+document.body.addEventListener("keydown", function(e) {
+    if (e.code.includes("Numpad") && document.activeElement.tagName!="INPUT" && document.activeElement.tagName!="TEXTAREA")
+        e.preventDefault();
+});
 
 document.body.addEventListener("keyup", async function(e) {
     if (document.activeElement.tagName!="INPUT" && document.activeElement.tagName!="TEXTAREA")
     {
+        e.preventDefault();
+        let tX;
+        let tY;
         switch (e.code) {
+            case "ArrowRight":
+                updateSelectedTokenData();
+                if ((e.ctrlKey || e.metaKey) && selectedTokenData.group)
+                    await requestServer({c:"rotateDeg", id: selectedToken, angle: -90});
+                updateMapData();
+                break;
+
+            case "ArrowLeft":
+                updateSelectedTokenData();
+                if ((e.ctrlKey || e.metaKey) && selectedTokenData.group)
+                    await requestServer({c:"rotateDeg", id: selectedToken, angle: 90});
+                updateMapData();
+                break;
+
+            case "Numpad8":
+                updateSelectedTokenData();
+                if (selectedTokenData.size >= 1)
+                {
+                    tX = Math.round(Math.round((selectedTokenData.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
+                    tY = Math.round(Math.round((selectedTokenData.y - gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                }
+                else
+                {
+                    tX = Math.round(Math.round((selectedTokenData.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
+                    tY = Math.round(Math.round((selectedTokenData.x - gridSize.y * selectedTokenData.size - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                }
+                if (tY>0)
+                    await requestServer({c: "moveToken", id: selectedToken, x: tX, y: tY, bypassLink: !(e.ctrlKey || e.metaKey)});
+                updateMapData();
+                break;
+            
+            case "Numpad7":
+                updateSelectedTokenData();
+                if (selectedTokenData.size >= 1)
+                {
+                    tX = Math.round(Math.round((selectedTokenData.x - gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
+                    tY = Math.round(Math.round((selectedTokenData.y - gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                }
+                else
+                {
+                    tX = Math.round(Math.round((selectedTokenData.x - gridSize.x * selectedTokenData.size - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
+                    tY = Math.round(Math.round((selectedTokenData.x - gridSize.y * selectedTokenData.size - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                }
+                if (tY>0 && tX>0)
+                    await requestServer({c: "moveToken", id: selectedToken, x: tX, y: tY, bypassLink: !(e.ctrlKey || e.metaKey)});
+                updateMapData();
+                break;
+        
+            case "Numpad9":
+                updateSelectedTokenData();
+                if (selectedTokenData.size >= 1)
+                {
+                    tX = Math.round(Math.round((selectedTokenData.x + gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
+                    tY = Math.round(Math.round((selectedTokenData.y - gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                }
+                else
+                {
+                    tX = Math.round(Math.round((selectedTokenData.x + gridSize.x * selectedTokenData.size - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
+                    tY = Math.round(Math.round((selectedTokenData.x - gridSize.y * selectedTokenData.size - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                }
+                if (tY>0 && tX < map.width)
+                    await requestServer({c: "moveToken", id: selectedToken, x: tX, y: tY, bypassLink: !(e.ctrlKey || e.metaKey)});
+                updateMapData();
+                break;
+
+            case "Numpad4":
+                updateSelectedTokenData();
+                if (selectedTokenData.size >= 1)
+                {
+                    tX = Math.round(Math.round((selectedTokenData.x - gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
+                    tY = Math.round(Math.round((selectedTokenData.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                }
+                else
+                {
+                    tX = Math.round(Math.round((selectedTokenData.x - gridSize.x * selectedTokenData.size - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
+                    tY = Math.round(Math.round((selectedTokenData.x - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                }
+                if (tX>0)
+                    await requestServer({c: "moveToken", id: selectedToken, x: tX, y: tY, bypassLink: !(e.ctrlKey || e.metaKey)});
+                updateMapData();
+                break;
+        
+            case "Numpad6":
+                updateSelectedTokenData();
+                if (selectedTokenData.size >= 1)
+                {
+                    tX = Math.round(Math.round((selectedTokenData.x + gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
+                    tY = Math.round(Math.round((selectedTokenData.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                }
+                else
+                {
+                    tX = Math.round(Math.round((selectedTokenData.x + gridSize.x * selectedTokenData.size - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
+                    tY = Math.round(Math.round((selectedTokenData.x - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                }
+                if (tX < map.width)
+                    await requestServer({c: "moveToken", id: selectedToken, x: tX, y: tY, bypassLink: !(e.ctrlKey || e.metaKey)});
+                updateMapData();
+                break;
+            
+            case "Numpad2":
+                updateSelectedTokenData();
+                if (selectedTokenData.size >= 1)
+                {
+                    tX = Math.round(Math.round((selectedTokenData.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
+                    tY = Math.round(Math.round((selectedTokenData.y + gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                }
+                else
+                {
+                    tX = Math.round(Math.round((selectedTokenData.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
+                    tY = Math.round(Math.round((selectedTokenData.x + gridSize.y * selectedTokenData.size - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                }
+                if (tY<map.height)
+                    await requestServer({c: "moveToken", id: selectedToken, x: tX, y: tY, bypassLink: !(e.ctrlKey || e.metaKey)});
+                updateMapData();
+                break;
+            
+            case "Numpad1":
+                updateSelectedTokenData();
+                if (selectedTokenData.size >= 1)
+                {
+                    tX = Math.round(Math.round((selectedTokenData.x - gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
+                    tY = Math.round(Math.round((selectedTokenData.y + gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                }
+                else
+                {
+                    tX = Math.round(Math.round((selectedTokenData.x - gridSize.x * selectedTokenData.size - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
+                    tY = Math.round(Math.round((selectedTokenData.x + gridSize.y * selectedTokenData.size - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                }
+                if (tY<map.height && tX>0)
+                    await requestServer({c: "moveToken", id: selectedToken, x: tX, y: tY, bypassLink: !(e.ctrlKey || e.metaKey)});
+                updateMapData();
+                break;
+        
+            case "Numpad3":
+                updateSelectedTokenData();
+                if (selectedTokenData.size >= 1)
+                {
+                    tX = Math.round(Math.round((selectedTokenData.x + gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
+                    tY = Math.round(Math.round((selectedTokenData.y + gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                }
+                else
+                {
+                    tX = Math.round(Math.round((selectedTokenData.x + gridSize.x - mapData.offsetX - 0.5 * gridSize.x * selectedTokenData.size) / (gridSize.x * selectedTokenData.size)) * (gridSize.x * selectedTokenData.size) + 0.5 * gridSize.x * selectedTokenData.size + offsetX);
+                    tY = Math.round(Math.round((selectedTokenData.x + gridSize.y - mapData.offsetY - 0.5 * gridSize.y * selectedTokenData.size) / (gridSize.y * selectedTokenData.size)) * (gridSize.y * selectedTokenData.size) + 0.5 * gridSize.y * selectedTokenData.size + offsetY);
+                }
+                if (tY<map.height && tX < map.width)
+                    await requestServer({c: "moveToken", id: selectedToken, x: tX, y: tY, bypassLink: !(e.ctrlKey || e.metaKey)});
+                updateMapData();
+                break;
+
             case "KeyC":
                 colorPickerButton.click();
                 break;
@@ -2606,7 +2763,7 @@ document.body.addEventListener("keyup", async function(e) {
                 break;
         }
     }
-})
+});
 
 map.addEventListener("mousedown", async function(e) {
     if (e.button == 0)
@@ -2714,20 +2871,9 @@ map.addEventListener("mousedown", async function(e) {
                         }
                     }
                     if (bulkInitSettings.image=="number")
-                    {
-                        let tokenText = commonNameInText ? bulkInitSettings.commonName+" "+f.toString() : f.toString();
-                        if (newHP!=null) 
-                            await requestServer({c: "createToken", text: tokenText, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + ((f-1)%Math.ceil(Math.sqrt(bulkInitSettings.tokenAmount)))*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)) + (Math.floor((f-1)/Math.ceil(Math.sqrt(bulkInitSettings.tokenAmount))))*bulkInitSettings.tokenSizes*gridSize, size: bulkInitSettings.tokenSizes, status: "", layer: 1, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hideTracker: hideTracker, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
-                        else
-                            await requestServer({c: "createToken", text: tokenText, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: bulkInitSettings.tokenSizes, status: "", layer: 1, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hideTracker: hideTracker});
-                    }
+                        await requestServer({c: "createToken", text: commonNameInText ? bulkInitSettings.commonName+" "+f.toString() : f.toString(), x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + ((f-1)%Math.ceil(Math.sqrt(bulkInitSettings.tokenAmount)))*bulkInitSettings.tokenSizes*gridSize.x, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)) + (Math.floor((f-1)/Math.ceil(Math.sqrt(bulkInitSettings.tokenAmount))))*bulkInitSettings.tokenSizes*gridSize.y, size: bulkInitSettings.tokenSizes, status: "", layer: 1, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hideTracker: hideTracker, hp: newHP?newHP.toString()+"/"+newHP.toString():null, ac: newAC});
                     else
-                    {
-                        if (newHP!=null) 
-                            await requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 1, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hideTracker: hideTracker, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
-                        else
-                            await requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 1, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hideTracker: hideTracker});
-                    }
+                        await requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize.x, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)) + (Math.floor((f-1)/Math.ceil(Math.sqrt(bulkInitSettings.tokenAmount))))*bulkInitSettings.tokenSizes*gridSize.y, image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 1, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hideTracker: hideTracker, hp: newHP?newHP.toString()+"/"+newHP.toString():null, ac: newAC});
                 }
                 placingBulkOrigin = false;
                 updateMapData();
@@ -2893,7 +3039,7 @@ map.addEventListener("mousedown", async function(e) {
         document.body.style.cursor = "grabbing";
         drawCanvas(true);
     }
-})
+});
 
 let previousCalcWidth = 0;
 window.addEventListener("mousemove", function(e) {
@@ -2917,12 +3063,12 @@ window.addEventListener("mousemove", function(e) {
         viewport.scrollTop = oldScrollPos.y + oldMousePos.y - e.pageY;
         return;
     }
-})
+});
 
 map.addEventListener("dragstart", function(e) {
     e.preventDefault();
     e.stopPropagation();
-})
+});
 
 map.addEventListener("contextmenu", function(e) {
     e.preventDefault();
@@ -2946,7 +3092,7 @@ map.addEventListener("contextmenu", function(e) {
             closeSubMenu();
         }
     }
-})
+});
 
 function shapeContextMenu(e, pixel)
 {
@@ -3271,7 +3417,7 @@ function displayContextMenu(e)
         {
             titleText = "Create Anti Blocker";
         }
-        DMoptions.push({text: titleText, description: "Creates a blockers with 3 verts at the current position", hasSubMenu: false, callback: async function() {
+        DMoptions.push({text: titleText, description: "Create a blocker with 4 verts at this position", hasSubMenu: false, callback: async function() {
             await requestServer({c: "addPolyBlocker", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), offset: gridSize});
             updateMapData();
         }})
@@ -3317,7 +3463,7 @@ window.onclick = function(event)
 let isDraggingToken = false;
 map.addEventListener("dragover", function(e) {
     e.preventDefault();
-})
+});
 
 map.addEventListener("dragend", function(e) {
     e.preventDefault();
@@ -3328,8 +3474,6 @@ document.body.ondrop = async function(e)
     e.preventDefault();
     if (isDraggingToken && (CheckAntiBlockerPixel(e) || (isDM&&!playerMode)))
     {
-        let gridX = map.width / mapData.x;
-        let gridY = map.height / mapData.y;
         let draggingTokenData;
         for (let token of mapData.tokens)
         {
@@ -3345,13 +3489,13 @@ document.body.ondrop = async function(e)
             let tY;
             if (draggingTokenData.size >= 1)
             {
-                tX = Math.round(Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridX * draggingTokenData.size)/gridX) * gridX + 0.5 * gridX * draggingTokenData.size + offsetX);
-                tY = Math.round(Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridY * draggingTokenData.size)/gridY) * gridY + 0.5 * gridY * draggingTokenData.size + offsetY);
+                tX = Math.round(Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridSize.x * draggingTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * draggingTokenData.size + offsetX);
+                tY = Math.round(Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridSize.y * draggingTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * draggingTokenData.size + offsetY);
             }
             else
             {
-                tX = Math.round(Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridX * draggingTokenData.size) / (gridX * draggingTokenData.size)) * (gridX * draggingTokenData.size) + 0.5 * gridX * draggingTokenData.size + offsetX);
-                tY = Math.round(Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridY * draggingTokenData.size) / (gridY * draggingTokenData.size)) * (gridY * draggingTokenData.size) + 0.5 * gridY * draggingTokenData.size + offsetY);
+                tX = Math.round(Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridSize.x * draggingTokenData.size) / (gridSize.x * draggingTokenData.size)) * (gridSize.x * draggingTokenData.size) + 0.5 * gridSize.x * draggingTokenData.size + offsetX);
+                tY = Math.round(Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridSize.y * draggingTokenData.size) / (gridSize.y * draggingTokenData.size)) * (gridSize.y * draggingTokenData.size) + 0.5 * gridSize.y * draggingTokenData.size + offsetY);
             }
             if (tX!= draggingTokenData.x || tY != draggingTokenData.y)
                 await requestServer({c: "moveToken", id: draggingToken, x: tX, y: tY, bypassLink: !controlPressed});

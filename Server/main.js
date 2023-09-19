@@ -640,10 +640,10 @@ app.post("/api", function(request, response) {
         case "addPolyBlocker":
             loadCurrentMap();
             let tmpPoly = {id: currentMap.polyBlockers.length, verts: []};
-            tmpPoly.verts.push({x: request.body.x-request.body.offset, y: request.body.y+request.body.offset});
-            tmpPoly.verts.push({x: request.body.x+request.body.offset, y: request.body.y+request.body.offset});
-            tmpPoly.verts.push({x: request.body.x+request.body.offset, y: request.body.y-request.body.offset});
-            tmpPoly.verts.push({x: request.body.x-request.body.offset, y: request.body.y-request.body.offset});
+            tmpPoly.verts.push({x: request.body.x-request.body.offset.min, y: request.body.y+request.body.offset.min});
+            tmpPoly.verts.push({x: request.body.x+request.body.offset.min, y: request.body.y+request.body.offset.min});
+            tmpPoly.verts.push({x: request.body.x+request.body.offset.min, y: request.body.y-request.body.offset.min});
+            tmpPoly.verts.push({x: request.body.x-request.body.offset.min, y: request.body.y-request.body.offset.min});
             currentMap.polyBlockers.push(tmpPoly);
             saveCurrentMap();
             response.send("[true]");
@@ -1011,6 +1011,8 @@ function loadCurrentMap()
         currentMap.groupLock = [];
     if (currentMap.portalData == null || currentMap.portalData=="")
         currentMap.portalData = [];
+    if (currentMap.groupPresets == null)
+        currentMap.groupPresets = [];
     currentMap.mapName = selectedMap;
     currentMap.tokenList = readDirectory(publicFolder + "tokens", "jpg|png|jpeg|gif");
     currentMap.dmTokenList = readDirectory(publicFolder + "dmTokens", "jpg|png|jpeg|gif");
