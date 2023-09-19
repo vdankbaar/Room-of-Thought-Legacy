@@ -189,7 +189,6 @@ function drawSquare(index, shape)
     }
         
     colorString+=hex;
-    //console.log(colorString);
     hitboxCanvas.strokeStyle = colorString;
     hitboxCanvas.lineWidth = shapeWidth*3;
     hitboxCanvas.beginPath();
