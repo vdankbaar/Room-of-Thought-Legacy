@@ -886,8 +886,6 @@ body h3 {user-select: none;}
     padding: 0px;
 }
 
-#detailsToggles button:focus {outline:none}
-
 #detailsToggles button b {
     pointer-events: none;
 }

@@ -109,26 +109,26 @@
             <div id="initiativeTracker"></div>
             <div id="detailsScreen" style="display: none;">
                 <h3 style="grid-area: title; margin: 0px;"></h3>
-                <div id="detailsIcon" title="Click to open notes!"><img></div>
+                <div id="detailsIcon" title="Click to open notes!" tabindex="10"><img></div>
                 <img id="hitpointsIcon" title="Click here to deduct HP" type="image/svg+xml" src="images/favorite-24px.svg"></img>
                 <div id="detailsHitpoints">
-                    <input id="currentHitpoints" autocomplete="off" spellcheck="false">
+                    <input id="currentHitpoints" autocomplete="off" spellcheck="false" tabindex="1">
                     <p>/</p>
-                    <input id="maxHitpoints" autocomplete="off" spellcheck="false">
+                    <input id="maxHitpoints" autocomplete="off" spellcheck="false" tabindex="2">
                 </div>
                 <object id="armorIcon" type="image/svg+xml" data="images/security-24px.svg"></object>
-                <input id="armorClass" autocomplete="off" spellcheck="false">
+                <input id="armorClass" autocomplete="off" spellcheck="false" tabindex="3">
                 <p style="grid-area: name; margin: 0px;">Name:</p>
-                <input type="text" id="detailsNameInput" autocomplete="off" spellcheck="false" placeholder="No name">
+                <input type="text" id="detailsNameInput" autocomplete="off" spellcheck="false" placeholder="No name" tabindex="4">
                 <p style="grid-area: status; margin: 0px;">Status:</p>
-                <input type="text" id="detailsStatusInput" placeholder="No status" autocomplete="off" spellcheck="false">
+                <input type="text" id="detailsStatusInput" placeholder="No status" autocomplete="off" spellcheck="false" tabindex="7">
                 <p style="grid-area: initiative; margin: 0px;">Initiative:</p>
                 <p style="grid-area: group; margin: 0px;">Group:</p>
-                <input type="text" id="detailsInitiative" class="detailsBottom" autocomplete="off" spellcheck="false">
-                <input type="text" id="detailsGroup" class="detailsBottom" autocomplete="off" spellcheck="false">
+                <input type="text" id="detailsInitiative" class="detailsBottom" autocomplete="off" spellcheck="false" tabindex="5">
+                <input type="text" id="detailsGroup" class="detailsBottom" autocomplete="off" spellcheck="false" tabindex="6">
                 <div id="detailsToggles">
-                    <button id="visibility" title="Toggle visibility of token in initiative tracker"><img id="visibilityIcon" type="image/svg+xml" src="images/visibility-24px.svg"></object></button>
-                    <button id="concentrating" title="Toggle concentration"><b>C</b></button>
+                    <button id="visibility" title="Toggle visibility of token in initiative tracker" tabindex="9"><img id="visibilityIcon" type="image/svg+xml" src="images/visibility-24px.svg"></object></button>
+                    <button id="concentrating" title="Toggle concentration" tabindex="8"><b>C</b></button>
                 </div>
             </div>
         </div>

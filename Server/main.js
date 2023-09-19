@@ -38,14 +38,14 @@ let nonLoggedCommands = ["currentMapData", "setLiftedMinis", "setPortalData"]
 
 app.post("/api", function(request, response) {
     let playerName = GetCookie(request, "playerName");
-    if (!playerNameList.includes(playerName) && playerName != "")
+    if (!playerNameList.includes(playerName) && playerName)
     {
         console.log("A new player has connected: " + playerName);
         playerNameList.push(playerName);
         console.log("Currently connected: " + JSON.stringify(playerNameList));
     }
 
-    if (!nonLoggedCommands.includes(request.body.c))
+    if (!nonLoggedCommands.includes(request.body.c) && playerName)
         console.log(playerName + ": " + JSON.stringify(request.body));
 
     switch(request.body.c)
@@ -70,9 +70,7 @@ app.post("/api", function(request, response) {
         
         case "setMapData":
             loadCurrentMap();
-            if (request.body.map!=null) {
-                currentMap.map = request.body.map;
-            }
+            if (request.body.map!=null) {currentMap.map = request.body.map;}
             if (request.body.x!=null) {currentMap.x = request.body.x;}
             if (request.body.y!=null) {currentMap.y = request.body.y;}
             if (request.body.offsetX!=null) {currentMap.offsetX = request.body.offsetX;}
@@ -84,9 +82,10 @@ app.post("/api", function(request, response) {
             break;
 
         case "changeSelectedMap":
-            selectedMap = request.body.selectedMap;
+            selectedMap = request.body.selectedMap;    
             loadCurrentMap();
             currentMap.portalData = [];
+            saveCurrentMap();
             response.send(true);
             break
 
@@ -101,9 +100,8 @@ app.post("/api", function(request, response) {
                     return a.id - b.id; 
                 });
                 for (let token of tmpTokens) {
-                    if (token.id > -1 && token.id == newId) {
+                    if (token.id > -1 && token.id == newId)
                         newId++;
-                    }
                 }
                 tmpToken.id = newId;
                 tmpToken.x = request.body.x;
@@ -132,6 +130,8 @@ app.post("/api", function(request, response) {
                     tmpToken.group = request.body.group;
                 if (request.body.hideTracker != null)
                     tmpToken.hideTracker = request.body.hideTracker;
+                if (request.body.notes != null)
+                    tmpToken.notes = request.body.notes;
                 currentMap.tokens.push(tmpToken);
                 response.send(tmpToken.id.toString());
                 saveCurrentMap();
@@ -150,12 +150,8 @@ app.post("/api", function(request, response) {
                 {
                     currentToken.hidden = request.body.hidden;
                     for (let currentDrawing of currentMap.drawings)
-                    {
                         if (currentDrawing.link == currentToken.id)
-                        {
                             currentDrawing.visible = !currentToken.hidden;
-                        }
-                    }
                 }
             }
             saveCurrentMap();
@@ -202,9 +198,9 @@ app.post("/api", function(request, response) {
                     if (request.body.name != null)
                         token.name = request.body.name ? request.body.name : null;
                     if (request.body.ac != null)
-                        token.ac = request.body.ac;
+                        token.ac = request.body.ac == "" ? null : request.body.ac;
                     if (request.body.hp != null)
-                        token.hp = request.body.hp;
+                        token.hp = request.body.hp == "/" ? null : request.body.hp;
                     if (request.body.notes != null)
                         token.notes = request.body.notes;
                     if (request.body.image != null)
@@ -613,10 +609,8 @@ app.post("/api", function(request, response) {
         case "togglePolyBlocker":
             loadCurrentMap();
             for (let currentBlocker of currentMap.polyBlockers)
-            {
                 if (currentBlocker.id == request.body.id)
                     currentBlocker.inactive = !currentBlocker.inactive;
-            }
             saveCurrentMap();
             response.send("[true]");
             break;
@@ -668,9 +662,8 @@ app.post("/api", function(request, response) {
                 {
                     let prevVert = currentBlocker.verts[request.body.vertId];
                     let nextVertId = request.body.vertId+1;
-                    if (nextVertId>=currentBlocker.verts.length) {
+                    if (nextVertId>=currentBlocker.verts.length)
                         nextVertId = 0;
-                    }
                     let nextVert = currentBlocker.verts[nextVertId];
                     let newVert = {x: (prevVert.x+nextVert.x)/2, y: (prevVert.y+nextVert.y)/2};
                     currentBlocker.verts.splice(nextVertId, 0, newVert);
@@ -683,10 +676,8 @@ app.post("/api", function(request, response) {
         case "removeVert":
             loadCurrentMap();
             for (let currentBlocker of currentMap.polyBlockers)
-            {
                 if (currentBlocker.id == request.body.id)
                     currentBlocker.verts.splice(request.body.vertId, 1);
-            }
             saveCurrentMap();
             response.send("[true]");
             break;
@@ -694,9 +685,8 @@ app.post("/api", function(request, response) {
         case "removePolyBlocker":
             loadCurrentMap();
             let polyBlockerFound = 0;
-            for (let i in currentMap.polyBlockers)
+            for (let [i, currentBlocker] of Object.entries(currentMap.polyBlockers))
             {
-                let currentBlocker = currentMap.polyBlockers[i];
                 if (currentBlocker.id == request.body.id)
                 {
                     polyBlockerFound = i;
@@ -894,25 +884,32 @@ app.post("/api", function(request, response) {
     }
 });
 
+app.post("/ls", function(request, response) {
+    if (request.body.path != null && request.body.filter != null)
+        response.send(readDirectory(__dirname + "/" + request.body.path, request.body.filter, true));
+});
+
+app.post("/export", function(request, response) {
+    if (request.body.path != null)
+    {
+        response.download(__dirname + "/" + request.body.path);
+    }
+});
+
 app.post('/upload', function(req, res) {
-    if (req.body.isDM == 'on')
+    if (!req.files || Object.keys(req.files).length === 0)
     {
-        if (!req.files || Object.keys(req.files).length === 0)
-        {
-            return res.status(400).send('No files were uploaded.');
-        }
-        let sampleFile = req.files.mapFile;
-        sampleFile.mv(dataFolder + req.files.mapFile.name, function(err)
-        {
-            if (err)
-                return res.status(500).send(err);
-            res.send('File uploaded!');
-        });
+        return res.status(400).send('No files were uploaded.');
     }
-    else
+    if (fs.existsSync(__dirname + "/" + req.body.folder + "/" + req.files.newFile.name))
+        fs.rmSync(__dirname + "/" + req.body.folder + "/" + req.files.newFile.name);
+    let sampleFile = req.files.newFile;
+    sampleFile.mv(__dirname + "/" + req.body.folder + "/" + req.files.newFile.name, function(err)
     {
-        res.send("false");
-    }
+        if (err)
+            return res.status(500).send(err);
+        res.redirect("manage.html");
+    });
 });
 
 app.use(express.static('client'));
@@ -1030,17 +1027,12 @@ function loadCurrentMap()
     if (currentMap.walls == null)
         currentMap.walls = [];
     if (currentMap.blockerType == null)
-    {
-        if (currentMap.usePolyBlockers)
-            currentMap.blockerType = 1;
-        else
-            currentMap.blockerType = 0;
-    }
+        currentMap.blockerType = currentMap.usePolyBlockers ? 1 : 0;
         
     currentMap.mapName = selectedMap;
-    currentMap.tokenList = readDirectory(publicFolder + "tokens", "jpg|png|jpeg|gif");
-    currentMap.dmTokenList = readDirectory(publicFolder + "dmTokens", "jpg|png|jpeg|gif");
-    currentMap.mapSourceList = readDirectory(publicFolder + "maps", "jpg|png|jpeg|gif");
+    currentMap.tokenList = readDirectory(publicFolder + "tokens", "jpg|png|jpeg|gif", false);
+    currentMap.dmTokenList = readDirectory(publicFolder + "dmTokens", "jpg|png|jpeg|gif", false);
+    currentMap.mapSourceList = readDirectory(publicFolder + "maps", "jpg|png|jpeg|gif", false);
     currentMap.maps = returnMaps();
 }
 
@@ -1051,34 +1043,29 @@ function saveCurrentMap()
 
 function returnMaps() 
 {
-    let tmpMaps = readDirectory("data/", "json");
+    let tmpMaps = readDirectory("data/", "json", false);
     for (let i in tmpMaps)
-    {
         tmpMaps[i] = tmpMaps[i].split(".")[0];
-    }
     return tmpMaps;
 }
 
 //#region Low level functions
 function minMax(value, min, max)
 {
-    if (value > min && value < max)
-        return true;
-    else
-        return false;
+    return value > min && value < max;
 }
 
 function renameFile(file, newName)
 {
     try { fs.renameSync(file, pathLib.dirname(file) + "\\" + newName + pathLib.extname(file)); }
-    catch (err) { console.log("Error: " + err); return false; }
+    catch (err) { logError("Error: " + err); return false; }
     return true;
 }
 
 function renameFolder(path, newName) 
 {
     try { fs.renameSync(path, pathLib.dirname(path) + "\\" + newName); }
-    catch (err) { console.log("Error: " + err); return false;}
+    catch (err) { logError("Error: " + err); return false;}
     return true;
 }
 
@@ -1090,19 +1077,19 @@ function readFile(file)
     {
         try
         { 
-            let data = fs.readFileSync(file, 'utf-8');
+            let data = fs.readFileSync(file, 'utf8');
             fileReadSuccess = true;
             return data;
         }
-        catch (err) { console.log("Error: " + err); }
+        catch (err) { logError("Error: " + err); }
     }
 }
 
 function writeFile(file, content) 
 {
     //Function that synchronously writes a file
-    try { fs.writeFileSync(file, content, 'utf-8'); }
-    catch(err) { console.log("Error: " + err); return false;}
+    try { fs.writeFileSync(file, content, 'utf8'); }
+    catch(err) { logError("Error: " + err); return false;}
     return true;
 }
 
@@ -1110,69 +1097,68 @@ function readFileHex(file)
 {
     //Function that synchronously reads a file
     try { return fs.readFileSync(file, 'hex') }
-    catch (err) { console.log("Error: " + err); return false;}
+    catch (err) { logError("Error: " + err); return false;}
 }
 
 function writeFileHex(file, content) 
 {
     //Function that synchronously writes a file
     try { fs.writeFileSync(file, content, 'hex'); }
-    catch(err) { console.log("Error: " + err); return false;}
+    catch(err) { logError("Error: " + err); return false;}
     return true;
 }
 
 function deletefile(file) 
 {
     try { fs.unlinkSync(file); }
-    catch(err) { console.log("Error: " + err); return false;}
+    catch(err) { logError("Error: " + err); return false;}
     return true;
 }
 
 function fileExists(file) 
 {
     try { return fs.existsSync(file); }
-    catch(err) { console.log("Error: " + err);}
+    catch(err) { logError("Error: " + err);}
 }
 
 function copyFile(source, destination) 
 {
     try { fs.copyFileSync(source, destination); }
-    catch (err) { console.log("Error: " + err); return false;}
+    catch (err) { logError("Error: " + err); return false;}
     return true;
 }
 
 function copyFileHex(source, destination) 
 {
-    var tmp = readFileHex(source);
+    let tmp = readFileHex(source);
     writeFileHex(destination, tmp);
 }
 
-function readDirectory(path, filter) 
+function readDirectory(path, filter, keepType) 
 {
     //Function that reads all the file names in a directory and returns an array of file names that are filtered
     //so only certain file types are counted. the desired filetypes were delimited with a "|" in the paramter "filter"
+    if (!fileExists(path))
+        return false;
+    let returnData = [];
     try {
-    //Read the complete folder
-    var dirData = fs.readdirSync(path);
-    //Filter function
-    var returnData = [];
-    var fileTypes = filter.split("|");
-        for (var i = 0; i < dirData.length; i++) 
+        //Read the complete folder
+        let dirData = fs.readdirSync(path, { withFileTypes: keepType });
+        let fileTypes = filter.split("|");
+        for (let dirEntry of dirData) 
         {
-            var correctType = false;
-            for (var j = 0; j < fileTypes.length; j++)
+            let correctType = false;
+            for (let allowedType of fileTypes)
             {
-                if (dirData[i].includes(fileTypes[j])) 
-                {
+                if (keepType ? dirEntry.name.includes(allowedType) : dirEntry.includes(allowedType)) 
                     correctType = true;
-                }
             }
+            if (keepType)
+                dirEntry = {name: dirEntry.name, folder: dirEntry.isDirectory()};
             if (correctType) 
-            {
-                returnData.push(dirData[i]);
-            }
+                returnData.push(dirEntry);
         }
-    } catch (err) { console.log("Error: " + err); return false;}
+    } catch (err) { logError("Error: " + err); return false;}
     //Return array with only file types described in "filter"
     return returnData;
 }
@@ -1180,7 +1166,7 @@ function readDirectory(path, filter)
 function createDirectory(path) 
 {
     try { fs.mkdirSync(path); }
-    catch (err) { console.log("Error: " + err); return false;}
+    catch (err) { logError("Error: " + err); return false;}
     return true;
 }
 
@@ -1194,21 +1180,24 @@ function deleteDirectory(path)
             {
                 var curPath = path + "/" + file;
                 if(fs.lstatSync(curPath).isDirectory())
-                {
                     deleteDirectory(curPath);
-                }
                 else
-                {
                     fs.unlinkSync(curPath);
-                }
             });
             fs.rmdirSync(path);
         }
     }
-    catch(err) { console.log("Error: " + err); return false;}
+    catch(err) { logError("Error: " + err); return false;}
     return true;
 }
 
+//#endregion
+
+//#region
+function logError(err) {
+    if (logerrors)
+        console.log(err);
+}
 //#endregion
 
 //#region Cookies

@@ -1,0 +1,19 @@
+<html>
+    <head>
+		<script>alert("This page is still WIP, so it has been disabled for this build!")</script>
+    </head>
+    <body hidden disabled>
+        <button id="dataFolderButton">Switch to data folder</button>
+        <button id="publicFolderButton">Switch to public folder</button> <br> <br>
+        <label for="currentFolder">Current folder:</label>
+        <input id="currentFolder" type="text" value="data" disabled>
+        <ul id="fileList"></ul>
+        <form ref='uploadForm' id='uploadForm' action='/upload' method='post' encType="multipart/form-data">
+            <input name="folder" type="text" id="formFolder" value="data" hidden>
+            <input type="file" name="newFile" id="formFile"/>
+            <input id="formSubmit" type='submit' hidden/>
+        </form>
+        <button id="submitButton">Upload file to folder!</button> <br><br>
+        <script src="manage.js"></script>
+    </body>
+</html>
