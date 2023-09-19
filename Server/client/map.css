@@ -104,7 +104,7 @@ body {
 
 #toggleSettingsButton object {pointer-events: none; width: 63%; height: 63%;}
 
-#sideMenu input {
+#shapeColorPicker, #setInit, #mapOptionsMenu input {
     text-align: center;
     position: relative;
     padding: 0;
@@ -160,6 +160,235 @@ body {
     padding: 0px;
     z-index: 0;
 }
+
+#initiativeTracker {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    justify-content: flex-start;
+    font-size: 1vw;
+    font-family: Helvetica;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.initiativeItem {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 2vw 3vw 4.4vw auto;
+    grid-template-rows: 2vw 2vw;
+    grid-template-areas:
+        "initiative name name name"
+        "bottomrow bottomrow bottomrow bottomrow"
+}
+
+.initiativeItem:hover {background-color: #AAAAAA;}
+
+.initiative {
+    grid-area: initiative;
+    background-color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0.15vw;
+    text-align: center;
+    border-radius: 0.3vw;
+}
+
+.trackerName {
+    grid-area: name;
+    background-color: white;
+    display: flex;
+    align-items: center;
+    margin: 0.15vw;
+    border-radius: 0.3vw;
+    padding-left: 0.5vw;
+}
+
+.trackerBottomRow {
+    grid-area: bottomrow;
+    display: flex;
+    flex-direction: ltr;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.trackerArmorSection {display: flex; flex-direction: ltr; align-items: center;}
+.trackerHitpointsSection {display: flex; flex-direction: ltr; align-items: center;}
+
+.trackerArmorClass {
+    background-color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin: 0.15vw;
+    height: 1.7vw;
+    min-width: 1.3vw;
+    border-radius: 0.3vw;
+    padding: 0px 0.2vw;
+}
+
+.trackerDamageButton {
+    width: 1vw;
+    height: 1.8vw;
+    border: none;
+    padding: 0px;
+    text-align: center;
+    line-height: 50%;
+    border-radius: 0.3vw;
+    background-color: transparent;
+}
+
+.trackerDamageButton object {width: 1vw;}
+
+.trackerHitpoints {
+    background-color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin: 0.15vw;
+    height: 1.7vw;
+    width: 2.2vw;
+    border-radius: 0.3vw;
+    padding: 0px 0.2vw;
+    border: none;
+    font-size: 1vw;
+    font-family: helvetica;
+}
+
+.trackerHitpoints:focus {outline: none;}
+
+.trackerHitpointsMax {
+    background-color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin: 0.15vw;
+    height: 1.7vw;
+    min-width: 1.3vw;
+    border-radius: 0.3vw;
+    padding: 0px 0.2vw;
+}
+
+.initiativeHR {border: 0.02vw solid white; width: 90%;}
+
+#detailsScreen {
+    font-family: helvetica;
+    display: grid;
+    box-shadow: 0 -0.4vw 0.5vw -0.4vw #888;
+    font-size: 1vw;
+    margin-bottom: 1vw;
+    grid-template-columns: 4vw 2vw 6vw;
+    grid-template-rows: 1vw 2vw 2vw 1vw 2vw 1vw 2vw 1vw 4vw;
+    grid-template-areas:
+        "title title title"
+        "icon hpicon health"
+        "icon acicon armor"
+        "name name name"
+        "nameinput nameinput input"
+        "status status status"
+        "statusinput statusinput statusinput"
+        "initiative initiative group"
+        "initiativeinput initiativeinput groupinput"
+}
+
+#detailsIcon {
+    grid-area: icon;
+}
+
+#detailsIcon img {width: 100%; height: 100%; user-select: none;}
+
+#hitpointsIcon {grid-area: hpicon; width: 100%; height: 100%}
+#armorIcon {grid-area: acicon; width: 100%; height: 100%}
+
+#currentHitpoints {
+    background-color: white;
+    text-align: center;
+    margin: 0.15vw;
+    height: 1.7vw;
+    width: 2.2vw;
+    border-radius: 0.3vw;
+    padding: 0px 0.2vw;
+    border: none;
+    font-size: 1vw;
+    font-family: helvetica;
+}
+#maxHitpoints {
+    background-color: white;
+    text-align: center;
+    margin: 0.15vw;
+    height: 1.7vw;
+    width: 2.2vw;
+    border-radius: 0.3vw;
+    padding: 0px 0.2vw;
+    border: none;
+    font-size: 1vw;
+    font-family: helvetica;
+}
+
+#detailsHitpoints {
+    display: flex;
+    flex-direction: ltr;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#armorClass {
+    background-color: white;
+    text-align: center;
+    margin: 0.15vw;
+    height: 1.7vw;
+    border-radius: 0.3vw;
+    padding: 0px 0.2vw;
+    border: none;
+    font-size: 1vw;
+    font-family: helvetica;
+}
+
+#detailsNameInput {
+    grid-area: nameinput;
+    background-color: white;
+    text-align: left;
+    margin: 0.15vw;
+    height: 1.7vw;
+    border-radius: 0.3vw;
+    padding: 0px 0.2vw;
+    border: none;
+    font-size: 1vw;
+    font-family: helvetica;
+    width: 10vw;
+}
+
+#detailsStatusInput {
+    grid-area: statusinput;
+    background-color: white;
+    text-align: left;
+    margin: 0.15vw;
+    height: 1.7vw;
+    border-radius: 0.3vw;
+    padding: 0px 0.2vw;
+    border: none;
+    font-size: 1vw;
+    font-family: helvetica;
+    width: 10vw;
+}
+
+.detailsBottom {
+    width: 3.7vw;
+    height: 3.7vw;
+    margin: 0.15vw;
+    background-color: white;
+    text-align: center;
+    border-radius: 0.3vw;
+    border: none;
+    font-size: 2vw;
+}
+
+#detailsInitiative {grid-area: initiativeinput}
+#detailsGroup {grid-area: groupinput}
 
 #hitboxMap {
     position: absolute;

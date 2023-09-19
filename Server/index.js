@@ -86,7 +86,6 @@ app.post("/api", function(request, response) {
                 if (currentToken.id == request.body.id)
                 {
                     currentToken.hidden = request.body.hidden;
-                    console.log("Changed to: "+request.body.hidden);
                 }
             }
             SaveCurrentMap();
@@ -100,13 +99,26 @@ app.post("/api", function(request, response) {
                 let currentToken = currentMap.tokens[i];
                 if (currentToken.id == request.body.id)
                 {
-                    if (minMax(request.body.size, 0, 20))
-                    {
-                        currentMap.tokens[i].status = request.body.status;
-                        currentMap.tokens[i].size = request.body.size;
-                        currentMap.tokens[i].layer = request.body.layer;
-                        currentMap.tokens[i].initiative = request.body.initiative;
-                    }
+                        if (request.body.status!=null)
+                            currentMap.tokens[i].status = request.body.status;
+                        if (request.body.size!=null)
+                            if (minMax(request.body.size, 0, 20))
+                                currentMap.tokens[i].size = request.body.size;
+                        if (request.body.layer!=null)
+                            currentMap.tokens[i].layer = request.body.layer;
+                        if (request.body.group!=null)
+                            if (request.body.group=="reset")
+                                currentMap.tokens[i].group = null;
+                            else
+                                currentMap.tokens[i].group = request.body.group;
+                        if (request.body.initiative!=null)
+                            currentMap.tokens[i].initiative = request.body.initiative;
+                        if (request.body.name!=null)
+                            currentMap.tokens[i].name = request.body.name;
+                        if (request.body.ac!=null)
+                            currentMap.tokens[i].ac = request.body.ac;
+                        if (request.body.hp!=null)
+                            currentMap.tokens[i].hp = request.body.hp;
                 }
             }
             SaveCurrentMap();
@@ -153,14 +165,80 @@ app.post("/api", function(request, response) {
                 let currentToken = currentMap.tokens[i];
                 if (currentToken.id == request.body.id)
                 {
+                    if (currentMap.tokens[i].group!=null)
+                    {
+                        let dx = request.body.x - currentMap.tokens[i].x;
+                        let dy = request.body.y - currentMap.tokens[i].y;
+                        for (let j in currentMap.tokens)
+                        {
+                            if (j!=i && currentMap.tokens[j].group == currentMap.tokens[i].group)
+                            {
+                                currentMap.tokens[j].x = currentMap.tokens[j].x + dx;
+                                currentMap.tokens[j].y = currentMap.tokens[j].y + dy;
+                                CheckLinkedShapes(currentMap.tokens[j]);
+                            }
+                            
+                        }
+                    }
                     currentMap.tokens[i].x = request.body.x;
                     currentMap.tokens[i].y = request.body.y;
+                    CheckLinkedShapes(currentMap.tokens[i]);
                 }
             }
             SaveCurrentMap();
             response.send("[true]");
             break;
         
+        case "rotateLeft":
+            LoadCurrentMap();
+            for (let i in currentMap.tokens)
+            {
+                let currentToken = currentMap.tokens[i];
+                if (currentToken.id == request.body.id)
+                {
+                    for (let j in currentMap.tokens)
+                    {
+                        if (j!=i && currentMap.tokens[j].group == currentMap.tokens[i].group)
+                        {
+                            let dx = currentMap.tokens[j].x - currentMap.tokens[i].x;
+                            let dy = currentMap.tokens[j].y - currentMap.tokens[i].y;
+                            console.log(dx + " : " + dy);
+                            currentMap.tokens[j].x = currentMap.tokens[i].x + dy;
+                            currentMap.tokens[j].y = currentMap.tokens[i].y - dx;
+                            CheckLinkedShapes(currentMap.tokens[j]);
+                        }
+                    }
+                }
+            }
+            SaveCurrentMap();
+            response.send("[true]");
+            break;
+
+            case "rotateRight":
+                LoadCurrentMap();
+                for (let i in currentMap.tokens)
+                {
+                    let currentToken = currentMap.tokens[i];
+                    if (currentToken.id == request.body.id)
+                    {
+                        for (let j in currentMap.tokens)
+                        {
+                            if (j!=i && currentMap.tokens[j].group == currentMap.tokens[i].group)
+                            {
+                                let dx = currentMap.tokens[j].x - currentMap.tokens[i].x;
+                                let dy = currentMap.tokens[j].y - currentMap.tokens[i].y;
+                                currentMap.tokens[j].x = currentMap.tokens[i].x - dy;
+                                currentMap.tokens[j].y = currentMap.tokens[i].y + dx;
+                                CheckLinkedShapes(currentMap.tokens[j]);
+                            }
+                        }
+                    }
+                }
+                SaveCurrentMap();
+                response.send("[true]");
+                break;
+        
+
         case "addDrawing":
             LoadCurrentMap();
             let tmpDrawing = {};
@@ -179,6 +257,7 @@ app.post("/api", function(request, response) {
                     tmpDrawing.y = request.body.y;
                     tmpDrawing.width = request.body.width;
                     tmpDrawing.height = request.body.height;
+                    break;
                 case "line":
                     isShape = true;
                     tmpDrawing.x = request.body.x;
@@ -192,6 +271,8 @@ app.post("/api", function(request, response) {
                 tmpDrawing.shape = request.body.shape;
                 tmpDrawing.id = currentMap.drawings.length;
                 tmpDrawing.trueColor = request.body.trueColor;
+                if (request.body.link!=null)
+                    tmpDrawing.link = request.body.link;
                 currentMap.drawings.push(tmpDrawing);
                 SaveCurrentMap();
             }
@@ -334,6 +415,17 @@ app.post('/upload', function(req, res) {
 app.use(express.static('client'));
 app.listen(80);
 
+function CheckLinkedShapes(tokenData) 
+{
+    for (let i = 0; i<currentMap.drawings.length; i++)
+    {
+        if (currentMap.drawings[i].link == tokenData.id)
+        {
+            currentMap.drawings[i].x = tokenData.x;
+            currentMap.drawings[i].y = tokenData.y;
+        }
+    }
+}
 
 function LoadCurrentMap() 
 {

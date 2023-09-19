@@ -20,6 +20,15 @@ var mapXInput = document.getElementById("mapX");
 var mapYInput = document.getElementById("mapY");
 var offsetXInput = document.getElementById("offsetX");
 var offsetYInput = document.getElementById("offsetY");
+var initiativeTrackerDiv = document.getElementById("initiativeTracker");
+let initiativeInput = document.getElementById("detailsInitiative");
+let nameInput = document.getElementById("detailsNameInput");
+let acInput = document.getElementById("armorClass");
+let currentHpInput = document.getElementById("currentHitpoints");
+let maxHpInput = document.getElementById("maxHitpoints");
+let groupIdInput = document.getElementById("detailsGroup");
+let statusInput = document.getElementById("detailsStatusInput");
+let detailsIcon = document.getElementById("detailsIcon").children[0];
 var mapCanvas;
 var shapeCanvas;
 var hitboxCanvas;
@@ -48,6 +57,8 @@ let isPanning = false;
 let oldMousePos = {x: 0, y: 0};
 let oldScrollPos = {x: 0, y: 0};
 let movingShapeId = 0;
+let selectedToken;
+let selectedTokenData;
 
 window.onload = function() {
     if (getCookie("isDM")==1)
@@ -58,7 +69,6 @@ window.onload = function() {
     else
     {
         let elementsToRemove = document.getElementsByClassName("dmOnly");
-        console.log(elementsToRemove);
         for (let i = elementsToRemove.length-1; i>=0; i--)
             elementsToRemove[i].parentElement.removeChild(elementsToRemove[i]);
     }
@@ -127,7 +137,6 @@ document.getElementById("toggleSnapButton").onclick = function() {
 
 let displayMapSettings = false;
 let mapOptionsMenu = document.getElementById("mapOptionsMenu");
-console.log(document.getElementById("toggleSettingsButton"));
 document.getElementById("toggleSettingsButton").onclick = function() {
     if (displayMapSettings)
         mapOptionsMenu.style.display = "none";
@@ -185,6 +194,7 @@ function drawCanvas()
         drawGrid();
     drawTokens();
     drawShapes();
+    updateTracker();
 }
 
 function drawShapes()
@@ -308,11 +318,17 @@ function drawBlockers()
             tmpBlocker.style.width = currentBlocker.width;
             tmpBlocker.style.height = currentBlocker.height;
             if (isDM)
+            {
                 tmpBlocker.style.resize = "both";
                 extraBlocker.style.width = currentBlocker.width;
                 extraBlocker.style.height = currentBlocker.height;
-            if (isDM)
                 extraBlocker.draggable = true;
+            }
+            else
+            {
+                extraBlocker.style.msUserSelect = "none";
+                extraBlocker.style.webkitUserSelect = "none";
+            }   
             tmpBlocker.appendChild(extraBlocker);
 
             tmpBlocker.addEventListener("contextmenu", function(e) {
@@ -343,10 +359,18 @@ function drawBlockers()
                     UpdateMapData();
                 })
                 extraBlocker.addEventListener("dragstart", function(e) {
-                    isDraggingBlocker = true;
-                    extraBlocker.style.backgroundColor = "#000000";
-                    blockerDragOffset.x = currentBlocker.x - (e.pageX+board.scrollLeft);
-                    blockerDragOffset.y = currentBlocker.y - (e.pageY+board.scrollTop);
+                    if (isDM)
+                    {
+                        isDraggingBlocker = true;
+                        extraBlocker.style.backgroundColor = "#000000";
+                        blockerDragOffset.x = currentBlocker.x - (e.pageX+board.scrollLeft);
+                        blockerDragOffset.y = currentBlocker.y - (e.pageY+board.scrollTop);
+                    }
+                    else
+                    {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
                 })
                 extraBlocker.addEventListener("dragend", function(e) {
                     e.preventDefault();
@@ -426,9 +450,91 @@ function createToken(token)
             tokensDiv.appendChild(hiddenImage);
         }
     }
-    
+    if (token.id == selectedToken)
+        imageElement.style.outline = "0.15vw dashed aqua";
+
+
     imageElement.addEventListener("click", function() {
-        alert("This token has initiative: "+token.initiative);
+        selectedToken = token.id;
+        UpdateMapData();
+        if (mapData.tokenList.includes(token.image))
+        {
+            detailsIcon.src = "public/tokens/"+token.image;
+            if (token.ac==null)
+                initiativeInput.value = ""
+            else
+                initiativeInput.value = token.initiative;
+            nameInput.value = token.name;
+            if (token.ac==null)
+                acInput.value = "";
+            else
+                acInput.value = token.ac;
+            if (token.hp==null)
+            {
+                currentHpInput.value = "";
+                maxHpInput.value = "";
+            }
+            else
+            {
+                currentHpInput.value = token.hp.split("/")[0];
+                maxHpInput.value = token.hp.split("/")[1];
+            }
+            if (token.status==null)
+                statusInput.value = "No status";
+            else
+                statusInput.value = token.status;
+            if (token.group==null)
+                groupIdInput.value = "";
+            else
+                groupIdInput.value = token.group;
+        }
+        else
+        {
+            if (isDM)
+            {
+                detailsIcon.src  = "public/dmTokens/"+token.image;
+                if (token.ac==null)
+                    initiativeInput.value = ""
+                else
+                    initiativeInput.value = token.initiative;
+                nameInput.value = token.name;
+                if (token.ac==null)
+                    acInput.value = "";
+                else
+                    acInput.value = token.ac;
+                if (token.hp==null)
+                {
+                    currentHpInput.value = "";
+                    maxHpInput.value = "";
+                }
+                else
+                {
+                    currentHpInput.value = token.hp.split("/")[0];
+                    maxHpInput.value = token.hp.split("/")[1];
+                }
+                if (token.status==null)
+                    statusInput.value = "No status";
+                else
+                    statusInput.value = token.status;
+                if (token.group==null)
+                    groupIdInput.value = "";
+                else
+                    groupIdInput.value = token.group;
+            }
+            else
+            {
+                nameInput.value = "DM only!";
+                maxHpInput.value = "";
+                currentHpInput.value = "";
+                statusInput.value = "";
+                initiativeInput.value = "";
+                groupIdInput.value = "";
+                acInput.value = "";
+                detailsIcon.src = "";
+            }
+        }
+            
+        
     })
 
     imageElement.addEventListener("dragstart", function(e) {
@@ -448,6 +554,19 @@ function createToken(token)
         e.preventDefault();
         let menuOptions = [
             {text: "Remove token", hasSubMenu: false, callback: async function() {
+                if (selectedToken>token.id)
+                    selectedToken-=1;
+                if (token.id==selectedToken)
+                {
+                    initiativeInput.value = "";
+                    nameInput.value = "";
+                    acInput.value = "";
+                    currentHpInput.value = "";
+                    maxHpInput.value = "";
+                    statusInput.value = "";
+                    groupIdInput.value = "";
+                    selectedToken = -1;
+                }
                 let result = await RequestServer({c: "removeToken", id: token.id, tokensRemoved: mapData.removedTokens});
                 if(result[0]==true)
                     UpdateMapData();
@@ -463,49 +582,62 @@ function createToken(token)
                             if (isDM)
                             {
                                 if (tokenSize < 20 && tokenSize>0)
-                                    RequestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, initiative: token.initiative});
+                                    RequestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, group: token.group});
                                 else
                                     alert("The desired size is too large or invalid");
                             }
                             else
                             {
                                 if (tokenSize < 6 && tokenSize>0)
-                                    RequestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, initiative: token.initiative});
+                                    RequestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, group: token.group});
                                 else
                                     alert("That token size isn't allowed for players");
                             }   
                         }
                     }},
-                    {text: "Change status", callback: function() {
-                        let newStatus = prompt("Please enter the status of the token", token.status);
-                        if (newStatus!=null)
-                        {
-                            RequestServer({c:"editToken", id: token.id, size: token.size, status: newStatus, layer: token.layer});
-                        }
-                    }},
-                    {text: "Set Initiative", callback: function() {
-                        let playerInit = parseInt(prompt("Please enter your initiative"));
-                        if (playerInit!=null)
-                            RequestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: token.layer, initiative: playerInit})
+                    {text: "Change layer", callback: function() {
+                        let newLayer = parseInt(prompt("Please enter the desired height level"));
+                        if (newLayer!=null)
+                            RequestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: newLayer, group: token.group});
                     }}
                 ];
                 DisplaySubMenu(e, subMenuOptions);
             }},
-            {text: "Change layer", hasSubMenu: true, callback: function() {
+            {text: "Draw Shape", description: "Pick a shape to draw", hasSubMenu: true, callback: function() {
                 let subMenuOptions = [
-                    {text: "Layer 2", callback: function() {
-                        RequestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: 2, initiative: token.initiative})
-                    }},
-                    {text: "Layer 1", callback: function() {
-                        RequestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: 1, initiative: token.initiative})
-                    }},
-                    {text: "Layer 0", callback: function() {
-                        RequestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: 0, initiative: token.initiative})
+                    {text: "Draw Circle", callback: function() {
+                        let radiusInput = parseFloat(prompt("Please enter the desired radius in feet for your circle(s)"));
+                        if (radiusInput!=null)
+                        {
+                            circleMarkers.radius = (radiusInput+2.5*token.size)/feetPerSquare*gridSize;
+                            RequestServer({c: "addDrawing", shape: "circle", link: token.id,  x: token.x, y: token.y, radius: circleMarkers.radius, trueColor: shapeColor});
+                            UpdateMapData();
+                            CloseMenu();
+                            CloseSubMenu();
+                        }
                     }}
                 ];
                 DisplaySubMenu(e, subMenuOptions);
             }}
-        ]
+        ];
+        if (token.group!=null)
+        {
+            let groupOptions = {text: "Group options", hasSubMenu: true, callback: async function() {
+                let subMenuOptions = [
+                    {text: "Rotate group left", callback: function() {
+                        RequestServer({c:"rotateLeft", id: token.id});
+                    }},
+                    {text: "Rotate group right", callback: function() {
+                        RequestServer({c:"rotateRight", id: token.id});
+                    }},
+                    {text: "Unlink token", callback: function() {
+                        RequestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: token.layer, group: null})
+                    }}
+                ];
+                DisplaySubMenu(e, subMenuOptions);
+            }}
+            menuOptions.push(groupOptions);
+        }
         if (isDM)
         {
             if (token.hidden!=null && token.hidden == true)
@@ -524,10 +656,164 @@ function createToken(token)
             }
             
         }
+        
         DisplayMenu(e, menuOptions);
     })
     
     tokensDiv.appendChild(imageElement);
+}
+
+function updateTracker()
+{
+    initiativeTrackerDiv.innerHTML="";
+    let initHeader = document.createElement("h3");
+    initHeader.style = "margin-bottom: 0.3vw;";
+    initHeader.innerText = "Initiative Tracker";
+    initiativeTrackerDiv.append(initHeader);
+    let tmpData = [];
+    for (let i in mapData.tokens)
+        tmpData.push(mapData.tokens[i]);
+    tmpData.sort(function(a, b){
+        return a.initiative == b.initiative ? 0 : +(a.initiative < b.initiative) || -1;
+    });
+    for (let i in tmpData)
+    {
+        if (tmpData[i].hidden==null)
+            if (mapData.tokenList.includes(tmpData[i].image)||isDM)
+                createTracker(tmpData[i]);
+        else
+        {
+            if (tmpData[i].hidden)
+            {
+                if (isDM)
+                    createTracker(tmpData[i]);
+            }
+            else
+                if (mapData.tokenList.includes(tmpData[i].image)||isDM)
+                    createTracker(tmpData[i]);
+        }
+    }
+    initiativeTrackerDiv.removeChild(initiativeTrackerDiv.children[initiativeTrackerDiv.children.length-1]);
+}
+
+function createTracker(trackerData)
+{
+    if (trackerData.initiative!=null || trackerData.name!=null || trackerData.ac!=null || trackerData.hp!=null)
+    {
+        let tmpTrackerDiv = document.createElement("div");
+        tmpTrackerDiv.className = "initiativeItem";
+        tmpTrackerDiv.onclick = function() {
+            selectedToken = trackerData.id;
+            if (mapData.tokenList.includes(trackerData.image))
+                detailsIcon.src = "public/tokens/"+trackerData.image;
+            else
+                detailsIcon.src  = "public/dmTokens/"+trackerData.image;
+            UpdateMapData();
+            if (trackerData.ac==null)
+                initiativeInput.value = ""
+            else
+                initiativeInput.value = trackerData.initiative;
+            nameInput.value = trackerData.name;
+            if (trackerData.ac==null)
+                acInput.value = "";
+            else
+                acInput.value = trackerData.ac;
+            if (trackerData.hp==null)
+            {
+                currentHpInput.value = "";
+                maxHpInput.value = "";
+            }
+            else
+            {
+                currentHpInput.value = trackerData.hp.split("/")[0];
+                maxHpInput.value = trackerData.hp.split("/")[1];
+            }
+            if (trackerData.status==null)
+                statusInput.value = "No status";
+            else
+                statusInput.value = trackerData.status;
+            if (trackerData.group==null)
+                groupIdInput.value = "";
+            else
+                groupIdInput.value = trackerData.group;
+        }
+        let tmpInitDiv = document.createElement("div");
+        tmpInitDiv.className = "initiative";
+        if (trackerData.initiative==null)
+            tmpInitDiv.innerText = "";
+        else
+            tmpInitDiv.innerText = trackerData.initiative;
+        tmpTrackerDiv.append(tmpInitDiv);
+        let tmpNameDiv = document.createElement("div");
+        tmpNameDiv.className = "trackerName";
+        tmpNameDiv.innerText = trackerData.name;
+        tmpTrackerDiv.append(tmpNameDiv);
+        let bottomRow = document.createElement("div");
+        bottomRow.className = "trackerBottomRow";
+            let trackerArmorSection = document.createElement("div");
+            trackerArmorSection.className = "trackerArmorSection";
+                let trackerArmorClass = document.createElement("div");
+                trackerArmorClass.className = "trackerArmorClass";
+                if (trackerData.ac==null)
+                    trackerArmorClass.innerText = "-";
+                else
+                    trackerArmorClass.innerText = trackerData.ac;
+                trackerArmorSection.append(trackerArmorClass);
+                let trackerArmorP = document.createElement("p");
+                trackerArmorP.innerText = "AC";
+                trackerArmorSection.append(trackerArmorP);
+            bottomRow.append(trackerArmorSection);
+        
+            let trackerHitpointsSection = document.createElement("div");
+            trackerHitpointsSection.className = "trackerHitpointsSection";
+                let trackerDamageButton = document.createElement("button");
+                trackerDamageButton.className = "trackerDamageButton";
+                let trackerDamageImage = document.createElement("img");
+                trackerDamageImage.style = "height: 1.1vw;";
+                trackerDamageImage.src = "images/swap_vert-24px.png";
+                trackerDamageImage.onclick = function(e)
+                {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    let damage = parseInt(prompt("Enter the damage to reduct from this token: "));
+                    if (damage!=null)
+                    {
+                        if (trackerData.hp!=null)
+                        {
+                            RequestServer({c: "editToken", id: trackerData.id, hp: (trackerData.hp.split("/")[0]-damage).toString()+"/"+trackerData.hp.split("/")[1]});
+                        }
+                    }
+                }
+                trackerDamageButton.append(trackerDamageImage);
+                trackerHitpointsSection.append(trackerDamageButton);
+                let trackerHitpoints = document.createElement("input");
+                trackerHitpoints.type = "text";
+                trackerHitpoints.className = "trackerHitpoints";
+                if (trackerData.hp!=null)
+                    trackerHitpoints.value = trackerData.hp.split("/")[0]
+                else
+                    trackerHitpoints.value = "-";
+                trackerHitpointsSection.append(trackerHitpoints);
+                let slashP = document.createElement("p");
+                slashP.innerText = "/";
+                trackerHitpointsSection.append(slashP);
+                let trackerHitpointsMax = document.createElement("div");
+                trackerHitpointsMax.className = "trackerHitpointsMax";
+                if (trackerData.hp!=null)
+                    trackerHitpointsMax.innerText = trackerData.hp.split("/")[1]
+                else
+                    trackerHitpointsMax.innerText = "-";
+                trackerHitpointsSection.append(trackerHitpointsMax);
+                let hpP = document.createElement("p");
+                hpP.innerText = "HP";
+                trackerHitpointsSection.append(hpP);
+            bottomRow.append(trackerHitpointsSection);
+        tmpTrackerDiv.append(bottomRow);
+        initiativeTrackerDiv.append(tmpTrackerDiv);
+        let trackerHR = document.createElement("hr");
+        trackerHR.className = "initiativeHR";
+        initiativeTrackerDiv.append(trackerHR);
+    }
 }
 //#endregion
 
@@ -583,6 +869,87 @@ document.body.ondrop = async function(e)
 //#endregion
 
 //#region Main event handlers
+function updateSelectedTokenData()
+{
+    for (let i in mapData.tokens)
+        if (mapData.tokens[i].id == selectedToken)
+            selectedTokenData = mapData.tokens[i];
+}
+
+initiativeInput.onchange = function() {
+    updateSelectedTokenData();
+    if (mapData.tokenList.includes(selectedTokenData.image))
+        RequestServer({c: "editToken", id: selectedToken, initiative: parseFloat(initiativeInput.value)});
+    else
+        if (isDM)
+            RequestServer({c: "editToken", id: selectedToken, initiative: parseFloat(initiativeInput.value)});
+}
+
+nameInput.onchange = function() {
+    updateSelectedTokenData();
+    if (mapData.tokenList.includes(selectedTokenData.image))
+        RequestServer({c: "editToken", id: selectedToken, name: nameInput.value});
+    else
+        if (isDM)
+            RequestServer({c: "editToken", id: selectedToken, name: nameInput.value});
+}
+
+acInput.onchange = function() {
+    updateSelectedTokenData();
+    if (mapData.tokenList.includes(selectedTokenData.image))
+        RequestServer({c: "editToken", id: selectedToken, ac: acInput.value});  
+    else
+        if (isDM)
+            RequestServer({c: "editToken", id: selectedToken, ac: acInput.value});  
+}
+
+currentHpInput.onchange = function() {
+    updateSelectedTokenData();
+    if (mapData.tokenList.includes(selectedTokenData.image))
+        RequestServer({c: "editToken", id: selectedToken, hp: currentHpInput.value+"/"+maxHpInput.value});
+    else
+        if (isDM)
+            RequestServer({c: "editToken", id: selectedToken, hp: currentHpInput.value+"/"+maxHpInput.value});
+}
+
+maxHpInput.onchange = function() {
+    updateSelectedTokenData();
+    if (mapData.tokenList.includes(selectedTokenData.image))
+        RequestServer({c: "editToken", id: selectedToken, hp: currentHpInput.value+"/"+maxHpInput.value});
+    else
+        if (isDM)
+            RequestServer({c: "editToken", id: selectedToken, hp: currentHpInput.value+"/"+maxHpInput.value});
+}
+
+statusInput.onchange = function() {
+    updateSelectedTokenData();
+    if (mapData.tokenList.includes(selectedTokenData.image))
+        RequestServer({c:"editToken", id: selectedToken, status: statusInput.value});
+    else
+        if (isDM)
+            RequestServer({c:"editToken", id: selectedToken, status: statusInput.value});
+}
+
+groupIdInput.onchange = function() {
+    let newGroupId = parseInt(groupIdInput.value);
+    updateSelectedTokenData();
+    if (mapData.tokenList.includes(selectedTokenData.image))
+    {
+        if (newGroupId)
+            RequestServer({c:"editToken", id: selectedToken, group: newGroupId});
+        else
+            RequestServer({c:"editToken", id: selectedToken, group: "reset"});
+    }
+    else
+        if (isDM)
+        {
+            if (newGroupId)
+                RequestServer({c:"editToken", id: selectedToken, group: newGroupId});
+            else
+                RequestServer({c:"editToken", id: selectedToken, group: "reset"});
+        }
+}
+
 document.body.addEventListener("mouseup", function(e) {
     if (e.button==0)
     {
@@ -615,6 +982,7 @@ offsetYInput.onchange = function() {
 }
 
 shapeMap.addEventListener("mousedown", function(e) {
+    selectedToken = -1;
     if (e.button==0)
     {
         if (isPlacingBlocker)
@@ -714,6 +1082,11 @@ shapeMap.addEventListener("mouseup", function(e) {
             UpdateMapData();
         }    
     }
+})
+
+shapeMap.addEventListener("dragstart", function(e) {
+    e.preventDefault();
+    e.stopPropagation();
 })
 
 map.addEventListener("contextmenu", function(e) {
@@ -826,33 +1199,38 @@ function DisplayContextMenu(e)
             }
             DisplaySubMenu(e, subMenu);
         }},
-        {text: "Draw Circle", description: "Draws a circle at the position where the context menu was opened", hasSubMenu: false, callback: function() {
-            let radiusInput = parseFloat(prompt("Please enter the desired radius in feet for your circle(s)"));
-            if (radiusInput!=null)
-            {
-                circleMarkers.radius = (radiusInput)/feetPerSquare*gridSize;
-                circleMarkers.x = (e.pageX+board.scrollLeft);
-                circleMarkers.y = (e.pageY+board.scrollTop);
-                RequestServer({c: "addDrawing", shape: "circle", x: circleMarkers.x, y: circleMarkers.y, radius: circleMarkers.radius, trueColor: shapeColor});
-                UpdateMapData();
-                CloseMenu();
-                CloseSubMenu();
-            }    
-        }},
-        {text: "Draw Square", hasSubMenu: false, description: "Upon clicking this button click somewhere else to define the bottom right corner", callback: function() {
-            squareMarkers.x = (e.pageX+board.scrollLeft);
-            squareMarkers.y = (e.pageY+board.scrollTop);
-            isPlacingSquare = true;
-        }},
-        {text: "Draw Line", hasSubMenu: false, callback: function() {
-            let rangeInput = parseFloat(prompt("Please enter the desired range of the line in feet, leave blank for no range limit"));
-            if (rangeInput!=null)
-                lineMarkers.range = rangeInput/feetPerSquare*gridSize;
-            else
-                lineMarkers.range = 999999;
-            lineMarkers.x = (e.pageX+board.scrollLeft);
-            lineMarkers.y = (e.pageY+board.scrollTop);
-            isPlacingLine = true;
+        {text: "Draw Shape", description: "Pick a shape to draw", hasSubMenu: true, callback: function() {
+            let subMenuOptions = [
+                {text: "Draw Circle", callback: function() {
+                    let radiusInput = parseFloat(prompt("Please enter the desired radius in feet for your circle(s)"));
+                    if (radiusInput!=null)
+                    {
+                        circleMarkers.radius = (radiusInput)/feetPerSquare*gridSize;
+                        circleMarkers.x = (e.pageX+board.scrollLeft);
+                        circleMarkers.y = (e.pageY+board.scrollTop);
+                        RequestServer({c: "addDrawing", shape: "circle", x: circleMarkers.x, y: circleMarkers.y, radius: circleMarkers.radius, trueColor: shapeColor});
+                        UpdateMapData();
+                        CloseMenu();
+                        CloseSubMenu();
+                    }    
+                }},
+                {text: "Draw Square", callback: function() {
+                    squareMarkers.x = (e.pageX+board.scrollLeft);
+                    squareMarkers.y = (e.pageY+board.scrollTop);
+                    isPlacingSquare = true;
+                }},
+                {text: "Draw Line", callback: function() {
+                    let rangeInput = parseFloat(prompt("Please enter the desired range of the line in feet, leave blank for no range limit"));
+                    if (rangeInput!=null)
+                        lineMarkers.range = rangeInput/feetPerSquare*gridSize;
+                    else
+                        lineMarkers.range = 999999;
+                    lineMarkers.x = (e.pageX+board.scrollLeft);
+                    lineMarkers.y = (e.pageY+board.scrollTop);
+                    isPlacingLine = true;
+                }}
+            ];
+            DisplaySubMenu(e, subMenuOptions);
         }}
     ]
     let DMoptions = [
@@ -1092,6 +1470,19 @@ async function RequestServer(data)
     return JSON.parse(content);
 }
 
+function dynamicSort(property) {
+    let sortOrder = 1;
+    if(property[0] === "-") {
+        sortOrder = -1;
+        property = property.substr(1);
+    }
+    return function (a,b) {
+        let aI = parseInt(a[property]);
+        let bI = parseInt(b[property]);
+        let result = (aI < bI) ? -1 : (aI > bI) ? 1 : 0;
+        return result * sortOrder;
+    }
+}
 //#endregion
 
 //#region Cookies

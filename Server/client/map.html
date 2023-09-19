@@ -16,9 +16,9 @@
         </div>
         <div id="sideMenu">
             <div id="toggleButtons">
-                <button id="toggleGridButton"><object type="image/svg+xml" data="images/grid_on-24px.svg"></object></button>
-                <button id="toggleSnapButton"><object type="image/svg+xml" data="images/magnet-solid.svg"></object></button>
-                <button id="toggleSettingsButton" class="dmOnly"><object type="image/svg+xml" data="images/settings-24px.svg"></object></button>
+                <button id="toggleGridButton" title="Toggle Grid"><object type="image/svg+xml" data="images/grid_on-24px.svg"></object></button>
+                <button id="toggleSnapButton" title="Toggle Grid Snapping"><object type="image/svg+xml" data="images/magnet-solid.svg"></object></button>
+                <button id="toggleSettingsButton" title="More Settings" class="dmOnly"><object type="image/svg+xml" data="images/settings-24px.svg"></object></button>
             </div>
             <div id="mapOptionsMenu">
                 <label for="mapSource">Current map image file:</label>
@@ -34,6 +34,46 @@
             </div>
             <p style="margin: 0px; font-size: 1vw;">Draw Color:</p>
             <input type="color" id="shapeColorPicker" value="#ff0000"></input>
+            <div id="initiativeTracker">
+                <h3 style="margin-bottom: 0.3vw;">Initiative Tracker</h3>
+                <div class="initiativeItem">
+                    <div class="initiative">14</div>
+                    <div class="trackerName">Fauna</div>
+                    <div class="trackerBottomRow">
+                        <div class="trackerArmorSection">
+                            <div class="trackerArmorClass">19</div>
+                            <p>AC</p>
+                        </div>
+                        <div class="trackerHitpointsSection">
+                            <button class="trackerDamageButton"><object type="image/svg+xml" data="images/swap_vert-24px.svg"></object></button>
+                            <input type="text" class="trackerHitpoints">
+                            <p>/</p>
+                            <div class="trackerHitpointsMax">63</div>
+                            <p>HP</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="detailsScreen">
+                <h3 style="grid-area: title; margin: 0px;"></h3>
+                <div id="detailsIcon"><img src="./public/tokens/Fauna.png"></div>
+                <object id="hitpointsIcon" type="image/svg+xml" data="images/favorite-24px.svg"></object>
+                <div id="detailsHitpoints">
+                    <input id="currentHitpoints" autocomplete="off">
+                    <p>/</p>
+                    <input id="maxHitpoints" autocomplete="off">
+                </div>
+                <object id="armorIcon" type="image/svg+xml" data="images/security-24px.svg"></object>
+                <input id="armorClass" autocomplete="off">
+                <p style="grid-area: name; margin: 0px;">Name:</p>
+                <input type="text" id="detailsNameInput" autocomplete="off">
+                <p style="grid-area: status; margin: 0px;">Status:</p>
+                <input type="text" id="detailsStatusInput" autocomplete="off">
+                <p style="grid-area: initiative; margin: 0px;">Initiative:</p>
+                <p style="grid-area: group; margin: 0px;">Group:</p>
+                <input type="text" id="detailsInitiative" class="detailsBottom" autocomplete="off">
+                <input type="text" id="detailsGroup" class="detailsBottom" autocomplete="off">
+            </div>
         </div>
         <script>
             let hbMap = document.getElementById("hitboxMap");
