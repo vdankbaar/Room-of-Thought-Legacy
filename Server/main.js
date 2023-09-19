@@ -276,45 +276,28 @@ app.post("/api", function(request, response) {
             response.send("[true]");
             break;
         
-        case "rotateLeft":
+        case "rotateDeg":
             loadCurrentMap();
             for (let i in currentMap.tokens)
             {
                 let currentToken = currentMap.tokens[i];
                 if (currentToken.id == request.body.id)
                 {
+                    let inputAngle = request.body.angle * -Math.PI / 180;
                     for (let j in currentMap.tokens)
                     {
                         if (j != i && currentMap.tokens[j].group == currentMap.tokens[i].group)
                         {
-                            let dx = currentMap.tokens[j].x - currentMap.tokens[i].x;
-                            let dy = currentMap.tokens[j].y - currentMap.tokens[i].y;
-                            currentMap.tokens[j].x = currentMap.tokens[i].x + dy;
-                            currentMap.tokens[j].y = currentMap.tokens[i].y - dx;
-                            moveLinkedShapes(currentMap.tokens[j]);
-                        }
-                    }
-                }
-            }
-            saveCurrentMap();
-            response.send("[true]");
-            break;
+                            let oldX = currentMap.tokens[j].x - currentToken.x;
+                            let oldY = currentMap.tokens[j].y - currentToken.y;
+                            let radius = Math.sqrt(Math.pow(oldY, 2)+Math.pow(oldX, 2));
 
-        case "rotateRight":
-            loadCurrentMap();
-            for (let i in currentMap.tokens)
-            {
-                let currentToken = currentMap.tokens[i];
-                if (currentToken.id == request.body.id)
-                {
-                    for (let j in currentMap.tokens)
-                    {
-                        if (j != i && currentMap.tokens[j].group == currentMap.tokens[i].group)
-                        {
-                            let dx = currentMap.tokens[j].x - currentMap.tokens[i].x;
-                            let dy = currentMap.tokens[j].y - currentMap.tokens[i].y;
-                            currentMap.tokens[j].x = currentMap.tokens[i].x - dy;
-                            currentMap.tokens[j].y = currentMap.tokens[i].y + dx;
+                            let currentAngle = Math.atan2(oldY, oldX);
+                            console.log(currentAngle);
+                            let newX = Math.cos(currentAngle + inputAngle) * radius;
+                            let newY = Math.sin(currentAngle + inputAngle) * radius;
+                            currentMap.tokens[j].x = newX + currentToken.x;
+                            currentMap.tokens[j].y = currentToken.y + newY;
                             moveLinkedShapes(currentMap.tokens[j]);
                         }
                     }

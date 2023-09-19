@@ -5,7 +5,7 @@ let mapUpdateInterval = 1000;
 let offsetX = 0;
 let offsetY = 0;
 let GridColor = "#222222FF";
-let shapeColor = "#FF0000";
+let shapeColor = "#FF0000FF";
 let blockerOutlineColor = "violet";
 let shapeWidth = 2;
 let hitboxMultiplier = 3;
@@ -60,6 +60,12 @@ let lineMarkers = {x: 0, y: 0, destX: 0, destY: 0, range: 100};
 let coneMarkers = {x: 0, y: 0, range: 100, tokenSize: 1};
 let bulkInitSettings = {};
 let isDM = false;
+let shapeColorCookie = getCookie("shapeColor");
+if (shapeColorCookie == "") {
+    setCookie("shapeColor", shapeColor);
+} else {
+    shapeColor = shapeColorCookie;
+}
 let clientName = getCookie("playerName");
 if (clientName == "")
     window.location.href = "/";
@@ -119,6 +125,7 @@ async function Setup() {
     mapCanvas = map.getContext("2d");
     hitboxCanvas = hitboxMap.getContext("2d");
     shapeCanvas = shapeMap.getContext("2d");
+    colorPicker.value = shapeColor.substr(0, shapeColor.length-2);
     await updateMapData(true);
     if (autoUpdate)
     {
@@ -295,16 +302,20 @@ detailsIcon.onclick = function() {
 
 let colorPicker = document.getElementById("shapeColorPicker");
 colorPicker.onchange = function() {
-    let transparancy = parseInt(prompt("Please enter the the desired transparancy level (0-255): ", "255"));
-    if (!isNaN(transparancy))
+    let transparacyText = prompt("Please enter the the desired transparancy level (0-255): ", "255");
+    if (transparacyText!=null)
     {
-        shapeColor = colorPicker.value + transparancy.toString(16);
+        let transparancy = parseInt(transparacyText);
+        if (!isNaN(transparancy))
+        {
+            shapeColor = colorPicker.value + transparancy.toString(16);
+            setCookie("shapeColor", shapeColor);
+        }
+        else
+        {
+            colorPicker.value = shapeColor.substr(0, shapeColor.length-2);
+        }
     }
-    else
-    {
-        colorPicker = shapeColor.substr(0, shapeColor.length-2);
-    }
-    
 }
 
 document.getElementById("importMap").onclick = function() {
@@ -1121,7 +1132,6 @@ function createToken(token)
             showDetailsScreen();
             selectedToken = token.id;
             selectedBlocker = -1;
-            drawTokens();
             if (mapData.usePolyBlockers)
             {
                 drawPolyBlockers()
@@ -1130,35 +1140,30 @@ function createToken(token)
             {
                 drawBlockers();
             }
+            if (mapData.dmTokenList.includes(token.image))
+            { detailsIcon.src = "public/dmTokens/" + token.image; }
+            if (mapData.tokenList.includes(token.image))
+            { detailsIcon.src = "public/tokens/" + token.image; }
+            if (token.image==null)
+            { detailsIcon.src = "public/blankToken.png"; }
+            if (CheckTokenPermission(token))
+            {
+                LoadTokenData();
+            }
+            else
+            {
+                nameInput.value = "DM only!";
+                maxHpInput.value = "";
+                currentHpInput.value = "";
+                statusInput.value = token.status;
+                initiativeInput.value = "";
+                groupIdInput.value = "";
+                acInput.value = "";
+                noteArea.value = "";
+            }
+            drawTokens();
+            updateTracker();
         }
-    })
-
-    imageElement.addEventListener("click", function() {
-        showDetailsScreen();
-        selectedToken = token.id;
-        selectedBlocker = -1;
-        if (mapData.dmTokenList.includes(token.image))
-        { detailsIcon.src = "public/dmTokens/" + token.image; }
-        if (mapData.tokenList.includes(token.image))
-        { detailsIcon.src = "public/tokens/" + token.image; }
-        if (token.image==null)
-        { detailsIcon.src = "public/blankToken.png"; }
-        if (CheckTokenPermission(token))
-        {
-            LoadTokenData();
-        }
-        else
-        {
-            nameInput.value = "DM only!";
-            maxHpInput.value = "";
-            currentHpInput.value = "";
-            statusInput.value = token.status;
-            initiativeInput.value = "";
-            groupIdInput.value = "";
-            acInput.value = "";
-            noteArea.value = "";
-        }
-        updateMapData(true);
     })
 
     imageElement.addEventListener("dragstart", function(e) {
@@ -1353,17 +1358,25 @@ function createToken(token)
             {
                 menuOptions.push({text: "Group options", hasSubMenu: true, callback: async function() {
                     let subMenuOptions = [
-                        {text: "Rotate group left", callback: function() {
-                            requestServer({c:"rotateLeft", id: token.id});
+                        {text: "Rotate left 90°", callback: function() {
+                            requestServer({c:"rotateDeg", id: token.id, angle: 90});
                             updateMapData();
                         }},
-                        {text: "Rotate group right", callback: function() {
-                            requestServer({c:"rotateRight", id: token.id});
+                        {text: "Rotate right 90°", callback: function() {
+                            requestServer({c:"rotateDeg", id: token.id, angle: -90});
                             updateMapData();
                         }},
-                        {text: "Unlink token", callback: function() {
-                            requestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: token.layer, group: ""})
+                        {text: "Rotate right 180°", callback: function() {
+                            requestServer({c:"rotateDeg", id: token.id, angle: 180});
                             updateMapData();
+                        }},
+                        {text: "Rotate by °", callback: function() {
+                            let Angle = parseFloat(prompt("Enter the amount of degrees to rotate the group by:"));
+                            if (!isNaN(Angle))
+                            {
+                                requestServer({c:"rotateDeg", id: token.id, angle: Angle});
+                                updateMapData();
+                            }
                         }}
                     ];
                     if (isDM)
@@ -1596,7 +1609,7 @@ function createTracker(trackerData)
                 let trackerDamageImage = document.createElement("img");
                 trackerDamageImage.style = "height: 1.1vw;";
                 trackerDamageImage.src = "images/swap_vert-24px.png";
-                trackerDamageButton.onclick = function(e)
+                trackerDamageButton.onclick = async function(e)
                 {
                     e.preventDefault();
                     e.stopPropagation();
@@ -1605,7 +1618,8 @@ function createTracker(trackerData)
                     {
                         if (trackerData.hp != null)
                         {
-                            requestServer({c: "editToken", id: trackerData.id, hp: (trackerData.hp.split("/")[0] - damage).toString() + "/" + trackerData.hp.split("/")[1]});
+                            await requestServer({c: "editToken", id: trackerData.id, hp: (trackerData.hp.split("/")[0] - damage).toString() + "/" + trackerData.hp.split("/")[1]});
+                            updateMapData();
                         }
                     }
                 }
@@ -1841,6 +1855,20 @@ document.getElementById("switchBlockerTypeButton").onclick = function() {
     requestServer({c:"switchBlockerType"});
     updateMapData(true);
 }
+
+document.getElementById("hitpointsIcon").onclick = async function() {
+    updateSelectedTokenData();
+    let damage = parseInt(prompt("Enter the damage to reduct from this token: "));
+    if (!isNaN(damage))
+    {
+        if (selectedTokenData.hp != null)
+        {
+            await requestServer({c: "editToken", id: selectedToken, hp: (selectedTokenData.hp.split("/")[0] - damage).toString() + "/" + selectedTokenData.hp.split("/")[1]});
+            updateMapData();
+        }
+    }
+}
+
 
 bulkTokenConfirm.onclick = function() {
     let tokensToPlace = parseInt(bulkTokenAmountInput.value);
@@ -2374,7 +2402,7 @@ function displayContextMenu(e)
             let subMenuOptions = [
                 {text: "Draw Circle", callback: function() {
                     let radiusInput = parseFloat(prompt("Please enter the desired radius in feet for your circle(s)"));
-                    if (radiusInput != null)
+                    if (!isNaN(radiusInput))
                     {
                         circleMarkers.radius = radiusInput / feetPerSquare * gridSize;
                         circleMarkers.x = e.pageX + board.scrollLeft;
@@ -2392,19 +2420,23 @@ function displayContextMenu(e)
                     drawCanvas();
                 }},
                 {text: "Draw Line", callback: function() {
-                    let rangeInput = parseFloat(prompt("Please enter the desired range of the line in feet, leave blank for no range limit"));
-                    if (rangeInput != null)
+                    let rangeTextInput = prompt("Please enter the desired range of the line in feet, leave blank for no range limit");
+                    if (rangeTextInput!=null)
                     {
-                        lineMarkers.range = rangeInput / feetPerSquare * gridSize;
+                        let rangeInput = parseFloat(rangeTextInput);
+                        if (rangeInput != null)
+                        {
+                            lineMarkers.range = rangeInput / feetPerSquare * gridSize;
+                        }
+                        else
+                        {
+                            lineMarkers.range = 999999;
+                        }
+                        lineMarkers.x = e.pageX + board.scrollLeft;
+                        lineMarkers.y = e.pageY + board.scrollTop;
+                        isPlacingLine = true;
+                        drawCanvas();
                     }
-                    else
-                    {
-                        lineMarkers.range = 999999;
-                    }
-                    lineMarkers.x = e.pageX + board.scrollLeft;
-                    lineMarkers.y = e.pageY + board.scrollTop;
-                    isPlacingLine = true;
-                    drawCanvas();
                 }}
             ];
             displaySubMenu(e, subMenuOptions);
