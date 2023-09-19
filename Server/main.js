@@ -1,5 +1,5 @@
 //Mocht port 80 geblokeerd zijn door windows, voer de command 'net stop http' uit in een shell met admin of run unblock.bat in een shell met admin
-let port = 80;
+let port = 4567;
 
 const fs = require('fs');
 const pathLib = require('path');
@@ -245,9 +245,9 @@ app.post("/api", function(request, response) {
             loadCurrentMap();
             let newX = parseFloat(request.body.x);
             let newY = parseFloat(request.body.y);
-            if (isNaN(newX))
+            if (isNaN(newX) || newX < 0)
                 newX = 0;
-            if (isNaN(newY))
+            if (isNaN(newY) || newY < 0)
                 newY = 0;
             request.body.x = newX;
             request.body.y = newY;

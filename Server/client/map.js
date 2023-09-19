@@ -9,6 +9,14 @@ let feetPerSquare = 5.0;
 let lanternColor = "#FFBB0020";
 
 
+var browser = "";
+if(navigator.userAgent.indexOf("Chrome") != -1 )
+    browser = "c";
+else if (navigator.userAgent.indexOf("Firefox") != -1 )
+    browser = "f";
+else
+    alert("Room of thought is only supported for firefox and chrome. Some features may be unavailable!");
+
 let offsetX = 0;
 let offsetY = 0;
 let GridColor = "#222222FF";
@@ -77,15 +85,16 @@ let antiBlockerContext;
 let lightingContext;
 let mapData;
 let gridSize;
-let tokenDragOffset = {x: 0, y: 0};
 let blockerDragOffset = {x: 0, y: 0};
 let shapeDragOffset = {x: 0, y: 0};
+
 let blockerMarkers = {x: 0, y: 0, width: 0, height: 0};
 let circleMarkers = {x: 0, y: 0, radius: 0};
 let squareMarkers = {x: 0, y: 0, width: 0, height: 0};
 let lineMarkers = {x: 0, y: 0, destX: 0, destY: 0, range: 100};
 let thickLineMarkers = {x: 0, y: 0, range: 100, linkId: -1};
 let coneMarkers = {x: 0, y: 0, range: 100, tokenSize: 1};
+
 let bulkInitSettings = {};
 let isDM = false;
 let shapeColorCookie = getCookie("shapeColor");
@@ -122,11 +131,8 @@ let resizingSideMenu = false;
 let controlPressed = false;
 let placingBulkOrigin = false;
 let baseTokenIndex = 4;
-let draggingToken = -1;
 let shapeDragStartAngle = 0;
 let polyDragOffset = {x: 0, y: 0};
-let draggedPolygonId;
-let selectedVertHandle = -1;
 let alignToolStep = 0;
 let gridToolData = {startX: 0, startY: 0, gridX: 0, gridY: 0, endX: 0, endY: 0, }
 let quickPolyBlockerMode = false;
@@ -281,7 +287,6 @@ async function updateMapData(force)
             selectedToken = -1;
             selectedBlocker = -1;
             selectedShapeId = -1;
-            selectedVertHandle = -1;
             detailsScreen.style.display = "none";
             loadedMap.src = "/public/maps/" + mapData.map;
             loadedMap.onload = function()
@@ -326,6 +331,75 @@ function returnToken(id) {
     }
 }
 
+//#region Drag system
+let draggableElements = [];
+function draggableElement(element, followMouse, pickupElement, dropElement, moveElement) {
+    let offset = {x: 0, y: 0};
+    element.draggable = false;
+    element.setAttribute("dragging", 0);
+    element.addEventListener("mousedown", function(e) {
+        if (e.button == 0) {
+            e.preventDefault();
+            element.style.cursor = "grabbing";
+            element.style.userSelect = "none";
+            draggableElements.push(element);
+            element.setAttribute("dragging", 1);
+            offset.x = (e.pageX)/(1+extraZoom/20) - element.offsetLeft;
+            offset.y = (e.pageY)/(1+extraZoom/20) - element.offsetTop;
+            if (pickupElement)
+                pickupElement(e, offset);
+        }
+    });
+
+    element.addEventListener("release", function(e) {
+        element.style.cursor = "";
+        element.style.userSelect = "";
+        draggableElements.splice(draggableElements.indexOf(element), 1);
+        if (dropElement)
+            dropElement(e.detail.event, offset);
+    });
+
+    element.addEventListener("followMouse", function(e) {
+        if (followMouse) {
+            element.style.left = ((e.detail.event.pageX)/(1+extraZoom/20) - offset.x).toString()+"px";
+            element.style.top = ((e.detail.event.pageY)/(1+extraZoom/20) - offset.y).toString()+"px";
+        }
+        if (moveElement)
+            moveElement(e.detail.event, offset);
+    })
+}
+
+let draggingElement = false;
+window.addEventListener("mousemove", function(e) {
+    draggingElement = false;
+    for (let element of draggableElements) {
+        if (element.getAttribute("dragging")=="1")
+        {
+            draggingElement = true
+            element.dispatchEvent(new CustomEvent("followMouse", {
+                "detail": {"event": e}
+            }));
+        }
+    }
+    if (draggingElement)
+        e.preventDefault();
+});
+
+window.addEventListener("mouseup", function(e) {
+    if (e.button == 0) {
+        for (let element of draggableElements) {
+            if (element.getAttribute("dragging")=="1")
+            {
+                element.setAttribute("dragging", 0);
+                element.dispatchEvent(new CustomEvent("release", {
+                    "detail": {"event": e}
+                }));
+            }
+        }
+    }
+});
+//#endregion
+
 //#region Portal stuff
 function setPortal(portalID)
 {
@@ -337,20 +411,6 @@ function setPortal(portalID)
 //#endregion
 
 //#region Custom zoom
-var browser = "";
-if(navigator.userAgent.indexOf("Chrome") != -1 )
-{
-    browser = "c";
-}
-else if (navigator.userAgent.indexOf("Firefox") != -1 )
-{
-    browser = "f";
-}
-else
-{
-    alert("Room of thought is only supported for firefox and chrome. Some features may be unavailable!");
-}
-
 let extraZoom = 0;
 window.addEventListener("wheel", function(e) {
     if (e.ctrlKey)
@@ -504,6 +564,11 @@ offsetYInput.onchange = async function() {
 //#region Drawing functions
 function drawCanvas(skipMap, force)
 {
+    for (let [i, element] of draggableElements.entries()) {
+        if (!document.body.contains(element)) {
+            draggableElements.splice(i, 1);
+        }
+    }
     newWallHandles.innerHTML = "";
     polyBlockers.innerHTML = '';
     polyBlockerHandles.innerHTML = '';
@@ -620,7 +685,6 @@ function drawVertexLine(shape)
     hitboxCanvas.stroke();
     if (selectedShapeId == shape.id)
     {
-        let pickedUpHandle = -1;
         for (let i = 0; i < shape.points.length; i++)
         {
             let handleContainer = document.createElement("div");
@@ -632,20 +696,18 @@ function drawVertexLine(shape)
             handle.draggable = true;
             handle.style.left = "-0.25vw";
             handle.style.top = "-0.25vw";
-            handle.addEventListener("mousedown", function(e) {
-                if (e.button == 0)
-                {
-                    pickedUpHandle = i;
+            draggableElement(handle, true, null,
+                async function(e) {
+                    if (((e.pageX + viewport.scrollLeft)/(1+extraZoom/20))!=shape.x && ((e.pageY + viewport.scrollTop)/(1+extraZoom/20))!=shape.y)
+                    {
+                        shape.points[i].x = ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
+                        shape.points[i].y = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
+                        await requestServer({c:"editDrawing", id: shape.id, points: shape.points});
+                        updateMapData();
+                    }
                 }
-            });
-    
-            handle.addEventListener("mouseup", function(e) {
-                if (e.button == 0)
-                {
-                    pickedUpHandle = -1;
-                }
-            })
-    
+            );
+
             handle.addEventListener("contextmenu", function(e) {
                 e.preventDefault();
                 let menuOptions = [
@@ -664,30 +726,9 @@ function drawVertexLine(shape)
                 ];
                 displayMenu(e, menuOptions);
             });
-    
-            handle.addEventListener("dragover", function(e) {
-                e.preventDefault();
-            });
-    
-            handle.addEventListener("dragend", function(e) {
-                pickedUpHandle = -1;
-            });
-    
             handleContainer.appendChild(handle);
             shapeHandles.appendChild(handleContainer);
         }      
-        window.addEventListener("drop", async function(e) {
-            if (pickedUpHandle!=-1)
-            {
-                if (((e.clientX + viewport.scrollLeft)/(1+extraZoom/20))!=shape.x && ((e.clientY + viewport.scrollTop)/(1+extraZoom/20))!=shape.y)
-                {
-                    shape.points[pickedUpHandle].x = ((e.clientX + viewport.scrollLeft)/(1+extraZoom/20));
-                    shape.points[pickedUpHandle].y = ((e.clientY + viewport.scrollTop)/(1+extraZoom/20));
-                    await requestServer({c:"editDrawing", id: shape.id, points: shape.points});
-                    updateMapData();
-                }
-            }
-        });
     }
 }
 
@@ -881,11 +922,16 @@ function drawPolyBlockers() {
                     editHandleContainer.style.top = vert.y;
                     let editHandle = document.createElement("div");
                     editHandle.className = "polyBlockerHandle";
-                    editHandle.draggable = true;
                     editHandle.style.left = "-0.35vw";
                     editHandle.style.top = "-0.35vw";
                     editHandle.title = (j+1).toString();
                     
+                    draggableElement(editHandle, true, function() {},
+                    async function(e) {
+                        await requestServer({c:"editVert", id: selectedBlocker, vertIndex: j, x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20))});
+                        updateMapData();
+                    })
+
                     editHandle.addEventListener("contextmenu", function(e) {
                         e.preventDefault();
                         let menuOptions = [
@@ -907,16 +953,6 @@ function drawPolyBlockers() {
                         ];
                         displayMenu(e, menuOptions);
                     });
-
-                    editHandle.addEventListener("mousedown", function(e) {
-                        if (e.button == 0)
-                            selectedVertHandle = j;
-                    });
-
-                    editHandle.addEventListener("dragover", function(e) {
-                        e.preventDefault();
-                    });
-
                     editHandleContainer.appendChild(editHandle);
                     polyBlockerHandles.appendChild(editHandleContainer);
                 }
@@ -946,12 +982,32 @@ function drawPolyBlockers() {
                     newPolygon.style.strokeDasharray = "4";
                     newPolygon.style.fill = "";
                 }
-                if (quickPolyBlockerMode)
-                    newPolygon.style.pointerEvents = "none";
-                if (blockerEditMode)
+                if (blockerEditMode && !quickPolyBlockerMode)
                 {
                     newPolygon.addEventListener("dragover", function(e) {
                         e.preventDefault();
+                    });
+
+                    draggableElement(newPolygon, true, function(e) {
+                        newPolygon.style.stroke = "violet";
+                        newPolygon.style.strokeDasharray = "4";
+                        polyDragOffset.x = ((e.pageX+ viewport.scrollLeft)/(1+extraZoom/20));
+                        polyDragOffset.y = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
+                        polyBlockerHandles.style.visibility = "hidden";
+                        updateHighlightedToken();
+                        updateTrackerHighlight();
+                    },
+                    async function(e) {
+                        let moveX = -polyDragOffset.x + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20));
+                        let moveY = -polyDragOffset.y + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
+                        if (moveX!=0 && moveY!=0)
+                        {
+                            requestServer({c: "movePolyBlocker", id: currentPolyBlocker.id, offsetX: moveX, offsetY: moveY});
+                            updateMapData();
+                        }
+                    }, 
+                    function(e) {
+                        newPolygon.setAttribute("transform", "matrix(1,0,0,1,"+(-polyDragOffset.x + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20))).toString()+", "+(-polyDragOffset.y + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20))).toString()+")");
                     });
 
                     newPolygon.addEventListener("contextmenu", function(e) {
@@ -969,27 +1025,6 @@ function drawPolyBlockers() {
                         ];
                         displayMenu(e, menuOptions);
                     });
-                    
-                    newPolygon.addEventListener("mousedown", function(e) {
-                        if (e.button == 0)
-                        {
-                            newPolygon.style.stroke = "violet";
-                            newPolygon.style.strokeDasharray = "4";
-                            isDraggingBlocker = true;
-                            drawTokens();
-                            draggedPolygonId = currentPolyBlocker.id;
-                            polyDragOffset.x = ((e.pageX+ viewport.scrollLeft)/(1+extraZoom/20));
-                            polyDragOffset.y = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
-                            polyBlockerHandles.style.visibility = "hidden";
-                        }
-                    });
-                    
-                    window.addEventListener("mousemove", function(e) {
-                        if (isDraggingBlocker && currentPolyBlocker.id == draggedPolygonId)
-                        {
-                            newPolygon.setAttribute("transform", "matrix(1,0,0,1,"+(-polyDragOffset.x + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20))).toString()+", "+(-polyDragOffset.y + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20))).toString()+")");
-                        }
-                    });
                 }
                 else
                     newPolygon.style.pointerEvents = "none";
@@ -1004,25 +1039,15 @@ function drawPolyBlockers() {
                         e.preventDefault();
                     });
 
-                    newPolygon.addEventListener("mousedown", function(e) {
-                        if (e.button==0)
-                        {
-                            isPanning = true;
-                            oldMousePos.x = (e.pageX/(1+extraZoom/20));
-                            oldMousePos.y = (e.pageY/(1+extraZoom/20));
-                            oldScrollPos.x = viewport.scrollLeft;
-                            oldScrollPos.y = viewport.scrollTop;
-                            document.body.style.cursor = "grabbing";
-                            drawCanvas();
-                        }
-                    });
-                    newPolygon.addEventListener("mousemove", function(e) {
-                        if (isPanning)
-                        {
-                            viewport.scrollLeft = oldScrollPos.x - ((e.pageX/(1+extraZoom/20)) - oldMousePos.x);
-                            viewport.scrollTop = oldScrollPos.y - ((e.pageY/(1+extraZoom/20)) - oldMousePos.y);
-                        }
-                    });
+                    draggableElement(newPolygon, false, function(e) {
+                        isPanning = true;
+                        oldMousePos.x = (e.pageX/(1+extraZoom/20));
+                        oldMousePos.y = (e.pageY/(1+extraZoom/20));
+                        oldScrollPos.x = viewport.scrollLeft;
+                        oldScrollPos.y = viewport.scrollTop;
+                        document.body.style.cursor = "grabbing";
+                        drawCanvas();
+                    })
                 }
                 else
                     newPolygon.style.pointerEvents = "none";
@@ -1031,15 +1056,6 @@ function drawPolyBlockers() {
         }
     }
 }
-
-window.addEventListener("drop", async function(e) {
-    if (selectedVertHandle!=-1)
-    {
-        await requestServer({c:"editVert", id: selectedBlocker, vertIndex: selectedVertHandle, x: ((e.clientX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.clientY + viewport.scrollTop)/(1+extraZoom/20))});
-        selectedVertHandle = -1;
-        updateMapData();
-    }
-});
 
 function drawBlockers() 
 {
@@ -1181,7 +1197,6 @@ function drawBlockers()
         updateHighlightedBlocker();
     }
 }
-
 
 function dynamicLighting()
 {
@@ -1330,7 +1345,7 @@ function createWallHandle(wallPointPosition) {
             {text: "Extend from point", hasSubMenu: false, callback: async function() {
                 previousWallPosition.x = wallPointPosition.x;
                 previousWallPosition.y = wallPointPosition.y;
-                dynamicLighting();
+                drawCanvas();
             }}
         ];
         if (previousWallPosition.x != -1 && previousWallPosition.y != -1)
@@ -1368,10 +1383,10 @@ function createWallHandle(wallPointPosition) {
 }
 
 window.addEventListener("drop", async function(e) {
-    let newXPosition = ((e.clientX + viewport.scrollLeft)/(1+extraZoom/20));
-    let newYPosition = ((e.clientY + viewport.scrollTop)/(1+extraZoom/20));
+    let newXPosition = ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20));
+    let newYPosition = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
     if (newXPosition != selectedWallPosition.x && newYPosition != selectedWallPosition.y && selectedWallPosition.y != -1 && selectedWallPosition.x != -1)
-        await requestServer({c:"moveWallPoint", point: {x: selectedWallPosition.x, y: selectedWallPosition.y}, newPoint: {x: ((e.clientX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.clientY + viewport.scrollTop)/(1+extraZoom/20))}});
+        await requestServer({c:"moveWallPoint", point: {x: selectedWallPosition.x, y: selectedWallPosition.y}, newPoint: {x: ((e.pageX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY + viewport.scrollTop)/(1+extraZoom/20))}});
     if (previousWallPosition.x == selectedWallPosition.x && previousWallPosition.y == selectedWallPosition.y && previousWallPosition.x != -1 && previousWallPosition.y != -1) {
         previousWallPosition.x = newXPosition;
         previousWallPosition.y = newYPosition;
@@ -1502,28 +1517,26 @@ function drawTokens()
     {
         if (!token.hidden || (isDM && !playerMode))
         {
-            let imageElement = document.createElement("img");
             if (token.id == selectedToken)
                 LoadTokenData(token);
-    
-            imageElement.setAttribute("tokenid", token.id);
+            let imageElement = document.createElement("img");
             imageElement.src = mapData.tokenList.includes(token.image)?"public/tokens/" + token.image:mapData.dmTokenList.includes(token.image)?"public/dmTokens/" + token.image:"public/blankToken.png";
-            
-            if (isPlacingCone || isPlacingLine || isPlacingSquare)
-                imageElement.style.pointerEvents = "none";
-    
             imageElement.className = "token";
             imageElement.style.top = token.y - (gridSize.y * token.size) / 2 + "px";
             imageElement.style.left = token.x - (gridSize.x * token.size) / 2 + "px";
             imageElement.style.width = (token.size * gridSize.x-GridLineWidth).toString() + "px";
             imageElement.style.height = (token.size * gridSize.y-GridLineWidth).toString() + "px";
-    
             imageElement.style.zIndex = (token.layer + baseTokenIndex).toString();
+
+            if (isPlacingCone || isPlacingLine || isPlacingSquare)
+                imageElement.style.pointerEvents = "none";
+            imageElement.setAttribute("tokenid", token.id);
+
             imageElement.title = token.status;
-            imageElement.draggable = true;
+            let hiddenImage;
             if (token.hidden)
             {
-                let hiddenImage = document.createElement("img");
+                hiddenImage = document.createElement("img");
                 hiddenImage.src = "images/hidden.png";
                 hiddenImage.className = "hiddenToken";
                 hiddenImage.style.width = ((token.size * gridSize.x-GridLineWidth) / 3).toString() + "px";
@@ -1534,13 +1547,14 @@ function drawTokens()
                 tokensDiv.appendChild(hiddenImage);
             }
     
+            let linkImage;
             if (mapData.portalData!={} && mapData.portalData[selectedPortal]!=null)
             {
                 for (let link of mapData.portalData[selectedPortal].links)
                 {
                     if (link.id == token.id)
                     {
-                        let linkImage = document.createElement("img");
+                        linkImage = document.createElement("img");
                         let tokenX = Math.round((token.x-mapData.offsetX)/gridSize.x-0.5*token.size);
                         let tokenY = Math.round((token.y-mapData.offsetY)/gridSize.y-0.5*token.size);
                         if (tokenX == (mapData.portalData[selectedPortal].originX+link.x) && tokenY == (mapData.portalData[selectedPortal].originY+link.y))
@@ -1576,12 +1590,13 @@ function drawTokens()
                     }
                 }
             }
-                
+            
+            let concentratingIcon;
             if (token.concentrating)
             {
                 if (!token.dm || (isDM&&!playerMode))
                 {
-                    let concentratingIcon = document.createElement("img");
+                    concentratingIcon = document.createElement("img");
                     concentratingIcon.className = "concentratingText";
                     concentratingIcon.src = "images/literally_copyright.png";
                     tokensDiv.appendChild(concentratingIcon);
@@ -1600,81 +1615,140 @@ function drawTokens()
                     viewport.scrollTop = oldScrollPos.y - ((e.pageY/(1+extraZoom/20)) - oldMousePos.y);
                 }
             })
-            
-            imageElement.addEventListener("dragstart", function(e) {
-                if (!isPanning && (!mapData.groupLock.includes(token.group) || e.ctrlKey))
-                {
-                    if (CheckAntiBlockerPixel(e) || (isDM&&!playerMode))
+
+            imageElement.addEventListener("dragover", function(e) {
+                e.preventDefault();
+            })
+
+
+            draggableElement(imageElement, true,
+                async function(e) {
+                    if (!isPanning && (!mapData.groupLock.includes(token.group) || e.ctrlKey))
                     {
-                        tokenDragOffset.x = token.x - (e.pageX + viewport.scrollLeft)/(1+extraZoom/20);
-                        tokenDragOffset.y = token.y - (e.pageY + viewport.scrollTop)/(1+extraZoom/20);
-                        draggingToken = token.id;
-                        isDraggingToken = true;
-                        if (e.ctrlKey || e.metaKey)
-                            controlPressed = true;
+                        if (CheckAntiBlockerPixel(e) || (isDM&&!playerMode))
+                        {
+                            detailsScreen.style.display = "grid";
+                            selectedToken = token.id;
+                            selectedBlocker = -1;
+                            selectedShapeId = -1;
+                            LoadTokenData(token, true);
+                            if (e.ctrlKey || e.metaKey)
+                                controlPressed = true;
+                            updateHighlightedToken();
+                            updateHighlightedBlocker();
+                            updateTrackerHighlight();
+                            imageElement.style.opacity = "0.7";
+                            board.appendChild(imageElement);
+                            if (concentratingIcon) {
+                                concentratingIcon.style.opacity = "0.7";
+                                board.appendChild(concentratingIcon);
+                            }   
+                            if (linkImage) {
+                                linkImage.style.opacity = "0.7";
+                                board.appendChild(linkImage);
+                            }
+                            if (textHolder) {
+                                textHolder.style.opacity = "0.7";
+                                board.appendChild(textHolder);
+                            }
+                            if (hiddenImage) {
+                                hiddenImage.style.opacity = "0.7";
+                                board.appendChild(hiddenImage);
+                            }
+                            drawTokens();
+                        }
+                        else
+                        {
+                            e.preventDefault();
+                            isPanning = true;
+                            oldMousePos.x = e.pageX;
+                            oldMousePos.y = e.pageY;
+                            oldScrollPos.x = viewport.scrollLeft;
+                            oldScrollPos.y = viewport.scrollTop;
+                            document.body.style.cursor = "grabbing";
+                            updateMapData();
+                        }
                     }
                     else
                     {
                         e.preventDefault();
-                        isPanning = true;
-                        oldMousePos.x = e.pageX;
-                        oldMousePos.y = e.pageY;
-                        oldScrollPos.x = viewport.scrollLeft;
-                        oldScrollPos.y = viewport.scrollTop;
-                        document.body.style.cursor = "grabbing";
-                        updateMapData();
-                        return;
+                        document.body.style.cursor = "";
                     }
-                }
-                else
-                {
-                    e.preventDefault();
-                    document.body.style.cursor = "";
-                }
-                isPanning = false;
-            });
-            
-            imageElement.addEventListener("dragend", function(e) {
-                isDraggingToken = false;
-            });
-    
-            imageElement.addEventListener("mousedown", function(e) {
-                if (e.button==0)
-                {
-                    if (CheckAntiBlockerPixel(e) || (isDM&&!playerMode)&&!playerMode)
+                    isPanning = false;
+                },
+                async function(e, offset) {
+                    if (GridSnap)
                     {
-                        detailsScreen.style.display = "grid";
-                        selectedToken = token.id;
-                        selectedBlocker = -1;
-                        selectedShapeId = -1;
-                        updateTrackerHighlight();
-                        if (mapData.blockerType == 0)
-                            drawBlockers();
-                        if (mapData.blockerType == 1)
-                            drawPolyBlockers();
-                        if (mapData.blockerType == 2)
+                        let tX;
+                        let tY;
+                        if (token.size >= 1)
                         {
-                            //dynamicLighting();
+                            tX = Math.round(((e.pageX)/(1+extraZoom/20) - offset.x + (token.size * gridSize.x)/2 - mapData.offsetX - 0.5 * gridSize.x * token.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * token.size + offsetX + GridLineWidth;
+                            tY = Math.round(((e.pageY)/(1+extraZoom/20) - offset.y + (token.size * gridSize.x)/2 - mapData.offsetY - 0.5 * gridSize.y * token.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * token.size + offsetY + GridLineWidth;
                         }
-                            
-                        LoadTokenData(token, true);
-                        updateTracker();
-                        updateHighlightedToken();
-                        updateHighlightedBlocker();
-                        drawShapes();
+                        else
+                        {
+                            tX = Math.round(((e.pageX + viewport.scrollLeft)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridSize.x * token.size) / (gridSize.x * token.size)) * (gridSize.x * token.size) + 0.5 * gridSize.x * token.size + offsetX + GridLineWidth;
+                            tY = Math.round(((e.pageY + viewport.scrollTop)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridSize.y * token.size) / (gridSize.y * token.size)) * (gridSize.y * token.size) + 0.5 * gridSize.y * token.size + offsetY + GridLineWidth;
+                        }
+                        
+                        if ((tX!= token.x || tY != token.y) && (CheckAntiBlockerPixelPosition(tX, tY) || (isDM&&!playerMode)) && (tX < map.offsetWidth && tY < map.offsetHeight) && tX>0 && tY>0)
+                            await requestServer({c: "moveToken", id: token.id, x: tX, y: tY, bypassLink: !controlPressed});
+                        else
+                            drawTokens();
+                    }
+                    else
+                    {
+                        let tempx = (e.pageX)/(1+extraZoom/20) - offset.x + (token.size * gridSize.x)/2;
+                        let tempy = (e.pageY)/(1+extraZoom/20) - offset.y + (token.size * gridSize.y)/2;
+                        if ((tempx != token.x || tempy != token.y) && (CheckAntiBlockerPixelPosition(tempx, tempy) || (isDM&&!playerMode)) && (tempx < map.offsetWidth && tempy < map.offsetHeight))
+                            await requestServer({c: "moveToken", id: token.id, x: tempx, y: tempy, bypassLink: !controlPressed});
+                        else
+                            drawTokens();
+                    }
+                    updateMapData();
+                    controlPressed = false;
+                    board.removeChild(imageElement);
+                    if (concentratingIcon)
+                        board.removeChild(concentratingIcon);
+                    if (linkImage)
+                        board.removeChild(linkImage);
+                    if (textHolder)
+                        board.removeChild(textHolder);
+                    if (hiddenImage)
+                        board.removeChild(hiddenImage);
+                },
+                function(e, offset) {
+                    if (token.concentrating) {
+                        concentratingIcon.style.top = imageElement.offsetTop + imageElement.offsetHeight/2 + (gridSize.y * token.size) / 2 - concentratingIcon.offsetHeight + "px";
+                        concentratingIcon.style.left = imageElement.offsetLeft + imageElement.offsetWidth/2 - (gridSize.x * token.size) / 2 + "px";
+                    }
+
+                    if (token.hidden) {
+                        hiddenImage.style.top = imageElement.offsetTop + imageElement.offsetHeight/2 - (gridSize.y * token.size) / 2 + "px";
+                        hiddenImage.style.left = imageElement.offsetLeft + imageElement.offsetWidth/2 - (gridSize.x * token.size) / 2  + "px";
+                    }
+
+                    if (!token.image) {
+                        textHolder.style.left = (imageElement.offsetLeft + imageElement.offsetWidth/2 - 0.4*token.size*gridSize.x).toString() + "px";
+                        textHolder.style.top = (imageElement.offsetTop + imageElement.offsetHeight/2 - 0.25*token.size*gridSize.y).toString() + "px";
+                    }
+
+                    if (mapData.portalData!={} && mapData.portalData[selectedPortal]!=null)
+                    {
+                        for (let link of mapData.portalData[selectedPortal].links)
+                        {
+                            if (link.id == token.id)
+                            {
+                                linkImage.style.top = imageElement.offsetTop + imageElement.offsetHeight/2 - (gridSize.y * token.size) / 2 + "px";
+                                linkImage.style.left = imageElement.offsetLeft + imageElement.offsetWidth/2 + (gridSize.x * token.size) / 2 - linkImage.offsetWidth + "px";
+                            }
+                        }
                     }
                 }
-            });
-    
-            imageElement.addEventListener("dragover", function(e) {
-                e.preventDefault();
-            })
-    
-            imageElement.addEventListener("dragend", function(e) {
-                e.preventDefault();
-                document.body.style.cursor = "";
-            });
-    
+            );
+            
+
             imageElement.addEventListener("contextmenu", function(e) {
                 closeMenu();
                 closeSubMenu();
@@ -1688,12 +1762,8 @@ function drawTokens()
                                     let radiusInput = parseFloat(prompt("Please enter the desired radius in feet for your circle(s)"));
                                     if (!isNaN(radiusInput))
                                     {
-                                        let shapeIsVisible = true;
-                                        if (isDM) {
-                                            shapeIsVisible = confirm("Should the shape be visible?");
-                                        }
                                         circleMarkers.radius = (radiusInput + (feetPerSquare / 2) * token.size) / feetPerSquare;
-                                        await requestServer({c: "addDrawing", shape: "circle", link: token.id, x: token.x, y: token.y, radius: circleMarkers.radius, trueColor: shapeColor, visible: shapeIsVisible});
+                                        await requestServer({c: "addDrawing", shape: "circle", link: token.id, x: token.x, y: token.y, radius: circleMarkers.radius, trueColor: shapeColor, visible: isDM ? confirm("Should the shape be visible?") : true});
                                         updateMapData();
                                         closeMenu();
                                         closeSubMenu();
@@ -1828,7 +1898,7 @@ function drawTokens()
                                 if (mapData.blockerType == 2)
                                 {
                                     subMenuOptions.push({text: "View radius", callback: async function() {
-                                        let newRange = parseFloat(prompt("Please enter the new view range (in feet)", !isNaN(parseFloat(token.viewRange)) ? parseFloat(token.viewRange)-2.5*token.size : 10)) + 2.5*token.size;
+                                        let newRange = parseFloat(prompt("Please enter the new view range (in feet)", !isNaN(parseFloat(token.viewRange)) ? parseFloat(token.viewRange)-(feetPerSquare/2)*token.size : 10)) + (feetPerSquare/2)*token.size;
                                         if (!isNaN(newRange))
                                         {
                                             await requestServer({c:"editToken", id: token.id, viewRange: newRange});
@@ -1975,15 +2045,19 @@ function drawTokens()
     
             tokensDiv.appendChild(imageElement);
     
+            let textHolder;
             if (!token.image)
             {
-                let textHolder = document.createElement("div");
+                textHolder = document.createElement("div");
                 textHolder.style.zIndex = parseInt(imageElement.style.zIndex);
                 textHolder.style.left = (token.x - 0.4*token.size*gridSize.x).toString() + "px";
                 textHolder.style.top = (token.y - 0.25*token.size*gridSize.y).toString() + "px";
                 textHolder.style.width = ((token.size*gridSize.x-2*GridLineWidth)*0.8).toString() + "px";
                 textHolder.style.height = ((token.size*gridSize.y-2*GridLineWidth)*0.5).toString() + "px";
                 textHolder.style.lineHeight = ((token.size*gridSize.y-2*GridLineWidth)*0.5).toString() + "px";
+                textHolder.style.pointerEvents = "none";
+                textHolder.style.position = "absolute";
+                textHolder.style.display = "flex";
                 let textElement = document.createElement("a");
                 textElement.innerText = token.text;
                 textElement.style.height = "100%";
@@ -1992,6 +2066,7 @@ function drawTokens()
                 textElement.style.transform = "translate(-50%, -50%);";
                 textElement.style.userSelect = "none";
                 textElement.style.textAlign = "center";
+                
                 textHolder.appendChild(textElement);
                 tokensDiv.appendChild(textHolder);
                 let autoCalcSize = parseInt(textElement.style.fontSize.substr(0, textElement.style.fontSize.length-2)) * (textHolder.getBoundingClientRect().width/textElement.getBoundingClientRect().width);
@@ -2567,14 +2642,13 @@ document.getElementById("exportMap").onclick = async function() {
     await requestServer({c: "exportMap"});
     window.open("/public/export/export.json");
 }
-
 //#endregion
 
 //#region Main event handlers
 function CheckAntiBlockerPixel(e) {
     if (mapData.antiBlockerOn || mapData.blockerType == 2)
     {
-        let pixel = antiBlockerContext.getImageData(((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), 1, 1).data;
+        let pixel = antiBlockerContext.getImageData(((e.pageX)/(1+extraZoom/20)), ((e.pageY)/(1+extraZoom/20)), 1, 1).data;
         return (pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0 && pixel[3] == 0);
     }
     return true;
@@ -2586,7 +2660,7 @@ function CheckAntiBlockerPixelPosition(x, y) {
         let pixel = antiBlockerContext.getImageData(x, y, 1, 1).data;
         return (pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0 && pixel[3] == 0);
     }
-    return true;
+    return !document.elementFromPoint(x, y).classList.contains("polyblocker") && !document.elementFromPoint(x, y).classList.contains("blocker");
 }
 
 function updateSelectedTokenData()
@@ -2611,11 +2685,9 @@ function CheckTokenPermission(token) {
 }
 
 function DrawNewPolyMarkers(activateMousedown) {
-    console.log(newPolyBlockerVerts);
     newPolyBlockerHandles.innerHTML = "";
-    for (let j = 0; j < newPolyBlockerVerts.length; j++)
+    for (let [j, vert] of newPolyBlockerVerts.entries())
     {
-        let vert = newPolyBlockerVerts[j];
         let editHandleContainer = document.createElement("div");
         editHandleContainer.style.position = "absolute";
         editHandleContainer.style.left = vert.x;
@@ -2637,24 +2709,14 @@ function DrawNewPolyMarkers(activateMousedown) {
             displayMenu(e, menuOptions);
         });
 
-        function handleMouseMovement(e) {
-            editHandleContainer.style.left = (e.clientX + viewport.scrollLeft)/(1+extraZoom/20);
-            editHandleContainer.style.top = (e.clientY + viewport.scrollTop)/(1+extraZoom/20);
-        }
-
-        editHandle.addEventListener("mousedown", function() {
-            window.addEventListener("mousemove", handleMouseMovement);
-        });
-
-        editHandle.addEventListener("mouseup", function(e) {
-            window.removeEventListener("mousemove", handleMouseMovement);
-            if (((e.clientX + viewport.scrollLeft)/(1+extraZoom/20))!=vert.x && ((e.clientY + viewport.scrollTop)/(1+extraZoom/20))!=vert.y)
+        draggableElement(editHandleContainer, true, null, function(e) {
+            if (((e.pageX + viewport.scrollLeft)/(1+extraZoom/20))!=vert.x && ((e.pageY + viewport.scrollTop)/(1+extraZoom/20))!=vert.y)
             {
-                vert.x = (e.clientX + viewport.scrollLeft)/(1+extraZoom/20);
-                vert.y = (e.clientY + viewport.scrollTop)/(1+extraZoom/20);
+                vert.x = (e.pageX + viewport.scrollLeft)/(1+extraZoom/20);
+                vert.y = (e.pageY + viewport.scrollTop)/(1+extraZoom/20);
                 DrawNewPolyMarkers();
             }
-        });
+        })
 
         editHandle.addEventListener("dragover", function(e) {
             e.preventDefault();
@@ -2675,11 +2737,9 @@ window.addEventListener("mouseup", async function(e) {
         document.body.style.cursor = "";
         isPanning = false;
         draggingNotes = false;
-            
-
         if (resizingSideMenu && !menuIsHidden)
         {
-            let calcWidth = (window.innerWidth - e.clientX) / window.innerWidth * 100 - 1.8;
+            let calcWidth = (window.innerWidth - e.pageX) / window.innerWidth * 100 - 1.8;
             if (calcWidth < 12)
                 calcWidth = 12;
             if (calcWidth > 50)
@@ -2697,26 +2757,6 @@ window.addEventListener("mouseup", async function(e) {
             {
                 resizingSideMenu = false;
             }
-            return;
-        }
-
-        if (isDraggingBlocker && (mapData.blockerType==1))
-        {
-            let moveX = -polyDragOffset.x + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20));
-            let moveY = -polyDragOffset.y + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
-            if (moveX!=0 && moveY!=0)
-            {
-                requestServer({c: "movePolyBlocker", id: draggedPolygonId, offsetX: moveX, offsetY: moveY});
-                updateMapData();
-            }
-            draggedPolygonId = -1;
-            isDraggingBlocker = false;
-            return;
-        }
-
-        if (selectedVertHandle!=-1)
-        {
-            selectedVertHandle=-1;
             return;
         }
 
@@ -3011,10 +3051,13 @@ document.body.addEventListener("keyup", async function(e) {
 let draggingNotes = false;
 let draggingNotesOffset = {x: 0, y: 0};
 notesHeaderBar.addEventListener("mousedown", function(e) {
-    draggingNotes = true;
-    draggingNotesOffset.x = e.pageX - noteEditor.offsetLeft;
-    draggingNotesOffset.y = e.pageY - noteEditor.offsetTop;
-    console.log(draggingNotesOffset);
+    if (e.button == 0)
+    {
+        draggingNotes = true;
+        draggingNotesOffset.x = e.pageX - noteEditor.offsetLeft;
+        draggingNotesOffset.y = e.pageY - noteEditor.offsetTop;
+        console.log(draggingNotesOffset);
+    }
 });
 
 map.addEventListener("mousedown", async function(e) {
@@ -3291,7 +3334,7 @@ let newNotePosition = {x: 0, y:0}
 window.addEventListener("mousemove", function(e) {
     if (resizingSideMenu && !menuIsHidden)
     {
-        let calcWidth = (window.innerWidth - e.clientX) / window.innerWidth * 100 - 1.8;
+        let calcWidth = (window.innerWidth - e.pageX) / window.innerWidth * 100 - 1.8;
         calcWidth = calcWidth<12 ? 12 : calcWidth;
         calcWidth = calcWidth>50 ? 50 : calcWidth;
         document.body.style.setProperty("--sidemenu-width", (calcWidth).toString() + "vw");
@@ -3331,13 +3374,9 @@ map.addEventListener("contextmenu", function(e) {
         {
             let pixel = hitboxCanvas.getImageData(((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), 1, 1).data;
             if (pixel[0] == 0 && pixel[1] == 0 && pixel[2] == 0)
-            {
                 displayContextMenu(e);
-            }
             else
-            {
                 shapeContextMenu(e, pixel);
-            }
         }
         else
         {
@@ -3713,10 +3752,12 @@ window.onclick = function(event)
     {
         if (element.id == "color_picker" || element.id == "colorPickerButton") { shouldCloseColorPicker = false; }
         try {
-            if (element.className.includes("custom-menu")) { shouldCloseMenus = false; }
+            if (element.classList.contains("custom-menu"))
+                shouldCloseMenus = false;
         }
         catch {
-            if (element.className.baseVal.includes("custom-menu")) { shouldCloseMenus = false; }
+            if (element.className.baseVal.includes("custom-menu"))
+                shouldCloseMenus = false;
         }
     }
     if (shouldCloseMenus) { 
@@ -3727,7 +3768,6 @@ window.onclick = function(event)
         colorPicker.style.display = "none";
 }
 
-let isDraggingToken = false;
 map.addEventListener("dragover", function(e) {
     e.preventDefault();
 });
@@ -3739,48 +3779,6 @@ map.addEventListener("dragend", function(e) {
 window.ondrop = async function(e) 
 {
     e.preventDefault();
-    if (isDraggingToken)
-    {
-        let draggingTokenData;
-        for (let token of mapData.tokens)
-        {
-            if (token.id == draggingToken)
-            {
-                draggingTokenData = token;
-                break;
-            }
-        }
-        if (GridSnap)
-        {
-            let tX;
-            let tY;
-            if (draggingTokenData.size >= 1)
-            {
-                tX = Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridSize.x * draggingTokenData.size)/gridSize.x) * gridSize.x + 0.5 * gridSize.x * draggingTokenData.size + offsetX + GridLineWidth;
-                tY = Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridSize.y * draggingTokenData.size)/gridSize.y) * gridSize.y + 0.5 * gridSize.y * draggingTokenData.size + offsetY + GridLineWidth;
-            }
-            else
-            {
-                tX = Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridSize.x * draggingTokenData.size) / (gridSize.x * draggingTokenData.size)) * (gridSize.x * draggingTokenData.size) + 0.5 * gridSize.x * draggingTokenData.size + offsetX + GridLineWidth;
-                tY = Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridSize.y * draggingTokenData.size) / (gridSize.y * draggingTokenData.size)) * (gridSize.y * draggingTokenData.size) + 0.5 * gridSize.y * draggingTokenData.size + offsetY + GridLineWidth;
-            }
-            if ((tX!= draggingTokenData.x || tY != draggingTokenData.y) && (CheckAntiBlockerPixelPosition(tX, tY) || (isDM&&!playerMode)) && (tX < map.offsetWidth && tY < map.offsetHeight))
-                await requestServer({c: "moveToken", id: draggingToken, x: tX, y: tY, bypassLink: !controlPressed});
-        }
-        else
-        {
-            let tempx = (e.pageX + viewport.scrollLeft)/(1+extraZoom/20) + tokenDragOffset.x;
-            let tempy = (e.pageY + viewport.scrollTop)/(1+extraZoom/20) + tokenDragOffset.y;
-            if ((tempx != draggingTokenData.x || tempy != draggingTokenData.y) && (CheckAntiBlockerPixelPosition(tempx, tempy) || (isDM&&!playerMode)) && (tempx < map.offsetWidth && tempy < map.offsetHeight))
-            {
-                await requestServer({c: "moveToken", id: draggingToken, x: tempx, y: tempy, bypassLink: !controlPressed});
-            }
-        }
-        updateMapData();
-        isDraggingToken = false;
-        controlPressed = false;
-        draggingToken = -1;
-    }
     if (isDraggingBlocker)
     {
         draggedBlocker.x = ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20));
