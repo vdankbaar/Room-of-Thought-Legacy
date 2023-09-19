@@ -112,7 +112,10 @@ app.post("/api", function(request, response) {
                             else
                                 currentMap.tokens[i].group = request.body.group;
                         if (request.body.initiative!=null)
-                            currentMap.tokens[i].initiative = request.body.initiative;
+                            if (request.body.initiative=="reset")
+                                currentMap.tokens[i].initiative = null;
+                            else    
+                                currentMap.tokens[i].initiative = request.body.initiative;
                         if (request.body.name!=null)
                             currentMap.tokens[i].name = request.body.name;
                         if (request.body.ac!=null)

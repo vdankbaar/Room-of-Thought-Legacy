@@ -59,12 +59,15 @@ let oldScrollPos = {x: 0, y: 0};
 let movingShapeId = 0;
 let selectedToken;
 let selectedTokenData;
+let oldData;
+let dataIsIdentical = false;
 
 window.onload = function() {
     if (getCookie("isDM")==1)
     {
         isDM = true;
         document.getElementById("hiddenDMCheckbox").checked = isDM;
+        console.log("DM is TRUE!");
     }
     else
     {
@@ -78,14 +81,14 @@ window.onload = function() {
         clientName = prompt("Please enter you name:");
         setCookie("playerName", clientName);
     }
+    Setup();    
 }
 
-Setup();
 async function Setup() {
     mapCanvas = map.getContext("2d");
     hitboxCanvas = hitboxMap.getContext("2d");
     shapeCanvas = shapeMap.getContext("2d");
-    await UpdateMapData();
+    await UpdateMapData(true);
     for (let i = 0; i<mapData.mapSourceList.length; i++)
     {
         let tmpOption = document.createElement("option");
@@ -102,12 +105,30 @@ async function Setup() {
     drawCanvas();
 }
 
-async function UpdateMapData() 
+async function UpdateMapData(force) 
 {
-    console.log("Updating map");
     mapData = await RequestServer({c: "currentMapData", x: loadedMap.naturalWidth, y: loadedMap.naturalHeight});
+    let stringData = JSON.stringify(mapData);
+    if (force==null)
+    {
+        force = false;
+    }
+    if (oldData!=stringData || force)
+    {
+        dataIsIdentical = false;
+        console.log("Data is not identical, updating map!");
+        oldData = stringData;
+    }
+    else
+    {
+        dataIsIdentical = true;
+        console.log("Data is identical!");
+    }
+    
     if (isDM)
+    {
         document.getElementById("exportMap").title = mapData.mapName+" : "+mapData.map;
+    }
     loadedMap.src = "/public/maps/"+mapData.map;
     offsetX = mapData.offsetX;
     offsetY = mapData.offsetY;
@@ -126,8 +147,8 @@ exportButton.onclick = function() {
 
 document.getElementById("toggleGridButton").onclick = function() {
     GridActive = !GridActive;
+    UpdateMapData(true);
     updateButtonColors();
-    drawCanvas();
 }
 
 document.getElementById("toggleSnapButton").onclick = function() {
@@ -158,43 +179,48 @@ document.getElementById("importMap").onclick = function() {
 hiddenMapImportButton.onchange = function() {
     console.log("Changed")
     document.getElementById("submitMap").click();
-    UpdateMapData();
+    UpdateMapData(true);
 }
 //#endregion
 
 //#region Drawing functions
 function drawCanvas()
 {
-    clearCanvas();
-    map.width = loadedMap.naturalWidth;
-    map.height = loadedMap.naturalHeight;
-    mapCanvas.strokeStyle = GridColor;
-    mapCanvas.lineWidth = GridLineWidth;
-    shapeMap.width = loadedMap.naturalWidth;
-    shapeMap.height = loadedMap.naturalHeight;
-    hitboxMap.width = loadedMap.naturalWidth;
-    hitboxMap.height = loadedMap.naturalHeight;
-    mapCanvas.translate(0.5, 0.5);
-    shapeCanvas.translate(0.5, 0.5);
-    hitboxCanvas.translate(0.5, 0.5);
-    if (isDM)
+    if (!dataIsIdentical)
     {
-        document.body.style.setProperty("--blocker-opacity", "0.5");
-        document.body.style.setProperty("--token-index", 4);
+        clearCanvas();
+        map.width = loadedMap.naturalWidth;
+        map.height = loadedMap.naturalHeight;
+        mapCanvas.strokeStyle = GridColor;
+        mapCanvas.lineWidth = GridLineWidth;
+        shapeMap.width = loadedMap.naturalWidth;
+        shapeMap.height = loadedMap.naturalHeight;
+        hitboxMap.width = loadedMap.naturalWidth;
+        hitboxMap.height = loadedMap.naturalHeight;
+        mapCanvas.translate(0.5, 0.5);
+        shapeCanvas.translate(0.5, 0.5);
+        hitboxCanvas.translate(0.5, 0.5);
+        if (isDM)
+        {
+            document.body.style.setProperty("--blocker-opacity", "0.5");
+            document.body.style.setProperty("--token-index", 4);
+        }
+        else
+        {
+            document.body.style.setProperty("--blocker-opacity", "1");
+            document.body.style.setProperty("--token-index", 2);
+        }
+        gridSize = (map.width/mapData.x + map.height/mapData.y)/2;
+        drawBlockers();
+        drawMap();
+        if (GridActive)
+        {
+            drawGrid();
+        }
+        drawTokens();
+        drawShapes();
+        updateTracker();
     }
-    else
-    {
-        document.body.style.setProperty("--blocker-opacity", "1");
-        document.body.style.setProperty("--token-index", 2);
-    }
-    gridSize = (map.width/mapData.x + map.height/mapData.y)/2;
-    drawBlockers();
-    drawMap();
-    if (GridActive)
-        drawGrid();
-    drawTokens();
-    drawShapes();
-    updateTracker();
 }
 
 function drawShapes()
@@ -423,9 +449,13 @@ function createToken(token)
 {
     let imageElement = document.createElement("img");
     if (mapData.tokenList.includes(token.image))
+    {
         imageElement.src = "public/tokens/"+token.image;
+    }
     else
+    {
         imageElement.src = "public/dmTokens/"+token.image;
+    }
     imageElement.className = "token";
     imageElement.style.width = (token.size * gridSize).toString()+"px";
     imageElement.style.height = (token.size * gridSize).toString()+"px";
@@ -439,7 +469,9 @@ function createToken(token)
         if (token.hidden == true)
         {
             if (!isDM)
+            {
                 return;
+            }
             let hiddenImage = document.createElement("img");
             hiddenImage.src = "public/hidden.png";
             hiddenImage.className = "hiddenToken";
@@ -451,24 +483,34 @@ function createToken(token)
         }
     }
     if (token.id == selectedToken)
+    {
         imageElement.style.outline = "0.15vw dashed aqua";
-
+    }
 
     imageElement.addEventListener("click", function() {
         selectedToken = token.id;
-        UpdateMapData();
         if (mapData.tokenList.includes(token.image))
         {
             detailsIcon.src = "public/tokens/"+token.image;
-            if (token.ac==null)
-                initiativeInput.value = ""
-            else
-                initiativeInput.value = token.initiative;
             nameInput.value = token.name;
             if (token.ac==null)
-                acInput.value = "";
+            {
+                initiativeInput.value = ""
+            }
             else
+            {
+                initiativeInput.value = token.initiative;
+            }
+            
+            if (token.ac==null)
+            {
+                acInput.value = "";
+            }
+            else
+            {
                 acInput.value = token.ac;
+            }
+
             if (token.hp==null)
             {
                 currentHpInput.value = "";
@@ -479,29 +521,49 @@ function createToken(token)
                 currentHpInput.value = token.hp.split("/")[0];
                 maxHpInput.value = token.hp.split("/")[1];
             }
+
             if (token.status==null)
+            {
                 statusInput.value = "No status";
+            }
             else
+            {
                 statusInput.value = token.status;
+            }
+
             if (token.group==null)
+            {
                 groupIdInput.value = "";
+            }
             else
+            {
                 groupIdInput.value = token.group;
+            }
         }
         else
         {
             if (isDM)
             {
                 detailsIcon.src  = "public/dmTokens/"+token.image;
-                if (token.ac==null)
-                    initiativeInput.value = ""
-                else
-                    initiativeInput.value = token.initiative;
                 nameInput.value = token.name;
-                if (token.ac==null)
-                    acInput.value = "";
+                if (token.initiative==null)
+                {
+                    initiativeInput.value = ""
+                }
                 else
+                {
+                    initiativeInput.value = token.initiative;
+                }
+                
+                if (token.ac==null)
+                {
+                    acInput.value = "";
+                }
+                else
+                {
                     acInput.value = token.ac;
+                }
+
                 if (token.hp==null)
                 {
                     currentHpInput.value = "";
@@ -512,17 +574,29 @@ function createToken(token)
                     currentHpInput.value = token.hp.split("/")[0];
                     maxHpInput.value = token.hp.split("/")[1];
                 }
+
                 if (token.status==null)
+                {
                     statusInput.value = "No status";
+                }
                 else
+                {
                     statusInput.value = token.status;
+                }
+                    
                 if (token.group==null)
+                {
                     groupIdInput.value = "";
+                }   
                 else
+                {
                     groupIdInput.value = token.group;
+                }
+                    
             }
             else
             {
+                detailsIcon.src  = "public/dmTokens/"+token.image;
                 nameInput.value = "DM only!";
                 maxHpInput.value = "";
                 currentHpInput.value = "";
@@ -530,11 +604,9 @@ function createToken(token)
                 initiativeInput.value = "";
                 groupIdInput.value = "";
                 acInput.value = "";
-                detailsIcon.src = "";
             }
         }
-            
-        
+        UpdateMapData(true);
     })
 
     imageElement.addEventListener("dragstart", function(e) {
@@ -555,7 +627,9 @@ function createToken(token)
         let menuOptions = [
             {text: "Remove token", hasSubMenu: false, callback: async function() {
                 if (selectedToken>token.id)
+                {
                     selectedToken-=1;
+                }
                 if (token.id==selectedToken)
                 {
                     initiativeInput.value = "";
@@ -569,9 +643,13 @@ function createToken(token)
                 }
                 let result = await RequestServer({c: "removeToken", id: token.id, tokensRemoved: mapData.removedTokens});
                 if(result[0]==true)
+                {
                     UpdateMapData();
+                }
                 else
+                {
                     alert("That token has already been removed by someone else");
+                }
             }},
             {text: "Edit token", hasSubMenu: true, callback: function() {
                 let subMenuOptions = [
@@ -582,23 +660,35 @@ function createToken(token)
                             if (isDM)
                             {
                                 if (tokenSize < 20 && tokenSize>0)
+                                {
                                     RequestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, group: token.group});
+                                }
                                 else
+                                {
                                     alert("The desired size is too large or invalid");
+                                }
                             }
                             else
                             {
                                 if (tokenSize < 6 && tokenSize>0)
+                                {
                                     RequestServer({c:"editToken", id: token.id, size: tokenSize, status: token.status, layer: token.layer, group: token.group});
+                                }
                                 else
+                                {
                                     alert("That token size isn't allowed for players");
+                                }
                             }   
+                            UpdateMapData();
                         }
                     }},
                     {text: "Change layer", callback: function() {
                         let newLayer = parseInt(prompt("Please enter the desired height level"));
                         if (newLayer!=null)
+                        {
                             RequestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: newLayer, group: token.group});
+                            UpdateMapData();
+                        }
                     }}
                 ];
                 DisplaySubMenu(e, subMenuOptions);
@@ -626,12 +716,15 @@ function createToken(token)
                 let subMenuOptions = [
                     {text: "Rotate group left", callback: function() {
                         RequestServer({c:"rotateLeft", id: token.id});
+                        UpdateMapData();
                     }},
                     {text: "Rotate group right", callback: function() {
                         RequestServer({c:"rotateRight", id: token.id});
+                        UpdateMapData();
                     }},
                     {text: "Unlink token", callback: function() {
                         RequestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: token.layer, group: null})
+                        UpdateMapData();
                     }}
                 ];
                 DisplaySubMenu(e, subMenuOptions);
@@ -672,25 +765,37 @@ function updateTracker()
     initiativeTrackerDiv.append(initHeader);
     let tmpData = [];
     for (let i in mapData.tokens)
+    {
         tmpData.push(mapData.tokens[i]);
+    }
     tmpData.sort(function(a, b){
         return a.initiative == b.initiative ? 0 : +(a.initiative < b.initiative) || -1;
     });
     for (let i in tmpData)
     {
-        if (tmpData[i].hidden==null)
+        if (tmpData[i].hidden)
+        {
             if (mapData.tokenList.includes(tmpData[i].image)||isDM)
+            {
                 createTracker(tmpData[i]);
+            }
+        }
         else
         {
             if (tmpData[i].hidden)
             {
                 if (isDM)
+                {
                     createTracker(tmpData[i]);
+                }
             }
             else
+            {
                 if (mapData.tokenList.includes(tmpData[i].image)||isDM)
+                {
                     createTracker(tmpData[i]);
+                }
+            }
         }
     }
     initiativeTrackerDiv.removeChild(initiativeTrackerDiv.children[initiativeTrackerDiv.children.length-1]);
@@ -702,22 +807,39 @@ function createTracker(trackerData)
     {
         let tmpTrackerDiv = document.createElement("div");
         tmpTrackerDiv.className = "initiativeItem";
-        tmpTrackerDiv.onclick = function() {
+        tmpTrackerDiv.onclick = function(e) {
+            console.log("Clicked");
+            e.preventDefault();
+            e.stopPropagation();
             selectedToken = trackerData.id;
-            if (mapData.tokenList.includes(trackerData.image))
-                detailsIcon.src = "public/tokens/"+trackerData.image;
-            else
-                detailsIcon.src  = "public/dmTokens/"+trackerData.image;
-            UpdateMapData();
-            if (trackerData.ac==null)
-                initiativeInput.value = ""
-            else
-                initiativeInput.value = trackerData.initiative;
             nameInput.value = trackerData.name;
-            if (trackerData.ac==null)
-                acInput.value = "";
+            if (mapData.tokenList.includes(trackerData.image))
+            {
+                detailsIcon.src = "public/tokens/"+trackerData.image;
+            }
             else
+            {
+                detailsIcon.src  = "public/dmTokens/"+trackerData.image;
+            }
+                
+            if (trackerData.initiative==null)
+            {
+                initiativeInput.value = ""
+            }
+            else
+            {
+                initiativeInput.value = trackerData.initiative;
+            }
+                
+            if (trackerData.ac==null)
+            {
+                acInput.value = "";
+            }
+            else
+            {
                 acInput.value = trackerData.ac;
+            }
+                
             if (trackerData.hp==null)
             {
                 currentHpInput.value = "";
@@ -728,38 +850,62 @@ function createTracker(trackerData)
                 currentHpInput.value = trackerData.hp.split("/")[0];
                 maxHpInput.value = trackerData.hp.split("/")[1];
             }
+
             if (trackerData.status==null)
-                statusInput.value = "No status";
+            {
+                statusInput.value = "";
+            }
             else
+            {
                 statusInput.value = trackerData.status;
+            }
+                
             if (trackerData.group==null)
+            {
                 groupIdInput.value = "";
+            }
             else
+            {
                 groupIdInput.value = trackerData.group;
+            }
+            UpdateMapData(true);
         }
         let tmpInitDiv = document.createElement("div");
+        tmpInitDiv.style.pointerEvents = "none";
         tmpInitDiv.className = "initiative";
         if (trackerData.initiative==null)
+        {
             tmpInitDiv.innerText = "";
+        }
         else
+        {
             tmpInitDiv.innerText = trackerData.initiative;
+        }
         tmpTrackerDiv.append(tmpInitDiv);
         let tmpNameDiv = document.createElement("div");
+        tmpNameDiv.style.pointerEvents = "none";
         tmpNameDiv.className = "trackerName";
         tmpNameDiv.innerText = trackerData.name;
         tmpTrackerDiv.append(tmpNameDiv);
         let bottomRow = document.createElement("div");
         bottomRow.className = "trackerBottomRow";
             let trackerArmorSection = document.createElement("div");
+            trackerArmorSection.style.pointerEvents = "none";
             trackerArmorSection.className = "trackerArmorSection";
                 let trackerArmorClass = document.createElement("div");
                 trackerArmorClass.className = "trackerArmorClass";
+                trackerArmorClass.style.pointerEvents = "none";
                 if (trackerData.ac==null)
+                {
                     trackerArmorClass.innerText = "-";
+                }
                 else
+                {
                     trackerArmorClass.innerText = trackerData.ac;
+                }
                 trackerArmorSection.append(trackerArmorClass);
                 let trackerArmorP = document.createElement("p");
+                trackerArmorP.style.pointerEvents = "none";
                 trackerArmorP.innerText = "AC";
                 trackerArmorSection.append(trackerArmorP);
             bottomRow.append(trackerArmorSection);
@@ -771,12 +917,12 @@ function createTracker(trackerData)
                 let trackerDamageImage = document.createElement("img");
                 trackerDamageImage.style = "height: 1.1vw;";
                 trackerDamageImage.src = "images/swap_vert-24px.png";
-                trackerDamageImage.onclick = function(e)
+                trackerDamageButton.onclick = function(e)
                 {
                     e.preventDefault();
                     e.stopPropagation();
                     let damage = parseInt(prompt("Enter the damage to reduct from this token: "));
-                    if (damage!=null)
+                    if (!isNaN(damage))
                     {
                         if (trackerData.hp!=null)
                         {
@@ -786,25 +932,36 @@ function createTracker(trackerData)
                 }
                 trackerDamageButton.append(trackerDamageImage);
                 trackerHitpointsSection.append(trackerDamageButton);
-                let trackerHitpoints = document.createElement("input");
-                trackerHitpoints.type = "text";
+                let trackerHitpoints = document.createElement("div");
+                trackerHitpoints.style.pointerEvents = "none";
                 trackerHitpoints.className = "trackerHitpoints";
                 if (trackerData.hp!=null)
-                    trackerHitpoints.value = trackerData.hp.split("/")[0]
+                {
+                    trackerHitpoints.innerText = trackerData.hp.split("/")[0]
+                }
                 else
-                    trackerHitpoints.value = "-";
+                {
+                    trackerHitpoints.innerText = "-";
+                }
                 trackerHitpointsSection.append(trackerHitpoints);
                 let slashP = document.createElement("p");
+                slashP.style.pointerEvents = "none";
                 slashP.innerText = "/";
                 trackerHitpointsSection.append(slashP);
                 let trackerHitpointsMax = document.createElement("div");
+                trackerHitpointsMax.style.pointerEvents = "none";
                 trackerHitpointsMax.className = "trackerHitpointsMax";
                 if (trackerData.hp!=null)
+                {
                     trackerHitpointsMax.innerText = trackerData.hp.split("/")[1]
+                }
                 else
+                {
                     trackerHitpointsMax.innerText = "-";
+                }
                 trackerHitpointsSection.append(trackerHitpointsMax);
                 let hpP = document.createElement("p");
+                hpP.style.pointerEvents = "none";
                 hpP.innerText = "HP";
                 trackerHitpointsSection.append(hpP);
             bottomRow.append(trackerHitpointsSection);
@@ -872,62 +1029,125 @@ document.body.ondrop = async function(e)
 function updateSelectedTokenData()
 {
     for (let i in mapData.tokens)
+    {
         if (mapData.tokens[i].id == selectedToken)
+        {
             selectedTokenData = mapData.tokens[i];
+        }
+    }
+        
 }
 
 initiativeInput.onchange = function() {
     updateSelectedTokenData();
+    let newInit = parseFloat(initiativeInput.value);
     if (mapData.tokenList.includes(selectedTokenData.image))
-        RequestServer({c: "editToken", id: selectedToken, initiative: parseFloat(initiativeInput.value)});
+    {
+        if (newInit)
+        {
+            RequestServer({c: "editToken", id: selectedToken, initiative: newInit});
+        }
+        else
+        {
+            RequestServer({c: "editToken", id: selectedToken, initiative: "reset"});
+        }
+    }
     else
+    {
         if (isDM)
-            RequestServer({c: "editToken", id: selectedToken, initiative: parseFloat(initiativeInput.value)});
+        {
+            if (newInit)
+            {
+                RequestServer({c: "editToken", id: selectedToken, initiative: newInit});
+            }
+            else
+            {
+                RequestServer({c: "editToken", id: selectedToken, initiative: "reset"});
+            }
+        }
+    }
+        
+    UpdateMapData();
 }
 
 nameInput.onchange = function() {
     updateSelectedTokenData();
     if (mapData.tokenList.includes(selectedTokenData.image))
+    {
         RequestServer({c: "editToken", id: selectedToken, name: nameInput.value});
+    }
     else
+    {
         if (isDM)
+        {
             RequestServer({c: "editToken", id: selectedToken, name: nameInput.value});
+        }
+    }
+    UpdateMapData();
 }
 
 acInput.onchange = function() {
     updateSelectedTokenData();
     if (mapData.tokenList.includes(selectedTokenData.image))
+    {
         RequestServer({c: "editToken", id: selectedToken, ac: acInput.value});  
+    }
     else
+    {
         if (isDM)
+        {
             RequestServer({c: "editToken", id: selectedToken, ac: acInput.value});  
+        }
+    }   
+    UpdateMapData();
 }
 
 currentHpInput.onchange = function() {
     updateSelectedTokenData();
     if (mapData.tokenList.includes(selectedTokenData.image))
+    {
         RequestServer({c: "editToken", id: selectedToken, hp: currentHpInput.value+"/"+maxHpInput.value});
+    }
     else
+    {
         if (isDM)
+        {
             RequestServer({c: "editToken", id: selectedToken, hp: currentHpInput.value+"/"+maxHpInput.value});
+        }
+    }
+    UpdateMapData();
 }
 
 maxHpInput.onchange = function() {
     updateSelectedTokenData();
     if (mapData.tokenList.includes(selectedTokenData.image))
+    {
         RequestServer({c: "editToken", id: selectedToken, hp: currentHpInput.value+"/"+maxHpInput.value});
+    }
     else
+    {
         if (isDM)
+        {
             RequestServer({c: "editToken", id: selectedToken, hp: currentHpInput.value+"/"+maxHpInput.value});
+        }
+    }
+    UpdateMapData();
 }
 
 statusInput.onchange = function() {
     updateSelectedTokenData();
     if (mapData.tokenList.includes(selectedTokenData.image))
+    {
         RequestServer({c:"editToken", id: selectedToken, status: statusInput.value});
+    }
     else
+    {
         if (isDM)
+        {
             RequestServer({c:"editToken", id: selectedToken, status: statusInput.value});
+        }
+    }
+    UpdateMapData();
 }
 
 groupIdInput.onchange = function() {
@@ -936,18 +1156,29 @@ groupIdInput.onchange = function() {
     if (mapData.tokenList.includes(selectedTokenData.image))
     {
         if (newGroupId)
+        {
             RequestServer({c:"editToken", id: selectedToken, group: newGroupId});
+        }
         else
+        {
             RequestServer({c:"editToken", id: selectedToken, group: "reset"});
+        }
     }
     else
+    {
         if (isDM)
         {
             if (newGroupId)
+            {
                 RequestServer({c:"editToken", id: selectedToken, group: newGroupId});
+            }
             else
+            {
                 RequestServer({c:"editToken", id: selectedToken, group: "reset"});
+            }
         }
+    }
+    UpdateMapData();
 }
 
 document.body.addEventListener("mouseup", function(e) {
@@ -963,31 +1194,34 @@ document.body.addEventListener("mouseup", function(e) {
 
 mapSourceSelect.onchange = function() {
     RequestServer({c: "setMapData", map: mapSourceSelect.value, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY});
+    UpdateMapData();
 }
 
 mapYInput.onchange = function() {
     RequestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: parseFloat(mapYInput.value), offsetX: mapData.offsetX, offsetY: mapData.offsetY});
+    UpdateMapData();
 }
 
 mapXInput.onchange = function() {
     RequestServer({c: "setMapData", map: mapData.map, x: parseFloat(mapXInput.value), y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY});
+    UpdateMapData();
 }
 
 offsetXInput.onchange = function() {
     RequestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: parseFloat(offsetXInput.value), offsetY: mapData.offsetY});
+    UpdateMapData();
 }
 
 offsetYInput.onchange = function() {
     RequestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: parseFloat(offsetYInput.value)});
+    UpdateMapData();
 }
 
 shapeMap.addEventListener("mousedown", function(e) {
-    selectedToken = -1;
     if (e.button==0)
     {
         if (isPlacingBlocker)
         {
-            console.log("2");
             if (isDM)
             {
                 blockerMarkers.width = (e.pageX+board.scrollLeft)-blockerMarkers.x;
@@ -1000,7 +1234,6 @@ shapeMap.addEventListener("mousedown", function(e) {
         }
         if (isPlacingSquare)
         {
-            console.log("3");
             squareMarkers.width = (e.pageX+board.scrollLeft) - squareMarkers.x;
             squareMarkers.height = (e.pageY+board.scrollTop) - squareMarkers.y;
             if (squareMarkers.width>=-map.width && squareMarkers.width<=map.width && squareMarkers.height>=-map.height && squareMarkers.height<=map.height)
@@ -1017,7 +1250,6 @@ shapeMap.addEventListener("mousedown", function(e) {
         }
         if (isPlacingLine)
         {
-            console.log("4");
             lineMarkers.destX = (e.pageX+board.scrollLeft);
             lineMarkers.destY = (e.pageY+board.scrollTop);
             let dy = lineMarkers.destY-lineMarkers.y;
@@ -1036,7 +1268,6 @@ shapeMap.addEventListener("mousedown", function(e) {
         let pixel = hitboxCanvas.getImageData((e.pageX+board.scrollLeft), (e.pageY+board.scrollTop), 1, 1).data;
         if (!(pixel[0]==0 && pixel[1]==0 && pixel[2]==0))
         {
-            console.log("5");
             let testString = "#"+decToHex(pixel[0]) + decToHex(pixel[1]) + decToHex(pixel[2]);
             let shapeId = colorToSigned24Bit(testString)/16;
             if (shapeId%1 == 0)
@@ -1052,7 +1283,6 @@ shapeMap.addEventListener("mousedown", function(e) {
             return;
         }
 
-        console.log("Default");
         isPanning=true;
         oldMousePos.x = e.pageX;
         oldMousePos.y = e.pageY;
@@ -1118,9 +1348,13 @@ function ShapeContextMenu(e, pixel)
             {text: "Erase shape", hasSubMenu: false, callback: async function() {
                 let result = await RequestServer({c: "removeDrawing", id: shapeId, removedDrawings: mapData.removedDrawings});
                 if (result[0]==true)
+                {
                     UpdateMapData();
+                }
                 else
+                {
                     alert("That drawing has already been removed by someone else!");
+                }
             }}
         ];
         DisplayMenu(e, menuOptions);
@@ -1153,6 +1387,7 @@ function DisplayContextMenu(e)
                             {
                                 RequestServer({c: "createToken", x: (e.pageX+board.scrollLeft), y: (e.pageY+board.scrollTop), image: tokenList[i], size: tokenSize, status: "", layer: 0})
                                 console.log("Placing "+tokenList[i]+" with size"+tokenSize+" at "+(e.pageX+board.scrollLeft).toString()+":"+(e.pageY+board.scrollTop).toString());
+                                UpdateMapData();
                             }
                             else
                             {
@@ -1165,6 +1400,7 @@ function DisplayContextMenu(e)
                             {
                                 RequestServer({c: "createToken", x: (e.pageX+board.scrollLeft), y: (e.pageY+board.scrollTop), image: tokenList[i], size: tokenSize, status: "", layer: 0})
                                 console.log("Placing "+tokenList[i]+" with size"+tokenSize+" at "+(e.pageX+board.scrollLeft).toString()+":"+(e.pageY+board.scrollTop).toString());
+                                UpdateMapData();
                             }
                             else
                             {
@@ -1183,7 +1419,7 @@ function DisplayContextMenu(e)
                     tmpElement.text = dmTokenList[i].substring(0, dmTokenList[i].length-4);
                     tmpElement.callback = function() 
                     {
-                        let tokenSize = parseInt(prompt("Please enter the size of the token"));
+                        let tokenSize = parseFloat(prompt("Please enter the size of the token"));
                         if (tokenSize==null)
                         {
                             alert("That wasn't a valid size! Please try again!");
@@ -1192,6 +1428,7 @@ function DisplayContextMenu(e)
                         {
                             RequestServer({c: "createToken", x: (e.pageX+board.scrollLeft), y: (e.pageY+board.scrollTop), image: dmTokenList[i], size: tokenSize, status: ""})
                             console.log("Placing "+dmTokenList[i]+" with size"+tokenSize+" at "+(e.pageX+board.scrollLeft).toString()+":"+(e.pageY+board.scrollTop).toString());
+                            UpdateMapData();
                         }
                     }
                     subMenu.push(tmpElement);
@@ -1222,9 +1459,13 @@ function DisplayContextMenu(e)
                 {text: "Draw Line", callback: function() {
                     let rangeInput = parseFloat(prompt("Please enter the desired range of the line in feet, leave blank for no range limit"));
                     if (rangeInput!=null)
+                    {
                         lineMarkers.range = rangeInput/feetPerSquare*gridSize;
+                    }
                     else
+                    {
                         lineMarkers.range = 999999;
+                    }
                     lineMarkers.x = (e.pageX+board.scrollLeft);
                     lineMarkers.y = (e.pageY+board.scrollTop);
                     isPlacingLine = true;
@@ -1255,6 +1496,7 @@ function DisplayContextMenu(e)
                         {
                             RequestServer({c: "createToken", x: (e.pageX+board.scrollLeft), y: (e.pageY+board.scrollTop), image: tokenList[i], size: tokenSize, status: "", hidden: true})
                             console.log("Placing hidden "+tokenList[i]+" with size "+tokenSize+" at "+(e.pageX+board.scrollLeft).toString()+":"+(e.pageY+board.scrollTop).toString());
+                            UpdateMapData();
                         }
                         else
                         {
@@ -1281,6 +1523,7 @@ function DisplayContextMenu(e)
                         {
                             RequestServer({c: "createToken", x: (e.pageX+board.scrollLeft), y: (e.pageY+board.scrollTop), image: dmTokenList[i], size: tokenSize, status: "", hidden: true})
                             console.log("Placing "+dmTokenList[i]+" with size"+tokenSize+" at "+(e.pageX+board.scrollLeft).toString()+":"+(e.pageY+board.scrollTop).toString());
+                            UpdateMapData();
                         }
                     }
                     subMenu.push(tmpElement);
@@ -1299,6 +1542,7 @@ function DisplayContextMenu(e)
             {
                 let tmpSubOption = {text: mapData.maps[i], hasSubMenu: false, callback: function() {
                     RequestServer({c: "changeSelectedMap", selectedMap: mapData.maps[i]})
+                    UpdateMapData();
                 }};
                 subOptions.push(tmpSubOption);
             }
@@ -1308,9 +1552,7 @@ function DisplayContextMenu(e)
     if (isDM)
     {
         for (let f = 0; f<DMoptions.length; f++)
-        {
             listOptions.push(DMoptions[f]);
-        }
     }
     DisplayMenu(e, listOptions);
 }
@@ -1361,7 +1603,9 @@ window.onclick = function(event)
                 listItem.innerText = listData[p].text;
                 listItem.className = "custom-menu-element";
                 if (listData[p].description!=null)
+                {
                     listItem.title = listData[p].description;
+                }
                 listItem.onclick = function() 
                 {
                     listData[p].callback();
@@ -1410,7 +1654,9 @@ window.onclick = function(event)
             {
                 let listItem = document.createElement('li');
                 if (listData[p].description!=null)
+                {
                     listItem.title = listData[p].description;
+                }
                 listItem.innerText = listData[p].text;
                 listItem.className = "custom-menu-element";
                 listItem.onclick = function() 
@@ -1470,19 +1716,6 @@ async function RequestServer(data)
     return JSON.parse(content);
 }
 
-function dynamicSort(property) {
-    let sortOrder = 1;
-    if(property[0] === "-") {
-        sortOrder = -1;
-        property = property.substr(1);
-    }
-    return function (a,b) {
-        let aI = parseInt(a[property]);
-        let bI = parseInt(b[property]);
-        let result = (aI < bI) ? -1 : (aI > bI) ? 1 : 0;
-        return result * sortOrder;
-    }
-}
 //#endregion
 
 //#region Cookies
@@ -1513,18 +1746,34 @@ export function getCookie(cname) {
 function updateButtonColors()
 {
     if (GridActive)
+    {
         document.getElementById("toggleGridButton").style.backgroundColor = "aquamarine";
+    }
     else
+    {
         document.getElementById("toggleGridButton").style.backgroundColor = "rgb(240, 240, 240)";
-
+    }
+        
     if (GridSnap)
+    {
         document.getElementById("toggleSnapButton").style.backgroundColor = "aquamarine";
+    }
     else
+    {
         document.getElementById("toggleSnapButton").style.backgroundColor = "rgb(240, 240, 240)";
+    }
+        
 
-    if (displayMapSettings)
-        document.getElementById("toggleSettingsButton").style.backgroundColor = "aquamarine";
-    else
-        document.getElementById("toggleSettingsButton").style.backgroundColor = "rgb(240, 240, 240)";
+    if (isDM)
+    {
+        if (displayMapSettings)
+        {
+            document.getElementById("toggleSettingsButton").style.backgroundColor = "aquamarine";
+        }
+        else
+        {
+            document.getElementById("toggleSettingsButton").style.backgroundColor = "rgb(240, 240, 240)";
+        }
+    }
 }
 //#endregion Mees Janky Shit
