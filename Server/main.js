@@ -1,5 +1,5 @@
 //Mocht port 80 geblokeerd zijn door windows, voer de command 'net stop http' uit in een shell met admin of run unblock.bat in een shell met admin
-let port = 4567;
+let port = 80;
 
 const fs = require('fs');
 const pathLib = require('path');
@@ -90,7 +90,7 @@ app.post("/api", function(request, response) {
             break
 
         case "createToken":
-            if (minMax(request.body.size, 0, 20))
+            if (minMax(request.body.size, 0, 50))
             {
                 let tmpToken = {};
                 let tmpTokens = [];
@@ -184,7 +184,7 @@ app.post("/api", function(request, response) {
                     if (request.body.status != null)
                         token.status = request.body.status;
                     if (request.body.size != null)
-                        if (minMax(request.body.size, 0, 20))
+                        if (minMax(request.body.size, 0, 50))
                         {
                             updateTokenCircleRange(token, request.body.size);
                             token.size = request.body.size;
@@ -406,8 +406,8 @@ app.post("/api", function(request, response) {
                     {
                         if ((request.body.x != null || request.body.y != null) && request.body.moveShapeGroup)
                         {
-                            let dx = request.body.x - currentMap.drawings[i].x;
-                            let dy = request.body.y - currentMap.drawings[i].y;
+                            let dx = request.body.x - currentDrawing.x;
+                            let dy = request.body.y - currentDrawing.y;
                             moveShapeGroup(currentDrawing.id, dx, dy, currentDrawing.shapeGroup);
                         }
                         if (request.body.points!=null)
@@ -438,7 +438,7 @@ app.post("/api", function(request, response) {
                             currentDrawing.visible = request.body.visible;
                         
                         if (request.body.shapeGroup!=null)
-                            currentMap.drawings[i].shapeGroup = request.body.shapeGroup == "null" ? null : request.body.shapeGroup;
+                            currentDrawing.shapeGroup = request.body.shapeGroup == "null" ? null : request.body.shapeGroup;
                     }
                 }
             }
