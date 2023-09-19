@@ -45,6 +45,7 @@ app.post("/api", function(request, response) {
             currentMap.y = request.body.y;
             currentMap.offsetX = request.body.offsetX;
             currentMap.offsetY = request.body.offsetY;
+            currentMap.hideInit = request.body.hideInit;
             SaveCurrentMap();
             response.send(true);
             break;
@@ -387,7 +388,8 @@ app.post("/api", function(request, response) {
             break;
 
         case "exportMap":
-            copyFile(dataFolder+"currentSettings.json", publicFolder+"export/currentSettings.json");
+            console.log("Exporting: "+selectedMap);
+            copyFile(dataFolder+selectedMap+".json", publicFolder+"export/export.json");
             response.send("[true]");
             break;
     }

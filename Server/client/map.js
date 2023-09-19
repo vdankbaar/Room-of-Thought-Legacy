@@ -29,6 +29,7 @@ let maxHpInput = document.getElementById("maxHitpoints");
 let groupIdInput = document.getElementById("detailsGroup");
 let statusInput = document.getElementById("detailsStatusInput");
 let detailsIcon = document.getElementById("detailsIcon").children[0];
+let sideMenu = document.getElementById("sideMenu");
 var mapCanvas;
 var shapeCanvas;
 var hitboxCanvas;
@@ -61,6 +62,7 @@ let selectedToken;
 let selectedTokenData;
 let oldData;
 let dataIsIdentical = false;
+let resizingSideMenu = false;
 
 window.onload = function() {
     if (getCookie("isDM")==1)
@@ -142,7 +144,7 @@ async function UpdateMapData(force)
 let exportButton = document.getElementById("exportMap");
 exportButton.onclick = function() {
     RequestServer({c: "exportMap"});
-    window.open("/public/export/currentSettings.json");
+    window.open("/public/export/export.json");
 }
 
 document.getElementById("toggleGridButton").onclick = function() {
@@ -180,6 +182,41 @@ hiddenMapImportButton.onchange = function() {
     console.log("Changed")
     document.getElementById("submitMap").click();
     UpdateMapData(true);
+}
+//#endregion
+
+//#region Map options
+document.getElementById("hideInits").onclick = function() {
+    if (mapData.hideInit)
+        RequestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: false});
+    else
+        RequestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: true});
+    UpdateMapData();
+}
+
+mapSourceSelect.onchange = function() {
+    RequestServer({c: "setMapData", map: mapSourceSelect.value, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: mapData.hideInit});
+    UpdateMapData();
+}
+
+mapYInput.onchange = function() {
+    RequestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: parseFloat(mapYInput.value), offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: mapData.hideInit});
+    UpdateMapData();
+}
+
+mapXInput.onchange = function() {
+    RequestServer({c: "setMapData", map: mapData.map, x: parseFloat(mapXInput.value), y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: mapData.hideInit});
+    UpdateMapData();
+}
+
+offsetXInput.onchange = function() {
+    RequestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: parseFloat(offsetXInput.value), offsetY: mapData.offsetY, hideInit: mapData.hideInit});
+    UpdateMapData();
+}
+
+offsetYInput.onchange = function() {
+    RequestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: parseFloat(offsetYInput.value), hideInit: mapData.hideInit});
+    UpdateMapData();
 }
 //#endregion
 
@@ -808,7 +845,6 @@ function createTracker(trackerData)
         let tmpTrackerDiv = document.createElement("div");
         tmpTrackerDiv.className = "initiativeItem";
         tmpTrackerDiv.onclick = function(e) {
-            console.log("Clicked");
             e.preventDefault();
             e.stopPropagation();
             selectedToken = trackerData.id;
@@ -870,18 +906,21 @@ function createTracker(trackerData)
             }
             UpdateMapData(true);
         }
-        let tmpInitDiv = document.createElement("div");
-        tmpInitDiv.style.pointerEvents = "none";
-        tmpInitDiv.className = "initiative";
-        if (trackerData.initiative==null)
+        if (!mapData.hideInit)
         {
-            tmpInitDiv.innerText = "";
+            let tmpInitDiv = document.createElement("div");
+            tmpInitDiv.style.pointerEvents = "none";
+            tmpInitDiv.className = "initiative";
+            if (trackerData.initiative==null)
+            {
+                tmpInitDiv.innerText = "";
+            }
+            else
+            {
+                tmpInitDiv.innerText = trackerData.initiative;
+            }
+            tmpTrackerDiv.append(tmpInitDiv);
         }
-        else
-        {
-            tmpInitDiv.innerText = trackerData.initiative;
-        }
-        tmpTrackerDiv.append(tmpInitDiv);
         let tmpNameDiv = document.createElement("div");
         tmpNameDiv.style.pointerEvents = "none";
         tmpNameDiv.className = "trackerName";
@@ -1189,33 +1228,19 @@ document.body.addEventListener("mouseup", function(e) {
             isPanning=false;
             document.body.style.cursor = "";
         }
+        if (resizingSideMenu && !menuIsHidden && e.target!=resizer)
+        {
+            let calcWidth = (window.innerWidth - 3*resizer.offsetWidth - e.pageX)/window.innerWidth * 100;
+            if (calcWidth<12)
+                calcWidth = 12;
+            let newWidth = calcWidth.toString()+"vw";
+            document.body.style.setProperty("--sidemenu-width", newWidth);
+            resizer.style.right = (calcWidth+0.5).toString()+"vw";
+            resizingSideMenu = false;
+            board.style.width = (100 - (calcWidth+0.8)).toString()+"vw";
+        }
     }
 })
-
-mapSourceSelect.onchange = function() {
-    RequestServer({c: "setMapData", map: mapSourceSelect.value, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY});
-    UpdateMapData();
-}
-
-mapYInput.onchange = function() {
-    RequestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: parseFloat(mapYInput.value), offsetX: mapData.offsetX, offsetY: mapData.offsetY});
-    UpdateMapData();
-}
-
-mapXInput.onchange = function() {
-    RequestServer({c: "setMapData", map: mapData.map, x: parseFloat(mapXInput.value), y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY});
-    UpdateMapData();
-}
-
-offsetXInput.onchange = function() {
-    RequestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: parseFloat(offsetXInput.value), offsetY: mapData.offsetY});
-    UpdateMapData();
-}
-
-offsetYInput.onchange = function() {
-    RequestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: parseFloat(offsetYInput.value)});
-    UpdateMapData();
-}
 
 shapeMap.addEventListener("mousedown", function(e) {
     if (e.button==0)
@@ -1540,9 +1565,14 @@ function DisplayContextMenu(e)
             let subOptions = [];
             for (let i = 0; i < mapData.maps.length; i++)
             {
-                let tmpSubOption = {text: mapData.maps[i], hasSubMenu: false, callback: function() {
+                let tmpSubOption = {text: mapData.maps[i], hasSubMenu: false, callback: async function() {
                     RequestServer({c: "changeSelectedMap", selectedMap: mapData.maps[i]})
-                    UpdateMapData();
+                    await UpdateMapData();
+                    mapSourceSelect.value=mapData.map;
+                    mapYInput.value = mapData.y;
+                    mapXInput.value = mapData.x;
+                    offsetXInput.value = mapData.offsetX;
+                    offsetYInput.value = mapData.offsetY;
                 }};
                 subOptions.push(tmpSubOption);
             }
@@ -1742,7 +1772,40 @@ export function getCookie(cname) {
 }
 //#endregion
 
-//#region Mees Janky Shit
+//#region Side menu stuff
+let resizer = document.getElementById("Resizer");
+let menuIsHidden = false;
+resizer.addEventListener("dblclick", function(e) {
+    if (menuIsHidden)
+    {
+        sideMenu.style.display = "";
+        let calcWidth = 12;
+        let newWidth = calcWidth.toString()+"vw";
+        document.body.style.setProperty("--sidemenu-width", newWidth);
+        resizer.style.right = (calcWidth+0.5).toString()+"vw";
+        board.style.width = (100 - (calcWidth+0.8)).toString()+"vw";
+        resizer.style.width = "0.3vw";
+    }
+    else
+    {
+        resizer.style.width = "0.5vw";
+        sideMenu.style.display = "none";
+        resizer.style.right = "0vw";
+        board.style.width = "99.7vw";
+    }
+    e.stopPropagation();
+    resizingSideMenu = false;
+    menuIsHidden = !menuIsHidden;
+})
+
+resizer.addEventListener("mousedown", function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    resizingSideMenu = true;
+})
+
+
+
 function updateButtonColors()
 {
     if (GridActive)
@@ -1776,4 +1839,4 @@ function updateButtonColors()
         }
     }
 }
-//#endregion Mees Janky Shit
+//#endregion Side menu stuff
