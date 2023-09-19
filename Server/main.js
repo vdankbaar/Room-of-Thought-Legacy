@@ -342,8 +342,8 @@ app.post("/api", function(request, response) {
 
         case "moveToken":
             loadCurrentMap();
-            let newX = parseInt(request.body.x);
-            let newY = parseInt(request.body.y);
+            let newX = parseFloat(request.body.x);
+            let newY = parseFloat(request.body.y);
             if (isNaN(newX))
                 newX = 0;
             if (isNaN(newY))

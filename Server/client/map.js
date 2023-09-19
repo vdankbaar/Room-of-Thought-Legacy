@@ -4,7 +4,7 @@ let autoUpdate = true;
 let minUpdateTime = 500;
 let blockerOutlineColor = "violet";
 let shapeWidth = 2;
-let GridLineWidth = 1;
+let GridLineWidth = 2;
 let feetPerSquare = 5.0;
 
 let offsetX = 0;
@@ -288,7 +288,7 @@ async function updateMapData(force)
                 selectedVertHandle = -1;
                 detailsScreen.style.display = "none";
                 loadedMap.onload = function() {
-                    drawCanvas();
+                    drawCanvas(false, force);
                 }
             } else {
                 let skipMapRedraw = true;
@@ -528,9 +528,6 @@ function drawCanvas(skipMap, force)
         hitboxMap.height = loadedMap.naturalHeight;
         antiBlockerMap.width = loadedMap.naturalWidth;
         antiBlockerMap.height = loadedMap.naturalHeight;
-        mapCanvas.translate(0.5, 0.5);
-        shapeCanvas.translate(0.5, 0.5);
-        hitboxCanvas.translate(0.5, 0.5);
         gridSize = {x: (map.width-mapData.offsetX)/mapData.x, y: (map.height-mapData.offsetY)/mapData.y, min:Math.min((map.width-mapData.offsetX)/mapData.x, (map.height-mapData.offsetY)/mapData.y)}
     }
     mapData.usePolyBlockers ? drawPolyBlockers() : drawBlockers();
@@ -583,10 +580,10 @@ function drawVertexLine(index, shape)
     shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
     shapeCanvas.beginPath();
-    shapeCanvas.moveTo(shape.points[0].x+0.5, shape.points[0].y+0.5);
+    shapeCanvas.moveTo(shape.points[0].x, shape.points[0].y);
     for (let i = 1; i < shape.points.length; i++)
     {
-        shapeCanvas.lineTo(shape.points[i].x+0.5, shape.points[i].y+0.5)
+        shapeCanvas.lineTo(shape.points[i].x, shape.points[i].y)
     }
     shapeCanvas.stroke();
 
@@ -601,10 +598,10 @@ function drawVertexLine(index, shape)
     hitboxCanvas.strokeStyle = colorString;
     hitboxCanvas.lineWidth = shapeWidth * hitboxMultiplier;
     hitboxCanvas.beginPath();
-    hitboxCanvas.moveTo(shape.points[0].x+0.5, shape.points[0].y+0.5);
+    hitboxCanvas.moveTo(shape.points[0].x, shape.points[0].y);
     for (let i = 1; i < shape.points.length; i++)
     {
-        hitboxCanvas.lineTo(shape.points[i].x+0.5, shape.points[i].y+0.5)
+        hitboxCanvas.lineTo(shape.points[i].x, shape.points[i].y)
     }
     hitboxCanvas.stroke();
     if (selectedShapeId == shape.id)
@@ -686,7 +683,7 @@ function drawCircle(index, shape)
     shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
     shapeCanvas.beginPath();
-    shapeCanvas.arc(shape.x+0.5, shape.y+0.5, trueRadius, 0, 2 * Math.PI);
+    shapeCanvas.arc(shape.x, shape.y, trueRadius, 0, 2 * Math.PI);
     shapeCanvas.stroke();
 
     let colorString = "#";
@@ -700,7 +697,7 @@ function drawCircle(index, shape)
     hitboxCanvas.strokeStyle = colorString;
     hitboxCanvas.lineWidth = shapeWidth * hitboxMultiplier;
     hitboxCanvas.beginPath();
-    hitboxCanvas.arc(shape.x+0.5, shape.y+0.5, trueRadius, 0, 2 * Math.PI);
+    hitboxCanvas.arc(shape.x, shape.y, trueRadius, 0, 2 * Math.PI);
     hitboxCanvas.stroke();
 }
 
@@ -709,7 +706,7 @@ function drawSquare(index, shape)
     shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
     shapeCanvas.beginPath();
-    shapeCanvas.rect(shape.x+0.5, shape.y+0.5, shape.width, shape.height);
+    shapeCanvas.rect(shape.x, shape.y, shape.width, shape.height);
     shapeCanvas.stroke();
 
     let colorString = "#";
@@ -723,7 +720,7 @@ function drawSquare(index, shape)
     hitboxCanvas.strokeStyle = colorString;
     hitboxCanvas.lineWidth = shapeWidth * hitboxMultiplier;
     hitboxCanvas.beginPath();
-    hitboxCanvas.rect(shape.x+0.5, shape.y+0.5, shape.width, shape.height);
+    hitboxCanvas.rect(shape.x, shape.y, shape.width, shape.height);
     hitboxCanvas.stroke();
 }
 
@@ -736,11 +733,11 @@ function draw5Line(index, shape) {
     shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
     shapeCanvas.beginPath();
-    shapeCanvas.moveTo(topOriginCorner.x+0.5, topOriginCorner.y+0.5);
-    shapeCanvas.lineTo(bottomOriginCorner.x+0.5, bottomOriginCorner.y+0.5);
-    shapeCanvas.lineTo(bottomTargetCorner.x+0.5, bottomTargetCorner.y+0.5);
-    shapeCanvas.lineTo(topTargetCorner.x+0.5, topTargetCorner.y+0.5);
-    shapeCanvas.lineTo(topOriginCorner.x+0.5, topOriginCorner.y+0.5);
+    shapeCanvas.moveTo(topOriginCorner.x, topOriginCorner.y);
+    shapeCanvas.lineTo(bottomOriginCorner.x, bottomOriginCorner.y);
+    shapeCanvas.lineTo(bottomTargetCorner.x, bottomTargetCorner.y);
+    shapeCanvas.lineTo(topTargetCorner.x, topTargetCorner.y);
+    shapeCanvas.lineTo(topOriginCorner.x, topOriginCorner.y);
     shapeCanvas.stroke();
     let colorString = "#";
     let hex = ((parseInt(index) + 1) * 16).toString(16);
@@ -753,11 +750,11 @@ function draw5Line(index, shape) {
     hitboxCanvas.strokeStyle = colorString;
     hitboxCanvas.lineWidth = shapeWidth * hitboxMultiplier;
     hitboxCanvas.beginPath();
-    hitboxCanvas.moveTo(topOriginCorner.x+0.5, topOriginCorner.y+0.5);
-    hitboxCanvas.lineTo(bottomOriginCorner.x+0.5, bottomOriginCorner.y+0.5);
-    hitboxCanvas.lineTo(bottomTargetCorner.x+0.5, bottomTargetCorner.y+0.5);
-    hitboxCanvas.lineTo(topTargetCorner.x+0.5, topTargetCorner.y+0.5);
-    hitboxCanvas.lineTo(topOriginCorner.x+0.5, topOriginCorner.y+0.5);
+    hitboxCanvas.moveTo(topOriginCorner.x, topOriginCorner.y);
+    hitboxCanvas.lineTo(bottomOriginCorner.x, bottomOriginCorner.y);
+    hitboxCanvas.lineTo(bottomTargetCorner.x, bottomTargetCorner.y);
+    hitboxCanvas.lineTo(topTargetCorner.x, topTargetCorner.y);
+    hitboxCanvas.lineTo(topOriginCorner.x, topOriginCorner.y);
     hitboxCanvas.stroke();
 }
 
@@ -780,10 +777,10 @@ function drawCone(index, shape)
     shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
     shapeCanvas.beginPath();
-    shapeCanvas.moveTo(originX+0.5, originY+0.5);
-    shapeCanvas.lineTo(destX1+0.5, destY1+0.5);
-    shapeCanvas.lineTo(destX2+0.5, destY2+0.5);
-    shapeCanvas.lineTo(originX+0.5, originY+0.5);
+    shapeCanvas.moveTo(originX, originY);
+    shapeCanvas.lineTo(destX1, destY1);
+    shapeCanvas.lineTo(destX2, destY2);
+    shapeCanvas.lineTo(originX, originY);
     shapeCanvas.stroke();
 
     let colorString = "#";
@@ -797,10 +794,10 @@ function drawCone(index, shape)
     hitboxCanvas.strokeStyle = colorString;
     hitboxCanvas.lineWidth = shapeWidth * hitboxMultiplier;
     hitboxCanvas.beginPath();
-    hitboxCanvas.moveTo(originX+0.5, originY+0.5);
-    hitboxCanvas.lineTo(destX1+0.5, destY1+0.5);
-    hitboxCanvas.lineTo(destX2+0.5, destY2+0.5);
-    hitboxCanvas.lineTo(originX+0.5, originY+0.5);
+    hitboxCanvas.moveTo(originX, originY);
+    hitboxCanvas.lineTo(destX1, destY1);
+    hitboxCanvas.lineTo(destX2, destY2);
+    hitboxCanvas.lineTo(originX, originY);
     hitboxCanvas.stroke();
 }
 
@@ -819,12 +816,12 @@ function draw90Cone(index, shape) {
     shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
     shapeCanvas.beginPath();
-    shapeCanvas.moveTo(originX+0.5, originY+0.5);
-    shapeCanvas.lineTo(destX1+0.5, destY1+0.5);
+    shapeCanvas.moveTo(originX, originY);
+    shapeCanvas.lineTo(destX1, destY1);
     let extendedRange = Math.sqrt(Math.pow(destX1 - originX, 2) + Math.pow(destY1 - originY, 2));
-    shapeCanvas.arc(originX+0.5, originY+0.5, extendedRange, angle+0.25*Math.PI, angle-0.25*Math.PI, true);
-    shapeCanvas.moveTo(destX2+0.5, destY2+0.5);
-    shapeCanvas.lineTo(originX+0.5, originY+0.5);
+    shapeCanvas.arc(originX, originY, extendedRange, angle+0.25*Math.PI, angle-0.25*Math.PI, true);
+    shapeCanvas.moveTo(destX2, destY2);
+    shapeCanvas.lineTo(originX, originY);
     shapeCanvas.stroke();
 
     let colorString = "#";
@@ -838,11 +835,11 @@ function draw90Cone(index, shape) {
     hitboxCanvas.strokeStyle = colorString;
     hitboxCanvas.lineWidth = shapeWidth * hitboxMultiplier;
     hitboxCanvas.beginPath();
-    hitboxCanvas.moveTo(originX+0.5, originY+0.5);
-    hitboxCanvas.lineTo(destX1+0.5, destY1+0.5);
-    hitboxCanvas.arc(originX+0.5, originY+0.5, extendedRange, angle+0.25*Math.PI, angle-0.25*Math.PI, true);
-    hitboxCanvas.moveTo(destX2+0.5, destY2+0.5);
-    hitboxCanvas.lineTo(originX+0.5, originY+0.5);
+    hitboxCanvas.moveTo(originX, originY);
+    hitboxCanvas.lineTo(destX1, destY1);
+    hitboxCanvas.arc(originX, originY, extendedRange, angle+0.25*Math.PI, angle-0.25*Math.PI, true);
+    hitboxCanvas.moveTo(destX2, destY2);
+    hitboxCanvas.lineTo(originX, originY);
     hitboxCanvas.stroke();
 }
 
@@ -1225,13 +1222,13 @@ function drawGrid()
 {
     for (let x = 1; x <= mapData.x; x++)
     {
-        mapCanvas.moveTo(x * gridSize.x + offsetX + 0.5, 0.5);
-        mapCanvas.lineTo(x * gridSize.x + offsetX + 0.5, map.clientHeight + 0.5);
+        mapCanvas.moveTo(x * gridSize.x + offsetX + 0.5, 0);
+        mapCanvas.lineTo(x * gridSize.x + offsetX + 0.5, map.clientHeight);
     }    
     for (let y = 1; y <= mapData.y; y++)
     {
-        mapCanvas.moveTo(0.5, y * gridSize.y + offsetY + 0.5);
-        mapCanvas.lineTo(map.clientWidth + 0.5, y * gridSize.y + offsetY + 0.5);
+        mapCanvas.moveTo(0, y * gridSize.y + offsetY + 0.5);
+        mapCanvas.lineTo(map.clientWidth, y * gridSize.y + offsetY + 0.5);
     }
     mapCanvas.stroke();
 }
@@ -1300,10 +1297,10 @@ function drawTokens()
                 imageElement.style.pointerEvents = "none";
     
             imageElement.className = "token";
-            imageElement.style.top = token.y - (gridSize.y * token.size) / 2 + 0.5*GridLineWidth + "px";
-            imageElement.style.left = token.x - (gridSize.x * token.size) / 2 + 0.5*GridLineWidth + "px";
-            imageElement.style.width = (token.size * gridSize.x-2*GridLineWidth).toString() + "px";
-            imageElement.style.height = (token.size * gridSize.y-2*GridLineWidth).toString() + "px";
+            imageElement.style.top = token.y - (gridSize.y * token.size) / 2 + "px";
+            imageElement.style.left = token.x - (gridSize.x * token.size) / 2 + "px";
+            imageElement.style.width = (token.size * gridSize.x-GridLineWidth).toString() + "px";
+            imageElement.style.height = (token.size * gridSize.y-GridLineWidth).toString() + "px";
     
             imageElement.style.zIndex = (token.layer + baseTokenIndex).toString();
             imageElement.title = token.status;
@@ -1313,8 +1310,8 @@ function drawTokens()
                 let hiddenImage = document.createElement("img");
                 hiddenImage.src = "images/hidden.png";
                 hiddenImage.className = "hiddenToken";
-                hiddenImage.style.width = ((token.size * gridSize.x-2*GridLineWidth) / 3).toString() + "px";
-                hiddenImage.style.height = ((token.size * gridSize.y-2*GridLineWidth) / 3).toString() + "px";
+                hiddenImage.style.width = ((token.size * gridSize.x-GridLineWidth) / 3).toString() + "px";
+                hiddenImage.style.height = ((token.size * gridSize.y-GridLineWidth) / 3).toString() + "px";
                 hiddenImage.style.top = token.y - (gridSize.y * token.size) / 2 + "px";
                 hiddenImage.style.left = token.x - (gridSize.x * token.size) / 2  + "px";
                 hiddenImage.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
@@ -1355,8 +1352,8 @@ function drawTokens()
                             
                         linkImage.className = "linkImage";
                         tokensDiv.appendChild(linkImage);
-                        linkImage.style.width = ((token.size * gridSize.x-2*GridLineWidth) / 3).toString() + "px";
-                        linkImage.style.height = ((token.size * gridSize.y-2*GridLineWidth) / 3).toString() + "px";
+                        linkImage.style.width = ((token.size * gridSize.x-GridLineWidth) / 3).toString() + "px";
+                        linkImage.style.height = ((token.size * gridSize.y-GridLineWidth) / 3).toString() + "px";
                         linkImage.style.top = token.y - (gridSize.y * token.size) / 2 + "px";
                         linkImage.style.left = token.x + (gridSize.x * token.size) / 2 - linkImage.offsetWidth + "px";
                         linkImage.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
@@ -1372,8 +1369,8 @@ function drawTokens()
                     concentratingIcon.className = "concentratingText";
                     concentratingIcon.src = "images/literally_copyright.png";
                     tokensDiv.appendChild(concentratingIcon);
-                    concentratingIcon.style.width = ((token.size * gridSize.x-2*GridLineWidth) / 3).toString() + "px";
-                    concentratingIcon.style.height = ((token.size * gridSize.y-2*GridLineWidth) / 3).toString() + "px";
+                    concentratingIcon.style.width = ((token.size * gridSize.x-GridLineWidth) / 3).toString() + "px";
+                    concentratingIcon.style.height = ((token.size * gridSize.y-GridLineWidth) / 3).toString() + "px";
                     concentratingIcon.style.top = token.y + (gridSize.y * token.size) / 2 - concentratingIcon.offsetHeight + "px";
                     concentratingIcon.style.left = token.x - (gridSize.x * token.size) / 2 + "px";
                     concentratingIcon.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
@@ -1393,7 +1390,6 @@ function drawTokens()
                 {
                     if (CheckAntiBlockerPixel(e) || (isDM&&!playerMode))
                     {
-                        e.dataTransfer.effectAllowed = "pointer";
                         tokenDragOffset.x = token.x - (e.pageX + viewport.scrollLeft)/(1+extraZoom/20);
                         tokenDragOffset.y = token.y - (e.pageY + viewport.scrollTop)/(1+extraZoom/20);
                         draggingToken = token.id;
@@ -1455,6 +1451,7 @@ function drawTokens()
     
             imageElement.addEventListener("dragend", function(e) {
                 e.preventDefault();
+                document.body.style.cursor = "";
             });
     
             imageElement.addEventListener("contextmenu", function(e) {
@@ -1750,8 +1747,8 @@ function drawTokens()
             {
                 let textHolder = document.createElement("div");
                 textHolder.style.zIndex = parseInt(imageElement.style.zIndex);
-                textHolder.style.left = (token.x - 0.4*token.size*gridSize.x + 0.5*GridLineWidth).toString() + "px";
-                textHolder.style.top = (token.y - 0.25*token.size*gridSize.y + 0.5*GridLineWidth).toString() + "px";
+                textHolder.style.left = (token.x - 0.4*token.size*gridSize.x).toString() + "px";
+                textHolder.style.top = (token.y - 0.25*token.size*gridSize.y).toString() + "px";
                 textHolder.style.width = ((token.size*gridSize.x-2*GridLineWidth)*0.8).toString() + "px";
                 textHolder.style.height = ((token.size*gridSize.y-2*GridLineWidth)*0.5).toString() + "px";
                 textHolder.style.lineHeight = ((token.size*gridSize.y-2*GridLineWidth)*0.5).toString() + "px";
@@ -1780,7 +1777,7 @@ function drawTokens()
 function updateHighlightedToken() {
     if (selectedToken!=null)
         for (let token of tokensDiv.children)
-            token.style.outline = token.getAttribute("tokenid")==selectedToken?"0.20vw dashed aqua":"";
+            token.style.outline = token.getAttribute("tokenid")==selectedToken?(0.004*gridSize.x).toString()+"vw dashed aqua":"";
 } 
 
 let previousInitiativeTrackerScrollPosition = 0;

@@ -612,6 +612,7 @@ body h3 {user-select: none;}
     line-height: 50%;
     border-radius: calc(0.3vw * var(--tracker-scale));
     background-color: transparent;
+    cursor: pointer;
 }
 
 .initiativeItem img {height: calc(1.1vw * var(--tracker-scale));}
@@ -721,12 +722,13 @@ body h3 {user-select: none;}
 }*/
 
 #detailsIcon {
+    cursor: pointer;
     grid-area: icon;
 }
 
 #detailsIcon img {height: 100%; user-select: none; margin: 0px auto; margin-right: 5%;}
 
-#hitpointsIcon {grid-area: hpicon; width: 100%; height: 100%}
+#hitpointsIcon {grid-area: hpicon; width: 100%; height: 100%; cursor:pointer}
 #armorIcon {grid-area: acicon; width: 100%; height: 100%}
 
 #currentHitpoints {
