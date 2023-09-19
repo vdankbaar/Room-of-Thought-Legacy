@@ -226,6 +226,7 @@ body {
 #initiativeTracker::-webkit-scrollbar-track {background-color: transparent;}
 
 .initiativeItem {
+    border-radius: 0.45vw;
     display: grid;
     user-select: none;
     width: 100%;
@@ -327,7 +328,13 @@ body {
     padding: 0px 0.2vw;
 }
 
-.initiativeHR {border: 0.02vw solid white; width: 90%;}
+.initiativeHR {
+    background-color: white;
+    margin: 0.5vh 0.5vw;
+    height: 0.25vh;
+    width: auto;
+    border-style: none;
+}
 
 #detailsScreen {
     font-family: helvetica;

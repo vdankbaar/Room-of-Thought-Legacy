@@ -1,9 +1,10 @@
+let port = 80;
+
 const fs = require('fs');
 const pathLib = require('path');
 var express = require("express");
 var bodyParser = require("body-parser");
 const fileUpload = require('express-fileupload');
-
 var app = express();
 let dataFolder = __dirname + "/data/";
 let publicFolder = __dirname + "/client/public/";
@@ -18,6 +19,8 @@ let previousRemovedTokenId = -1;
 let removedDrawings = 0;
 let previousRemovedDrawingId = -1;
 let playerNameList = [];
+
+
 
 app.post("/api", function(request, response) {
     let playerName = GetCookie(request, "playerName");
@@ -129,6 +132,8 @@ app.post("/api", function(request, response) {
                         currentMap.tokens[i].hp = request.body.hp;
                     if (request.body.notes != null)
                         currentMap.tokens[i].notes = request.body.notes;
+                    if (request.body.image != null)
+                        currentMap.tokens[i].image = request.body.image;
                 }
             }
             saveCurrentMap();
@@ -433,7 +438,7 @@ app.post('/upload', function(req, res) {
 });
 
 app.use(express.static('client'));
-app.listen(80);
+app.listen(port);
 
 function CheckLinkedShapes(tokenData) 
 {

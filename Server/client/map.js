@@ -31,6 +31,7 @@ let statusInput = document.getElementById("detailsStatusInput");
 let detailsIcon = document.getElementById("detailsIcon").children[0];
 let sideMenu = document.getElementById("sideMenu");
 let noteEditor = document.getElementById("notesEditor");
+let detailsScreen = document.getElementById("detailsScreen");
 let noteArea = noteEditor.children[0];
 let mapCanvas;
 let shapeCanvas;
@@ -140,7 +141,7 @@ async function UpdateMapData(force)
     offsetY = mapData.offsetY;
     loadedMap.onload = function() 
     {
-        drawCanvas();
+        drawCanvas(dataIsIdentical);
     }
 }
 
@@ -234,9 +235,9 @@ offsetYInput.onchange = function() {
 //#endregion
 
 //#region Drawing functions
-function drawCanvas()
+function drawCanvas(force)
 {
-    if (!dataIsIdentical)
+    if (!dataIsIdentical||force)
     {
         clearCanvas();
         map.width = loadedMap.naturalWidth;
@@ -624,60 +625,28 @@ function createToken(token)
             { groupIdInput.value = token.group; }
         }
 
+        showDetailsScreen();
         selectedToken = token.id;
-        if (token.image!=null)
+        if (mapData.tokenList.includes(token.image))
+            detailsIcon.src = "public/tokens/" + token.image;
+        if (mapData.dmTokenList.includes(token.image))
+            detailsIcon.src = "public/dmTokens/" + token.image;
+        if (token.image==null)
+            detailsIcon.src = "public/blankToken.png";
+        if (CheckTokenPermission(token))
         {
-            if (mapData.tokenList.includes(token.image))
-            {
-                detailsIcon.src = "public/tokens/" + token.image;
-                LoadTokenData();
-            }
-            else
-            {
-                if (isDM)
-                {
-                    detailsIcon.src  = "public/dmTokens/" + token.image;
-                    LoadTokenData();
-                }
-                else
-                {
-                    detailsIcon.src = "public/dmTokens/" + token.image;
-                    nameInput.value = "DM only!";
-                    maxHpInput.value = "";
-                    currentHpInput.value = "";
-                    statusInput.value = "";
-                    initiativeInput.value = "";
-                    groupIdInput.value = "";
-                    acInput.value = "";
-                    noteArea.value = "";
-                }
-            }
+            LoadTokenData();
         }
         else
         {
-            detailsIcon.src = "public/blankToken.png";
-            if (token.dm)
-            {
-                if (isDM)
-                {
-                    LoadTokenData();
-                }
-                else
-                {
-                    nameInput.value = "DM only!";
-                    maxHpInput.value = "";
-                    currentHpInput.value = "";
-                    statusInput.value = "";
-                    initiativeInput.value = "";
-                    groupIdInput.value = "";
-                    acInput.value = "";
-                    noteArea.value = "";
-                }
-            }
-            else
-            {
-                LoadTokenData();
-            }
+            nameInput.value = "DM only!";
+            maxHpInput.value = "";
+            currentHpInput.value = "";
+            statusInput.value = token.status;
+            initiativeInput.value = "";
+            groupIdInput.value = "";
+            acInput.value = "";
+            noteArea.value = "";
         }
         UpdateMapData(true);
     })
@@ -757,14 +726,49 @@ function createToken(token)
                     }},
                     {text: "Change layer", callback: function() {
                         let newLayer = parseInt(prompt("Please enter the desired height level"));
-                        if (!isNaN(newLayer))
+                        if (!isNaN(newLayer) && newLayer>=0 && newLayer<50)
                         {
                             RequestServer({c:"editToken", id: token.id, size: token.size, status: token.status, layer: newLayer, group: token.group});
                             UpdateMapData();
                         }
+                        else
+                        {
+                            alert("Layer must be > -1 and < 51 ");
+                        }
                     }}
                 ];
                 DisplaySubMenu(e, subMenuOptions);
+            }},
+            {text: "Change image", hasSubMenu: true, callback: function() {
+                let subMenu = [];
+                let tokenList = mapData.tokenList;
+                let dmTokenList = mapData.dmTokenList;
+                for (let i in tokenList)
+                {
+                    let tmpElement = {};
+                    tmpElement.text = tokenList[i].substring(0, tokenList[i].length - 4);
+                    tmpElement.callback = function() 
+                    {
+                        RequestServer({c: "editToken", id: token.id, image: tokenList[i]});
+                        UpdateMapData();
+                    }
+                    subMenu.push(tmpElement);
+                }
+                if (isDM)
+                {
+                    for (let i in dmTokenList)
+                    {
+                        let tmpElement = {};
+                        tmpElement.text = dmTokenList[i].substring(0, dmTokenList[i].length - 4);
+                        tmpElement.callback = function() 
+                        {
+                            RequestServer({c: "editToken", id: token.id, image: dmTokenList[i]})
+                            UpdateMapData();
+                        }
+                        subMenu.push(tmpElement);
+                    }
+                }
+                DisplaySubMenu(e, subMenu);
             }},
             {text: "Draw Shape", description: "Pick a shape to draw", hasSubMenu: true, callback: function() {
                 let subMenuOptions = [
@@ -891,6 +895,7 @@ function createTracker(trackerData)
         tmpTrackerDiv.onclick = function(e) {
             e.preventDefault();
             e.stopPropagation();
+            showDetailsScreen();
             selectedToken = trackerData.id;
             nameInput.value = trackerData.name;
             if (trackerData.image!=null)
@@ -1046,11 +1051,25 @@ function createTracker(trackerData)
                 trackerHitpointsSection.append(hpP);
             bottomRow.append(trackerHitpointsSection);
         tmpTrackerDiv.append(bottomRow);
+        if (trackerData.id==selectedToken)
+            tmpTrackerDiv.style.backgroundColor = "#A0A0A0";
+        else
+            tmpTrackerDiv.style.backgroundColor = "#C0C0C0";
         initiativeTrackerDiv.append(tmpTrackerDiv);
         let trackerHR = document.createElement("hr");
         trackerHR.className = "initiativeHR";
         initiativeTrackerDiv.append(trackerHR);
     }
+}
+
+function showDetailsScreen()
+{
+    detailsScreen.style.display = "grid";
+}
+
+function hideDetailsScreen()
+{
+    detailsScreen.style.display = "none";
 }
 //#endregion
 
@@ -1149,7 +1168,7 @@ function CheckTokenPermission(token) {
     
 }
 
-noteArea.onchange = function() {
+noteArea.oninput = function() {
     updateSelectedTokenData();
     if (CheckTokenPermission(selectedTokenData))
     {
@@ -1157,24 +1176,25 @@ noteArea.onchange = function() {
     }
 }
 
-initiativeInput.onchange = function() {
+initiativeInput.oninput = function() {
     updateSelectedTokenData();
     let newInit = parseFloat(initiativeInput.value);
     if (CheckTokenPermission(selectedTokenData))
     {
-        if (newInit)
+        console.log(newInit);
+        if (newInit==null)
         {
-            RequestServer({c: "editToken", id: selectedToken, initiative: newInit});
+            RequestServer({c: "editToken", id: selectedToken, initiative: "reset"});
         }
         else
         {
-            RequestServer({c: "editToken", id: selectedToken, initiative: "reset"});
+            RequestServer({c: "editToken", id: selectedToken, initiative: newInit});
         }
     }   
     UpdateMapData();
 }
 
-nameInput.onchange = function() {
+nameInput.oninput = function() {
     updateSelectedTokenData();
     if (CheckTokenPermission(selectedTokenData)) {
         RequestServer({c: "editToken", id: selectedToken, name: nameInput.value});
@@ -1182,7 +1202,7 @@ nameInput.onchange = function() {
     UpdateMapData();
 }
 
-acInput.onchange = function() {
+acInput.oninput = function() {
     updateSelectedTokenData();
     if (CheckTokenPermission(selectedTokenData)) {
         RequestServer({c: "editToken", id: selectedToken, ac: acInput.value});  
@@ -1190,7 +1210,7 @@ acInput.onchange = function() {
     UpdateMapData();
 }
 
-currentHpInput.onchange = function() {
+currentHpInput.oninput = function() {
     updateSelectedTokenData();
     if (CheckTokenPermission(selectedTokenData)) {
         RequestServer({c: "editToken", id: selectedToken, hp: currentHpInput.value + "/" + maxHpInput.value});
@@ -1198,7 +1218,7 @@ currentHpInput.onchange = function() {
     UpdateMapData();
 }
 
-maxHpInput.onchange = function() {
+maxHpInput.oninput = function() {
     updateSelectedTokenData();
     if (CheckTokenPermission(selectedTokenData)) {
         RequestServer({c: "editToken", id: selectedToken, hp: currentHpInput.value + "/" + maxHpInput.value});
@@ -1206,15 +1226,13 @@ maxHpInput.onchange = function() {
     UpdateMapData();
 }
 
-statusInput.onchange = function() {
+statusInput.oninput = function() {
     updateSelectedTokenData();
-    if (CheckTokenPermission(selectedTokenData)) {
-        RequestServer({c:"editToken", id: selectedToken, status: statusInput.value});
-    }
+    RequestServer({c:"editToken", id: selectedToken, status: statusInput.value});
     UpdateMapData();
 }
 
-groupIdInput.onchange = function() {
+groupIdInput.oninput = function() {
     let newGroupId = parseInt(groupIdInput.value);
     updateSelectedTokenData();
     if (CheckTokenPermission(selectedTokenData)) {
@@ -1255,6 +1273,9 @@ document.body.addEventListener("mouseup", function(e) {
 shapeMap.addEventListener("mousedown", function(e) {
     if (e.button == 0)
     {
+        selectedToken=-1;
+        hideDetailsScreen();
+        drawCanvas(true);
         if (isPlacingBlocker)
         {
             if (isDM)
