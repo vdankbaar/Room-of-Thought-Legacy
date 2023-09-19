@@ -6,10 +6,30 @@ document.getElementById("enterButton").onclick = function() {
         if (confirm("Are you sure that you are the DM?"))
             window.location = 'map.html';
         else
+        {
             isDMInput.checked = false;
+            document.body.style.backgroundImage = "url(images/Player.jpg)";
+            setCookie("isDM", 0);
+        }
     }
     else
         window.location = 'map.html';
+}
+
+document.getElementById("mobileButton").onclick = function() {
+    if (isDMInput.checked)
+    {
+        if (confirm("Are you sure that you are the DM?"))
+            window.location = 'mobile.html';
+        else
+        {
+            isDMInput.checked = false;
+            document.body.style.backgroundImage = "url(images/Player.jpg)";
+            setCookie("isDM", 0);
+        }
+    }
+    else
+        window.location = 'mobile.html';
 }
 
 window.onload = function() {
@@ -86,25 +106,19 @@ window.onzoom = function(e) {
 
 //#region cookies
 function setCookie(cname, cvalue, exdays) {
-    var d = new Date();
+    let d = new Date();
     d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
-    var expires = "expires="+d.toUTCString();
+    let expires = "expires=" + d.toUTCString();
     document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
 }
 
 function getCookie(cname) {
-    var name = cname + "=";
-    var ca = document.cookie.split(';');
-    for( let i = 0; i < ca.length; i++) {
-        var c = ca[i];
-        while (c.charAt(0) == ' ') {
+    for(let c of document.cookie.split(';')) {
+        while (c.charAt(0)==' ')
             c = c.substring(1);
-        }
-        if (c.indexOf(name) == 0) {
-            return c.substring(name.length, c.length);
-        }
+        if (c.indexOf(cname)==0)
+            return c.substring(cname.length+1, c.length);
     }
     return "";
-}  
-
+}
 //#endregion

@@ -346,16 +346,11 @@ function setCookie(cname, cvalue, exdays) {
 }
 
 function getCookie(cname) {
-    let name = cname + "=";
-    let ca = document.cookie.split(';');
-    for( let i = 0; i < ca.length; i++) {
-        let c = ca[i];
-        while (c.charAt(0) == ' ') {
+    for(let c of document.cookie.split(';')) {
+        while (c.charAt(0)==' ')
             c = c.substring(1);
-        }
-        if (c.indexOf(name) == 0) {
-            return c.substring(name.length, c.length);
-        }
+        if (c.indexOf(cname)==0)
+            return c.substring(cname.length+1, c.length);
     }
     return "";
 }

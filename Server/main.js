@@ -272,54 +272,43 @@ app.post("/api", function(request, response) {
 
         case "editToken":
             loadCurrentMap();
-            for (let i in currentMap.tokens)
+            for (let token of currentMap.tokens)
             {
-                let currentToken = currentMap.tokens[i];
-                if (currentToken.id == request.body.id)
+                if (token.id == request.body.id)
                 {
                     if (request.body.status != null)
-                        currentMap.tokens[i].status = request.body.status;
+                        token.status = request.body.status;
                     if (request.body.size != null)
                         if (minMax(request.body.size, 0, 20))
                         {
-                            updateTokenCircleRange(currentMap.tokens[i], request.body.size);
-                            currentMap.tokens[i].size = request.body.size;
+                            updateTokenCircleRange(token, request.body.size);
+                            token.size = request.body.size;
                         }
                             
                     if (request.body.layer != null)
-                        currentMap.tokens[i].layer = request.body.layer;
+                        token.layer = request.body.layer;
                     if (request.body.group != null)
-                    {
-                        if (request.body.group == "reset")
-                            currentMap.tokens[i].group = null;
-                        else
-                            currentMap.tokens[i].group = request.body.group;
-                    }
+                        token.group = request.body.group=="reset" ? null : request.body.group;
                     if (request.body.initiative != null)
-                    {
-                        if (request.body.initiative == "reset")
-                            currentMap.tokens[i].initiative = null;
-                        else    
-                            currentMap.tokens[i].initiative = request.body.initiative;
-                    }
+                        token.initiative = request.body.initiative=="reset" ? null : request.body.initiative;
                     if (request.body.name != null)
-                        currentMap.tokens[i].name = request.body.name;
+                        token.name = request.body.name;
                     if (request.body.ac != null)
-                        currentMap.tokens[i].ac = request.body.ac;
+                        token.ac = request.body.ac;
                     if (request.body.hp != null)
-                        currentMap.tokens[i].hp = request.body.hp;
+                        token.hp = request.body.hp;
                     if (request.body.notes != null)
-                        currentMap.tokens[i].notes = request.body.notes;
+                        token.notes = request.body.notes;
                     if (request.body.image != null)
-                        currentMap.tokens[i].image = request.body.image;
+                        token.image = request.body.image=="reset" ? null : request.body.image;
                     if (request.body.text != null)
-                        currentMap.tokens[i].text = request.body.text;
+                        token.text = request.body.text;
                     if (request.body.dm != null)
-                        currentMap.tokens[i].dm = request.body.dm;
+                        token.dm = request.body.dm;
                     if (request.body.concentrating != null)
-                        currentMap.tokens[i].concentrating = request.body.concentrating;
+                        token.concentrating = request.body.concentrating;
                     if (request.body.hideTracker != null)
-                        currentMap.tokens[i].hideTracker = request.body.hideTracker;
+                        token.hideTracker = request.body.hideTracker;
                 }
             }
             saveCurrentMap();
@@ -335,20 +324,15 @@ app.post("/api", function(request, response) {
             }
             else
             {
+                
                 for (let h = 0; h < currentMap.tokens.length; h++)
-                {
                     if (currentMap.tokens[h].id==request.body.id)
-                    {
                         currentMap.tokens.splice(h, 1);
-                    }
-                }
+
                 for (let i = 0; i<currentMap.drawings.length; i++)
-                {
                     if (currentMap.drawings[i].link == request.body.id)
-                    {
                         removeDrawingById(currentMap.drawings[i].id);
-                    }
-                }
+                        
                 checkGroupLock();
                 saveCurrentMap();
                 response.send("[true]");
