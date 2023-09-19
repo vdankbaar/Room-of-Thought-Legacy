@@ -421,21 +421,56 @@ body h3 {user-select: none;}
     flex-direction: column;
     background-color: var(--sidemenu-color);
     top: 60vh;
-    height: 19.5vw;
-    width: 15vw;
+    width: auto;
+    height: auto;
     position: fixed;
     right: calc(var(--sidemenu-width) + 2vw);
-    z-index: 999;
+    z-index: 1001;
+    font-size: 1vw;
+}
+
+#notesEditor div {
+    display: inline-block;
+    cursor: grab;
+}
+
+#notesEditor div button {
+    user-select: none;
+    border: 0px;
+    padding: 0px;
+    float: right;
+    width: 1.5vw;
+    height: 1.5vw;
+    margin: 0.25vw;
+    text-align: center;
+    font-size: 1vw;
+}
+
+#notesEditor div button:focus {
+    outline: none;
+}
+
+#notesEditor h1 {
+    user-select: none;
+    color: lightgray;
+    float: left;
+    padding: 0px;
+    margin: 0px;
+    margin-top: 0.5vh;
+    margin-left: 0.5vw;
+    resize: none;
+    width: 60%;
     font-size: 1vw;
 }
 
 #notesEditor textarea {
     padding: 0px;
-    margin-top: 0.5vw;
-    margin-left: 0.5vw;
-    resize: none;
+    margin: 0.5vw;
     width: 14vw;
-    height: 18.5vw;
+    height: 34vh;
+    min-width: 10vw;
+    min-height: 30.5vh;
+    resize: both;
     font-size: 1vw;
 }
 /* #endregion */
@@ -503,7 +538,7 @@ body h3 {user-select: none;}
     padding: 0;
     font-size: 1vw;
     width: 100%;
-    height: 5vh;
+    height: 4.5vh;
     margin: 0px auto 0.5vh auto;
     border: none;
 }

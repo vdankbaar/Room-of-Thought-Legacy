@@ -29,6 +29,9 @@ let offsetXInput = document.getElementById("offsetX");
 let offsetYInput = document.getElementById("offsetY");
 let initiativeTrackerDiv = document.getElementById("initiativeTracker");
 let trackerScaleSlider = document.getElementById("trackerScaleSlider");
+let closeNotesButton = document.getElementById("closeNotes");
+let notesHeader = document.getElementById("notesHeader");
+let notesHeaderBar = notesHeader.parentElement;
 
 //Detail screen vars
 let detailsScreen = document.getElementById("detailsScreen");
@@ -41,7 +44,7 @@ let groupIdInput = document.getElementById("detailsGroup");
 let statusInput = document.getElementById("detailsStatusInput");
 let detailsIcon = document.getElementById("detailsIcon").children[0];
 let noteEditor = document.getElementById("notesEditor");
-let noteArea = noteEditor.children[0];
+let noteArea = noteEditor.children[1];
 let concentratingInput = document.getElementById("concentrating");
 let hideTrackerInput = document.getElementById("visibility");
 
@@ -159,6 +162,7 @@ window.onload = function() {
 }
 
 async function Setup() {
+    noteEditor.style.display = "none";
     mapData = await requestServer({c: "currentMapData"});
     mapCanvas = map.getContext("2d");
     hitboxCanvas = hitboxMap.getContext("2d");
@@ -1214,6 +1218,8 @@ function LoadTokenData(token, force) {
     {
         detailsIcon.src = mapData.tokenList.includes(token.image)?"public/tokens/" + token.image:mapData.dmTokenList.includes(token.image)?"public/dmTokens/" + token.image:"public/blankToken.png";
 
+        notesHeader.innerText = "Notes: "+(token.name?token.name:"token "+token.id.toString());
+
         if (document.activeElement!=nameInput || force)
             nameInput.value = token.name?token.name:"";
     
@@ -1251,6 +1257,7 @@ function LoadTokenData(token, force) {
         groupIdInput.value = "";
         acInput.value = "";
         noteArea.value = "";
+        notesHeader.innerText = "Notes";
         DetailsToggleButtonsUpdate(false, false);
     }
 }
@@ -2030,14 +2037,11 @@ document.getElementById("toggleBlockerEditing").onclick = function() {
     updateButtonColors();
 }
 
-let displayNoteEditor = false;
 detailsIcon.onclick = function() {
-    if (displayNoteEditor)
-        noteEditor.style.display = "none";
-    else
-        noteEditor.style.display = "flex";
-    displayNoteEditor =! displayNoteEditor;
+    noteEditor.style.display = noteEditor.style.display=="none" ? "flex" : "none";
 }
+
+closeNotesButton.onclick = detailsIcon.onclick;
 //#endregion
 
 //#region Color picker
@@ -2428,6 +2432,7 @@ window.addEventListener("mouseup", async function(e) {
     {
         document.body.style.cursor = "";
         isPanning = false;
+        draggingNotes = false;
 
         if (resizingSideMenu && !menuIsHidden)
         {
@@ -2753,6 +2758,15 @@ document.body.addEventListener("keyup", async function(e) {
     }
 });
 
+let draggingNotes = false;
+let draggingNotesOffset = {x: 0, y: 0};
+notesHeaderBar.addEventListener("mousedown", function(e) {
+    draggingNotes = true;
+    draggingNotesOffset.x = e.pageX - noteEditor.offsetLeft;
+    draggingNotesOffset.y = e.pageY - noteEditor.offsetTop;
+    console.log(draggingNotesOffset);
+});
+
 map.addEventListener("mousedown", async function(e) {
     if (e.button == 0)
     {
@@ -2760,8 +2774,6 @@ map.addEventListener("mousedown", async function(e) {
         selectedBlocker=-1;
         selectedShapeId=-1;
         updateTrackerHighlight();
-        displayNoteEditor = false;
-        noteEditor.style.display = "none";
         detailsScreen.style.display = "none";
         if (alignToolStep > 0)
         {
@@ -3030,6 +3042,7 @@ map.addEventListener("mousedown", async function(e) {
 });
 
 let previousCalcWidth = 0;
+let newNotePosition = {x: 0, y:0}
 window.addEventListener("mousemove", function(e) {
     if (resizingSideMenu && !menuIsHidden)
     {
@@ -3050,6 +3063,13 @@ window.addEventListener("mousemove", function(e) {
         viewport.scrollLeft = oldScrollPos.x + oldMousePos.x - e.pageX;
         viewport.scrollTop = oldScrollPos.y + oldMousePos.y - e.pageY;
         return;
+    }
+
+    if (draggingNotes) {
+        newNotePosition = {x: e.pageX - draggingNotesOffset.x, y: e.pageY - draggingNotesOffset.y};
+        noteEditor.style.left = newNotePosition.x>0 ? ((newNotePosition.x<(window.innerWidth-noteEditor.offsetWidth)) ? newNotePosition.x : window.offsetWidth) : 0;
+        noteEditor.style.top = newNotePosition.y>0 ? ((newNotePosition.y<(window.innerHeight-noteEditor.offsetHeight)) ? newNotePosition.y : window.offsetHeight) : 0;
+        noteEditor.style.right = "auto";
     }
 });
 

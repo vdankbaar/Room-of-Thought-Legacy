@@ -25,6 +25,13 @@
             </div>
         </div>
         <div id="Resizer"></div>
+        <div id="notesEditor">
+            <div>
+                <h1 id="notesHeader">Notes</h1>
+                <button id="closeNotes">X</button>
+            </div>
+            <textarea placeholder="Enter your notes here..."></textarea>
+        </div>
         <div id="sideMenu">
             <div id="toggleButtonList">
                 <button class="toggleButton" id="toggleGridButton" title="Toggle Grid (G)"><object type="image/svg+xml" data="images/grid_on-24px.svg"></object></button>
@@ -67,9 +74,6 @@
                 <input id="importMap" class="dmOnly" type="button" value="Upload JSON file" style="display: none">
                 <input id="exportMap" class="dmOnly" type="button" value="Export JSON file" style="display: none">
                 <input id="hideInits" class="dmOnly" type="button" value="Hide/Reveal initiatives"  style="display: none">
-            </div>
-            <div id="notesEditor">
-                <textarea placeholder="Enter your notes here..."></textarea>
             </div>
             <div id="bulkInitGeneratorScreen">
                 <a>Bulk initiative generator</a>
@@ -125,9 +129,6 @@
             }
             function hideHitmap() {
                 hbMap.style.top = 0;
-            }
-            function setPortal() {
-                
             }
         </script>
         <iframe style="display:none;" id="hiddenFrame"></iframe>
