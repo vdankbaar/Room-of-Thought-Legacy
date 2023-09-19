@@ -263,6 +263,7 @@ async function updateMapData(force)
                 if (oldParsedData.offsetX != mapData.offsetX) { skipMapRedraw = false; }
                 if (oldParsedData.offsetY != mapData.offsetY) { skipMapRedraw = false; }
                 if (oldParsedData.gridColor != mapData.gridColor) { skipMapRedraw = false; }
+                if (force) { skipMapRedraw = false; }
                 drawCanvas(skipMapRedraw);
                 oldData = stringData;
                 if (oldData) {
@@ -2374,7 +2375,6 @@ window.addEventListener("mouseup", async function(e) {
             resizer.style.right = (calcWidth + 0.5).toString() + "vw";
             resizingSideMenu = false;
             board.style.width = (100 - (calcWidth + 0.8)).toString() + "vw";
-            console.log(newWidth);
             bulkInitGeneratorScreen.style.right = (calcWidth + 2).toString() + "vw";
             mapOptionsMenu.style.right = (calcWidth + 2).toString() + "vw";
         }
