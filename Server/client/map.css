@@ -12,6 +12,28 @@ body {
     z-index: -2;
 }
 
+body p {
+    user-select: none;
+}
+
+body label {
+    user-select: none;
+}
+
+body a {
+    user-select: none;
+}
+
+body h3 {
+    user-select: none;
+}
+
+#antiBlockerMap {
+    pointer-events: none;
+    z-index: 50;
+    position: absolute;
+}
+
 #polyBlockers {
     pointer-events: none;
     position: absolute;
@@ -23,8 +45,8 @@ body {
     border-radius: 50%;
     cursor: grab;
     position: absolute;
-    width: 0.5vw;
-    height: 0.5vw;
+    width: 0.7vw;
+    height: 0.7vw;
     background-color: violet;
 }
 
@@ -604,18 +626,6 @@ body {
     overflow: hidden;
     background-color: var(--blocker-color);
     background: var(--blocker-color);
-}
-
-#antiBlocker {
-    position: absolute;
-    background-color: var(--antiBlocker-color);
-    background: var(--antiBlocker-color);
-    z-index: 500;
-    pointer-events: none;
-    -webkit-mask-composite: destination-out;
-    -webkit-mask: var(--anti-blocker-data) 0/100% 100%, linear-gradient(#fff,#fff);
-    mask: var(--anti-blocker-data) 0/100% 100%, linear-gradient(#fff,#fff);
-    mask-composite: exclude;
 }
 
 .blocker div:not(.blocker){
