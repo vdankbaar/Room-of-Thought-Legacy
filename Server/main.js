@@ -333,6 +333,13 @@ app.post("/api", function(request, response) {
                     tmpDrawing.destX = request.body.destX;
                     tmpDrawing.destY = request.body.destY;
                     break;
+                case "5ftLine":
+                    isShape = true;
+                    tmpDrawing.x = request.body.x;
+                    tmpDrawing.y = request.body.y;
+                    tmpDrawing.range = request.body.range;
+                    tmpDrawing.angle = request.body.angle;
+                    break;
                 case "cone":
                     isShape = true;
                     tmpDrawing.x = request.body.x;
@@ -362,25 +369,31 @@ app.post("/api", function(request, response) {
                 let currentDrawing = currentMap.drawings[i];
                 if (currentDrawing.id == request.body.id)
                 {
-                    switch(currentMap.drawings[i].shape)
+                    if (currentDrawing.shape == "line" && request.body.both)
                     {
-                        case "cone":
-                            currentMap.drawings[i].angle = request.body.angle;
-                            break;
-
-                        case "line":
-                            let dx = currentMap.drawings[i].destX - currentMap.drawings[i].x;
-                            let dy = currentMap.drawings[i].destY - currentMap.drawings[i].y;
-                            currentMap.drawings[i].destX = request.body.x + dx;
-                            currentMap.drawings[i].destY = request.body.y + dy;
-                            currentMap.drawings[i].x = request.body.x;
-                            currentMap.drawings[i].y = request.body.y;
-                            break;
-
-                        default:
-                            currentMap.drawings[i].x = request.body.x;
-                            currentMap.drawings[i].y = request.body.y;
-                            break;
+                        let dx = currentMap.drawings[i].destX - currentMap.drawings[i].x;
+                        let dy = currentMap.drawings[i].destY - currentMap.drawings[i].y;
+                        currentMap.drawings[i].destX = request.body.x + dx;
+                        currentMap.drawings[i].destY = request.body.y + dy;
+                        currentMap.drawings[i].x = request.body.x;
+                        currentMap.drawings[i].y = request.body.y;
+                    }
+                    else
+                    {
+                        if (request.body.destX!=null)
+                        { currentMap.drawings[i].destX = request.body.destX; }
+                        if (request.body.destY!=null)
+                        { currentMap.drawings[i].destY = request.body.destY; }
+                        if (request.body.x!=null)
+                        {currentMap.drawings[i].x = request.body.x;} 
+                        if (request.body.y!=null)
+                        { currentMap.drawings[i].y = request.body.y; }
+                        if (request.body.range!=null)
+                        { currentMap.drawings[i].range = request.body.range; }
+                        if (request.body.radius!=null)
+                        { currentMap.drawings[i].radius = request.body.radius; }
+                        if (request.body.angle!=null)
+                        { currentMap.drawings[i].angle = request.body.angle; }
                     }
                 }
             }

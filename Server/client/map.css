@@ -28,6 +28,16 @@ body {
     background-color: violet;
 }
 
+.shapeHandle {
+    z-index: 501;
+    border-radius: 50%;
+    cursor: grab;
+    position: absolute;
+    width: 0.5vw;
+    height: 0.5vw;
+    background-color: violet;
+}
+
 .polyBlocker {
     pointer-events: visiblePainted;
     z-index: 50;

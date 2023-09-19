@@ -44,6 +44,7 @@ let bulkInitGeneratorScreen = document.getElementById("bulkInitGeneratorScreen")
 let antiBlocker = document.getElementById("antiBlocker");
 let polyBlockers = document.getElementById("polyBlockers");
 let polyBlockerHandles = document.getElementById("polyBlockerHandles");
+let shapeHandles = document.getElementById("shapeHandles");
 let noteArea = noteEditor.children[0];
 let mapCanvas;
 let shapeCanvas;
@@ -57,6 +58,7 @@ let blockerMarkers = {x: 0, y: 0, width: 0, height: 0};
 let circleMarkers = {x: 0, y: 0, radius: 0};
 let squareMarkers = {x: 0, y: 0, width: 0, height: 0};
 let lineMarkers = {x: 0, y: 0, destX: 0, destY: 0, range: 100};
+let thickLineMarkers = {x: 0, y: 0, range: 100, linkId: -1};
 let coneMarkers = {x: 0, y: 0, range: 100, tokenSize: 1};
 let bulkInitSettings = {};
 let isDM = false;
@@ -73,6 +75,7 @@ let feetPerSquare = 5.0;
 let isPlacingBlocker = false;
 let isPlacingSquare = false;
 let isPlacingLine = false;
+let isPlacing5ftLine = false;
 let isPlacingCone = false;
 let isDraggingBlocker = false;
 let blockerEditMode = false;
@@ -80,6 +83,7 @@ let draggedBlocker = {x: 0, y: 0};
 let hiddenMapImportButton = document.getElementById("fileImport");
 let isMovingShape = false;
 let isMovingCone = false;
+let isMoving5ftLine = false;
 let isPanning = false;
 let oldMousePos = {x: 0, y: 0};
 let oldScrollPos = {x: 0, y: 0};
@@ -87,6 +91,7 @@ let movingShapeId = 0;
 let selectedToken;
 let selectedTokenData;
 let selectedBlocker;
+let selectedShapeId = -1;
 let oldData;
 let oldParsedData;
 let resizingSideMenu = false;
@@ -419,6 +424,7 @@ function drawCanvas()
 
 function drawShapes()
 {
+    shapeHandles.innerHTML = "";
     for (let k in mapData.drawings)
     {
         let currentShape = mapData.drawings[k];
@@ -439,16 +445,21 @@ function drawShapes()
             case "cone":
                 drawCone(k, currentShape);
                 break;
+            
+            case "5ftLine":
+                draw5Line(k, currentShape);
+                break;
         }
     }
 }
 
 function drawCircle(index, shape) 
 {
+    let trueRadius = shape.radius*gridSize;
     shapeCanvas.strokeStyle = shape.trueColor;
     shapeCanvas.lineWidth = shapeWidth;
     shapeCanvas.beginPath();
-    shapeCanvas.arc(shape.x, shape.y, shape.radius, 0, 2 * Math.PI);
+    shapeCanvas.arc(shape.x, shape.y, trueRadius, 0, 2 * Math.PI);
     shapeCanvas.stroke();
 
     let colorString = "#";
@@ -462,7 +473,7 @@ function drawCircle(index, shape)
     hitboxCanvas.strokeStyle = colorString;
     hitboxCanvas.lineWidth = shapeWidth * hitboxMultiplier;
     hitboxCanvas.beginPath();
-    hitboxCanvas.arc(shape.x, shape.y, shape.radius, 0, 2 * Math.PI);
+    hitboxCanvas.arc(shape.x, shape.y, trueRadius, 0, 2 * Math.PI);
     hitboxCanvas.stroke();
 }
 
@@ -511,6 +522,141 @@ function drawLine(index, shape)
     hitboxCanvas.beginPath();
     hitboxCanvas.moveTo(shape.x, shape.y);
     hitboxCanvas.lineTo(shape.destX, shape.destY);
+    hitboxCanvas.stroke();
+    if (selectedShapeId == shape.id)
+    {
+        let handleContainer1 = document.createElement("div");
+        handleContainer1.style.position = "absolute";
+        handleContainer1.style.left = shape.x;
+        handleContainer1.style.top = shape.y;
+        let handle1 = document.createElement("div");
+        handle1.className = "shapeHandle";
+        handle1.draggable = true;
+        handle1.style.left = "-0.25vw";
+        handle1.style.top = "-0.25vw";
+        let pickedUpHandle1 = false;
+        handle1.addEventListener("mousedown", function(e) {
+            if (e.button == 0)
+            {
+                pickedUpHandle1 = true;
+            }
+        });
+
+        handle1.addEventListener("mouseup", function(e) {
+            if (e.button == 0)
+            {
+                pickedUpHandle1 = false;
+            }
+        })
+
+        handle1.addEventListener("contextmenu", function(e) {
+            e.preventDefault();
+        });
+
+        handle1.addEventListener("dragover", function(e) {
+            e.preventDefault();
+        });
+
+        handle1.addEventListener("dragend", function(e) {
+            pickedUpHandle1 = false;
+        });
+
+        handleContainer1.appendChild(handle1);
+        shapeHandles.appendChild(handleContainer1);
+
+        let handleContainer2 = document.createElement("div");
+        handleContainer2.style.position = "absolute";
+        handleContainer2.style.left = shape.destX;
+        handleContainer2.style.top = shape.destY;
+        let handle2 = document.createElement("div");
+        handle2.className = "shapeHandle";
+        handle2.draggable = true;
+        handle2.style.left = "-0.25vw";
+        handle2.style.top = "-0.25vw";
+        let pickedUpHandle2 = false;
+        handle2.addEventListener("mousedown", function(e) {
+            if (e.button == 0)
+            {
+                pickedUpHandle2 = true;
+            }
+        });
+
+        handle2.addEventListener("mouseup", function(e) {
+            if (e.button == 0)
+            {
+                pickedUpHandle2 = false;
+            }
+        })
+
+        handle2.addEventListener("contextmenu", function(e) {
+            e.preventDefault();
+        });
+
+        handle2.addEventListener("dragover", function(e) {
+            e.preventDefault();
+        });
+
+        handle2.addEventListener("dragend", function(e) {
+            pickedUpHandle2 = false;
+        });
+
+        window.addEventListener("drop", function(e) {
+            if (pickedUpHandle1)
+            {
+                if ((e.clientX + board.scrollLeft)!=shape.x && (e.clientY + board.scrollTop)!=shape.y)
+                {
+                    requestServer({c:"editDrawing", id: shape.id, x: (e.clientX + board.scrollLeft), y: (e.clientY + board.scrollTop)});
+                    updateMapData();
+                }
+            }
+            pickedUpHandle1 = false;
+
+            if (pickedUpHandle2)
+            {
+                if ((e.clientX + board.scrollLeft)!=shape.destX && (e.clientY + board.scrollTop)!=shape.destY)
+                {
+                    requestServer({c:"editDrawing", id: shape.id, destX: (e.clientX + board.scrollLeft), destY: (e.clientY + board.scrollTop)});
+                    updateMapData();
+                }
+            }
+            pickedUpHandle2 = false;
+        });
+        handleContainer2.appendChild(handle2);
+        shapeHandles.appendChild(handleContainer2);
+    }
+}
+
+function draw5Line(index, shape) {
+    let lineOrigin = {x: shape.x + Math.cos(shape.angle)*gridSize*0.5, y: shape.y + Math.sin(shape.angle)*gridSize*0.5};
+    let topOriginCorner = {x: lineOrigin.x + Math.cos(shape.angle-0.5*Math.PI)*gridSize*0.5, y: lineOrigin.y + Math.sin(shape.angle-0.5*Math.PI)*gridSize*0.5};
+    let topTargetCorner = {x: topOriginCorner.x + Math.cos(shape.angle) * shape.range * gridSize, y: topOriginCorner.y + Math.sin(shape.angle) * shape.range * gridSize};
+    let bottomOriginCorner = {x: lineOrigin.x + Math.cos(shape.angle+0.5*Math.PI)*gridSize*0.5, y: lineOrigin.y + Math.sin(shape.angle+0.5*Math.PI)*gridSize*0.5};
+    let bottomTargetCorner = {x: bottomOriginCorner.x + Math.cos(shape.angle) * shape.range * gridSize, y: bottomOriginCorner.y + Math.sin(shape.angle) * shape.range * gridSize};
+    shapeCanvas.strokeStyle = shape.trueColor;
+    shapeCanvas.lineWidth = shapeWidth;
+    shapeCanvas.beginPath();
+    shapeCanvas.moveTo(topOriginCorner.x, topOriginCorner.y);
+    shapeCanvas.lineTo(bottomOriginCorner.x, bottomOriginCorner.y);
+    shapeCanvas.lineTo(bottomTargetCorner.x, bottomTargetCorner.y);
+    shapeCanvas.lineTo(topTargetCorner.x, topTargetCorner.y);
+    shapeCanvas.lineTo(topOriginCorner.x, topOriginCorner.y);
+    shapeCanvas.stroke();
+    let colorString = "#";
+    let hex = ((parseInt(index) + 1) * 16).toString(16);
+    for (let f = 0; f < (6 - hex.length); f++)
+    {
+        colorString += "0";
+    }
+
+    colorString += hex;
+    hitboxCanvas.strokeStyle = colorString;
+    hitboxCanvas.lineWidth = shapeWidth * hitboxMultiplier;
+    hitboxCanvas.beginPath();
+    hitboxCanvas.moveTo(topOriginCorner.x, topOriginCorner.y);
+    hitboxCanvas.lineTo(bottomOriginCorner.x, bottomOriginCorner.y);
+    hitboxCanvas.lineTo(bottomTargetCorner.x, bottomTargetCorner.y);
+    hitboxCanvas.lineTo(topTargetCorner.x, topTargetCorner.y);
+    hitboxCanvas.lineTo(topOriginCorner.x, topOriginCorner.y);
     hitboxCanvas.stroke();
 }
 
@@ -599,7 +745,6 @@ function drawPolyBlockers() {
                     editHandleContainer.style.top = vert.y;
                     let editHandle = document.createElement("div");
                     editHandle.className = "polyBlockerHandle";
-                    
                     editHandle.draggable = true;
                     editHandle.style.left = "-0.25vw";
                     editHandle.style.top = "-0.25vw";
@@ -819,14 +964,11 @@ function drawBlockers()
                     tmpBlocker.addEventListener("mousedown", function(e) {
                         if (e.button == 0)
                         {
-                            updateMapData(true);
-                            if (previousSelectedBlocker)
-                                previousSelectedBlocker.style.outline = "";
-                            tmpBlocker.style.outline = "0.3vh dashed "+blockerOutlineColor;
                             selectedToken=-1;
+                            selectedShapeId=-1;
                             selectedBlocker=currentBlocker.id;
                             previousSelectedBlocker=tmpBlocker;
-                            isDraggingBlocker = true;
+                            drawCanvas();
                         }
                     });
                     tmpBlocker.addEventListener("mouseup", function(e) {
@@ -862,7 +1004,6 @@ function drawBlockers()
                                 updateMapData();
                             }
                         }
-                        e.stopPropagation();
                     })
                 }
                 else
@@ -977,14 +1118,17 @@ function drawGrid()
 function drawTokens() 
 {
     tokensDiv.innerHTML = "";
+    console.log("Redrawing tokens!");
     for (let i in mapData.tokens)
     {
         createToken(mapData.tokens[i]);
     }
+    updateHighlightedToken();
 }
 
 function createToken(token) 
 {
+    let imageElement = document.createElement("img");
     if (token.id == selectedToken)
     {
         if (CheckTokenPermission(token))
@@ -1003,8 +1147,7 @@ function createToken(token)
             noteArea.value = "";
         }
     }
-    
-    let imageElement = document.createElement("img");
+    imageElement.setAttribute("tokenid", token.id);
     let isTextToken = false;
     if (token.image!=null)
     {
@@ -1058,10 +1201,6 @@ function createToken(token)
             hiddenImage.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
             tokensDiv.appendChild(hiddenImage);
         }
-    }
-    if (token.id == selectedToken)
-    {
-        imageElement.style.outline = "0.20vw dashed aqua";
     }
 
     function LoadTokenData() {
@@ -1126,6 +1265,17 @@ function createToken(token)
 
     }
 
+    imageElement.addEventListener("dragstart", function(e) {
+        tokenDragOffset.x = token.x - (e.pageX + board.scrollLeft);
+        tokenDragOffset.y = token.y - (e.pageY + board.scrollTop);
+        draggingToken = token.id;
+        isDraggingToken = true;
+        if (e.ctrlKey)
+        {
+            controlPressed = true;
+        }
+    })
+
     imageElement.addEventListener("mousedown", function(e) {
         if (e.button==0)
         {
@@ -1161,19 +1311,8 @@ function createToken(token)
                 acInput.value = "";
                 noteArea.value = "";
             }
-            drawTokens();
             updateTracker();
-        }
-    })
-
-    imageElement.addEventListener("dragstart", function(e) {
-        tokenDragOffset.x = token.x - (e.pageX + board.scrollLeft);
-        tokenDragOffset.y = token.y - (e.pageY + board.scrollTop);
-        draggingToken = token.id;
-        isDraggingToken = true;
-        if (e.ctrlKey)
-        {
-            controlPressed = true;
+            updateHighlightedToken();
         }
     })
 
@@ -1218,7 +1357,7 @@ function createToken(token)
                         let radiusInput = parseFloat(prompt("Please enter the desired radius in feet for your circle(s)"));
                         if (!isNaN(radiusInput))
                         {
-                            circleMarkers.radius = ((radiusInput + (feetPerSquare / 2) * token.size) / feetPerSquare) * gridSize;
+                            circleMarkers.radius = (radiusInput + (feetPerSquare / 2) * token.size) / feetPerSquare;
                             requestServer({c: "addDrawing", shape: "circle", link: token.id, x: token.x, y: token.y, radius: circleMarkers.radius, trueColor: shapeColor});
                             updateMapData();
                             closeMenu();
@@ -1235,6 +1374,22 @@ function createToken(token)
                             coneMarkers.linkId = token.id;
                             isPlacingCone = true;
                             drawCanvas();
+                        }
+                    }},
+                    {text: "Draw 5ft wide Line", callback: function() {
+                        let rangeTextInput = prompt("Please enter the desired range of the line in feet.\nThen click where you want to aim.");
+                        if (rangeTextInput!=null)
+                        {
+                            let rangeInput = parseFloat(rangeTextInput);
+                            if (rangeInput != null)
+                            {
+                                thickLineMarkers.range = rangeInput / feetPerSquare;
+                                thickLineMarkers.x = token.x;
+                                thickLineMarkers.y = token.y;
+                                thickLineMarkers.linkId = token.id;
+                                isPlacing5ftLine = true;
+                                drawCanvas();
+                            }
                         }
                     }}
                 ];
@@ -1469,6 +1624,22 @@ function createToken(token)
     }
 }
 
+function updateHighlightedToken() {
+    console.log("did this!");
+    for (let p = 0; p<tokensDiv.children.length; p++)
+    {
+        console.log(tokensDiv.children[p]);
+        if (tokensDiv.children[p].getAttribute("tokenid")==selectedToken)
+        {
+            tokensDiv.children[p].style.outline = "0.20vw dashed aqua";
+        }
+        else
+        {
+            tokensDiv.children[p].style.outline = "";
+        }
+    }
+}
+
 function updateTracker()
 {
     if (oldParsedData)
@@ -1499,7 +1670,7 @@ function createTracker(trackerData)
     {
         let tmpTrackerDiv = document.createElement("div");
         tmpTrackerDiv.className = "initiativeItem";
-        tmpTrackerDiv.onclick = function(e) {
+        tmpTrackerDiv.addEventListener("click", function(e) {
             e.preventDefault();
             e.stopPropagation();
             showDetailsScreen();
@@ -1557,8 +1728,9 @@ function createTracker(trackerData)
             { groupIdInput.value = ""; }
             else
             { groupIdInput.value = trackerData.group; }
-            updateMapData(true);
-        }
+            updateTracker();
+            drawTokens();
+        });
         if (!mapData.hideInit)
         {
             let tmpInitDiv = document.createElement("div");
@@ -1869,7 +2041,6 @@ document.getElementById("hitpointsIcon").onclick = async function() {
     }
 }
 
-
 bulkTokenConfirm.onclick = function() {
     let tokensToPlace = parseInt(bulkTokenAmountInput.value);
     if (isNaN(tokensToPlace) || tokensToPlace<1)
@@ -2029,6 +2200,7 @@ shapeMap.addEventListener("mousedown", function(e) {
     {
         selectedToken=-1;
         selectedBlocker=-1;
+        selectedShapeId=-1;
         displayNoteEditor = false;
         noteEditor.style.display = "none";
         hideDetailsScreen();
@@ -2142,6 +2314,18 @@ shapeMap.addEventListener("mousedown", function(e) {
             isPlacingLine = false;
             return;
         }
+        if (isPlacing5ftLine)
+        {
+            let destX = (e.pageX + board.scrollLeft);
+            let destY = (e.pageY + board.scrollTop);
+            let angle = Math.atan2((destY - thickLineMarkers.y), (destX - thickLineMarkers.x));
+            if (angle<0)
+                angle+=2*Math.PI;
+            requestServer({c: "addDrawing", shape: "5ftLine", x: thickLineMarkers.x, y: thickLineMarkers.y, angle: angle, trueColor: shapeColor, link: thickLineMarkers.linkId, range: thickLineMarkers.range});
+            updateMapData();
+            isPlacing5ftLine = false;
+            return;
+        }
         if (isPlacingCone)
         {
             let destX = e.pageX + board.scrollLeft;
@@ -2160,27 +2344,51 @@ shapeMap.addEventListener("mousedown", function(e) {
         {
             let testString = "#" + decToHex(pixel[0]) + decToHex(pixel[1]) + decToHex(pixel[2]);
             let shapeId = colorToSigned24Bit(testString) / 16;
+            shapeId--;
+            let clickedShape;
+            for (let h = 0; h<mapData.drawings.length; h++)
+            {
+                if (mapData.drawings[h].id == shapeId)
+                {
+                    clickedShape = mapData.drawings[h];
+                }
+            }
             if (shapeId%1 == 0)
             {
-                shapeId--;
-                if (mapData.drawings[shapeId].link==null)
+                if (clickedShape.link==null)
                 {
+                    if (clickedShape.shape=="line")
+                    {
+                        selectedShapeId = clickedShape.id;
+                        selectedBlocker = -1;
+                        selectedToken = -1;
+                        drawCanvas();
+                    }
                     document.body.style.cursor = "pointer";
-                    shapeDragOffset.x = mapData.drawings[shapeId].x - (e.pageX + board.scrollLeft);
-                    shapeDragOffset.y = mapData.drawings[shapeId].y - (e.pageY + board.scrollTop);
+                    shapeDragOffset.x = clickedShape.x - (e.pageX + board.scrollLeft);
+                    shapeDragOffset.y = clickedShape.y - (e.pageY + board.scrollTop);
                     movingShapeId = shapeId;
                     isMovingShape = true;
                 }
                 else
                 {
-                    if (mapData.drawings[shapeId].shape=="cone")
+                    if (clickedShape.shape=="cone")
                     {
                         document.body.style.cursor = "pointer";
-                        shapeDragOffset.x = mapData.drawings[shapeId].x;
-                        shapeDragOffset.y = mapData.drawings[shapeId].y;
+                        shapeDragOffset.x = clickedShape.x;
+                        shapeDragOffset.y = clickedShape.y;
                         shapeDragStartAngle = Math.atan2(((e.pageY + board.scrollTop) - shapeDragOffset.y), ((e.pageX + board.scrollLeft) - shapeDragOffset.x));
                         movingShapeId = shapeId;
                         isMovingCone = true;
+                    }
+                    if (clickedShape.shape=="5ftLine")
+                    {
+                        document.body.style.cursor = "pointer";
+                        shapeDragOffset.x = clickedShape.x;
+                        shapeDragOffset.y = clickedShape.y;
+                        shapeDragStartAngle = Math.atan2(((e.pageY + board.scrollTop) - shapeDragOffset.y), ((e.pageX + board.scrollLeft) - shapeDragOffset.x));
+                        movingShapeId = shapeId;
+                        isMoving5ftLine = true;
                     }
                 }
             }
@@ -2210,14 +2418,23 @@ shapeMap.addEventListener("mouseup", function(e) {
         if (isMovingShape)
         {
             isMovingShape = false;
-            console.log("Dropped shape!");
             document.body.style.cursor = "default";
-            requestServer({c: "editDrawing", id: movingShapeId, x: (e.pageX + board.scrollLeft) + shapeDragOffset.x, y: (e.pageY + board.scrollTop) + shapeDragOffset.y});
+            requestServer({c: "editDrawing", id: movingShapeId, x: (e.pageX + board.scrollLeft) + shapeDragOffset.x, y: (e.pageY + board.scrollTop) + shapeDragOffset.y, both: true});
             updateMapData();
         }
         if (isMovingCone)
         {
             isMovingCone = false;
+            document.body.style.cursor = "default";
+            let angle = mapData.drawings[movingShapeId].angle + (Math.atan2(((e.pageY + board.scrollTop) - shapeDragOffset.y), ((e.pageX + board.scrollLeft) - shapeDragOffset.x)) - shapeDragStartAngle);
+            if (angle<0)
+                angle+=2*Math.PI;
+            requestServer({c: "editDrawing", id: movingShapeId, angle: angle});
+            updateMapData();
+        }
+        if (isMoving5ftLine)
+        {
+            isMoving5ftLine = false;
             document.body.style.cursor = "default";
             let angle = mapData.drawings[movingShapeId].angle + (Math.atan2(((e.pageY + board.scrollTop) - shapeDragOffset.y), ((e.pageX + board.scrollLeft) - shapeDragOffset.x)) - shapeDragStartAngle);
             if (angle<0)
@@ -2261,19 +2478,64 @@ function shapeContextMenu(e, pixel)
     if (shapeId%1 == 0)
     {
         shapeId--;
+        let selectedShape;
+        for (let h = 0; h<mapData.drawings.length; h++)
+        {
+            if (mapData.drawings[h].id == shapeId)
+            {
+                selectedShape = mapData.drawings[h];
+            }
+        }
         let menuOptions = [
             {text: "Erase shape", hasSubMenu: false, callback: async function() {
                 let result = await requestServer({c: "removeDrawing", id: shapeId, removedDrawings: mapData.removedDrawings});
-                if (result[0] == true)
-                {
+                if (result[0]) {
+                    if (selectedShapeId == shapeId) {
+                        shapeId == -1;
+                    }
                     updateMapData();
-                }
-                else
-                {
+                } else {
                     alert("That drawing has already been removed by someone else!");
                 }
             }}
         ];
+        switch(selectedShape.shape)
+        {
+            case "5ftLine":
+                menuOptions.push({text: "Edit range", hasSubMenu: false, callback: function() {
+                    let newRange = parseInt(prompt("Please enter the new range", selectedShape.range*feetPerSquare));
+                    if (!isNaN(newRange))
+                    {
+                        newRange = newRange/feetPerSquare;
+                        requestServer({c: "editDrawing", range: newRange, id: shapeId});
+                    }
+                }});
+                break;
+            case "circle":
+                menuOptions.push({text: "Edit radius", hasSubMenu: false, callback: function() {
+                    let newRange = parseInt(prompt("Please enter the new radius", selectedShape.range));
+                    if (!isNaN(newRange))
+                    {
+                        if (selectedShape.link!=null) {
+                            newRange = newRange/feetPerSquare + 0.5;
+                        } else {
+                            newRange = newRange/feetPerSquare;
+                        }
+                        requestServer({c: "editDrawing", radius: newRange, id: shapeId});
+                    }
+                }});
+                break;
+            case "cone":
+                menuOptions.push({text: "Edit range", hasSubMenu: false, callback: function() {
+                    let newRange = parseInt(prompt("Please enter the new range", selectedShape.range*feetPerSquare));
+                    if (!isNaN(newRange))
+                    {
+                        newRange = newRange/feetPerSquare;
+                        requestServer({c: "editDrawing", range: newRange, id: shapeId});
+                    }
+                }});
+                break;
+        }
         displayMenu(e, menuOptions);
     }
 }
@@ -2404,13 +2666,11 @@ function displayContextMenu(e)
                     let radiusInput = parseFloat(prompt("Please enter the desired radius in feet for your circle(s)"));
                     if (!isNaN(radiusInput))
                     {
-                        circleMarkers.radius = radiusInput / feetPerSquare * gridSize;
+                        circleMarkers.radius = radiusInput / feetPerSquare;
                         circleMarkers.x = e.pageX + board.scrollLeft;
                         circleMarkers.y = e.pageY + board.scrollTop;
                         requestServer({c: "addDrawing", shape: "circle", x: circleMarkers.x, y: circleMarkers.y, radius: circleMarkers.radius, trueColor: shapeColor});
                         updateMapData();
-                        closeMenu();
-                        closeSubMenu();
                     }    
                 }},
                 {text: "Draw Square", callback: function() {
@@ -2600,6 +2860,7 @@ window.onclick = function(event)
             {
                 let listItem = document.createElement('li');
                 listItem.innerText = listData[p].text;
+                listItem.style.userSelect = "none";
                 listItem.className = "custom-menu-element";
                 if (listData[p].description != null)
                 {
@@ -2657,6 +2918,7 @@ window.onclick = function(event)
                     listItem.title = listData[p].description;
                 }
                 listItem.innerText = listData[p].text;
+                listItem.style.userSelect = "none";
                 listItem.className = "custom-menu-element";
                 listItem.onclick = function() 
                 {
