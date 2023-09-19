@@ -168,6 +168,7 @@ async function Setup() {
     }
     if (isDM)
     {
+        shapeMap.style.zIndex = 54;
         baseTokenIndex = 54;
     }
     else
@@ -562,10 +563,6 @@ function drawShapes()
                     drawSquare(k, currentShape);
                     break;
     
-                case "line":
-                    drawLine(k, currentShape);
-                    break;
-    
                 case "cone":
                     if (currentShape.is90Deg) {
                         draw90Cone(k, currentShape)
@@ -577,8 +574,114 @@ function drawShapes()
                 case "5ftLine":
                     draw5Line(k, currentShape);
                     break;
+
+                case "vertexLine":
+                    drawVertexLine(k, currentShape);
+                    break;
             }
         }
+    }
+}
+
+function drawVertexLine(index, shape)
+{
+    shapeCanvas.strokeStyle = shape.trueColor;
+    shapeCanvas.lineWidth = shapeWidth;
+    shapeCanvas.beginPath();
+    shapeCanvas.moveTo(shape.points[0].x, shape.points[0].y);
+    for (let i = 1; i < shape.points.length; i++)
+    {
+        shapeCanvas.lineTo(shape.points[i].x, shape.points[i].y)
+    }
+    shapeCanvas.stroke();
+
+    let colorString = "#";
+    let hex = ((parseInt(index) + 1) * 16).toString(16);
+    for (let f = 0; f < (6 - hex.length); f++)
+    {
+        colorString += "0";
+    }
+        
+    colorString += hex;
+    hitboxCanvas.strokeStyle = colorString;
+    hitboxCanvas.lineWidth = shapeWidth * hitboxMultiplier;
+    hitboxCanvas.beginPath();
+    hitboxCanvas.moveTo(shape.points[0].x, shape.points[0].y);
+    for (let i = 1; i < shape.points.length; i++)
+    {
+        hitboxCanvas.lineTo(shape.points[i].x, shape.points[i].y)
+    }
+    hitboxCanvas.stroke();
+    if (selectedShapeId == shape.id)
+    {
+        let pickedUpHandle = -1;
+        for (let i = 0; i < shape.points.length; i++)
+        {
+            let handleContainer = document.createElement("div");
+            handleContainer.style.position = "absolute";
+            handleContainer.style.left = shape.points[i].x;
+            handleContainer.style.top = shape.points[i].y;
+            let handle = document.createElement("div");
+            handle.className = "shapeHandle";
+            handle.draggable = true;
+            handle.style.left = "-0.25vw";
+            handle.style.top = "-0.25vw";
+            handle.addEventListener("mousedown", function(e) {
+                if (e.button == 0)
+                {
+                    pickedUpHandle = i;
+                }
+            });
+    
+            handle.addEventListener("mouseup", function(e) {
+                if (e.button == 0)
+                {
+                    pickedUpHandle = -1;
+                }
+            })
+    
+            handle.addEventListener("contextmenu", function(e) {
+                e.preventDefault();
+                let menuOptions = [
+                    {text: "Remove vert", hasSubMenu: false, callback: function() {
+                        if (shape.points.length>2)
+                        {
+                            shape.points.splice(i, 1);
+                            requestServer({c: "editDrawing", id: shape.id, points: shape.points});
+                            updateMapData();
+                        }
+                        else
+                        {
+                            alert("There are too few verts in the line to remove one!");
+                        }
+                    }}
+                ];
+                displayMenu(e, menuOptions);
+            });
+    
+            handle.addEventListener("dragover", function(e) {
+                e.preventDefault();
+            });
+    
+            handle.addEventListener("dragend", function(e) {
+                pickedUpHandle = -1;
+            });
+    
+            handleContainer.appendChild(handle);
+            shapeHandles.appendChild(handleContainer);
+        }      
+        window.addEventListener("drop", async function(e) {
+            if (pickedUpHandle!=-1)
+            {
+                if (((e.clientX + viewport.scrollLeft)/(1+extraZoom/20))!=shape.x && ((e.clientY + viewport.scrollTop)/(1+extraZoom/20))!=shape.y)
+                {
+                    shape.points[pickedUpHandle].x = ((e.clientX + viewport.scrollLeft)/(1+extraZoom/20));
+                    shape.points[pickedUpHandle].y = ((e.clientY + viewport.scrollTop)/(1+extraZoom/20));
+                    await requestServer({c:"editDrawing", id: shape.id, points: shape.points});
+                    updateMapData();
+                }
+            }
+        });
     }
 }
 
@@ -627,132 +730,6 @@ function drawSquare(index, shape)
     hitboxCanvas.beginPath();
     hitboxCanvas.rect(shape.x, shape.y, shape.width, shape.height);
     hitboxCanvas.stroke();
-}
-
-function drawLine(index, shape) 
-{
-    shapeCanvas.strokeStyle = shape.trueColor;
-    shapeCanvas.lineWidth = shapeWidth;
-    shapeCanvas.beginPath();
-    shapeCanvas.moveTo(shape.x, shape.y);
-    shapeCanvas.lineTo(shape.destX, shape.destY);
-    shapeCanvas.stroke();
-
-    let colorString = "#";
-    let hex = ((parseInt(index) + 1) * 16).toString(16);
-    for (let f = 0; f < (6 - hex.length); f++)
-    {
-        colorString += "0";
-    }
-
-    colorString += hex;
-    hitboxCanvas.strokeStyle = colorString;
-    hitboxCanvas.lineWidth = shapeWidth * hitboxMultiplier;
-    hitboxCanvas.beginPath();
-    hitboxCanvas.moveTo(shape.x, shape.y);
-    hitboxCanvas.lineTo(shape.destX, shape.destY);
-    hitboxCanvas.stroke();
-    if (selectedShapeId == shape.id)
-    {
-        let handleContainer1 = document.createElement("div");
-        handleContainer1.style.position = "absolute";
-        handleContainer1.style.left = shape.x;
-        handleContainer1.style.top = shape.y;
-        let handle1 = document.createElement("div");
-        handle1.className = "shapeHandle";
-        handle1.draggable = true;
-        handle1.style.left = "-0.25vw";
-        handle1.style.top = "-0.25vw";
-        let pickedUpHandle1 = false;
-        handle1.addEventListener("mousedown", function(e) {
-            if (e.button == 0)
-            {
-                pickedUpHandle1 = true;
-            }
-        });
-
-        handle1.addEventListener("mouseup", function(e) {
-            if (e.button == 0)
-            {
-                pickedUpHandle1 = false;
-            }
-        })
-
-        handle1.addEventListener("contextmenu", function(e) {
-            e.preventDefault();
-        });
-
-        handle1.addEventListener("dragover", function(e) {
-            e.preventDefault();
-        });
-
-        handle1.addEventListener("dragend", function(e) {
-            pickedUpHandle1 = false;
-        });
-
-        handleContainer1.appendChild(handle1);
-        shapeHandles.appendChild(handleContainer1);
-
-        let handleContainer2 = document.createElement("div");
-        handleContainer2.style.position = "absolute";
-        handleContainer2.style.left = shape.destX;
-        handleContainer2.style.top = shape.destY;
-        let handle2 = document.createElement("div");
-        handle2.className = "shapeHandle";
-        handle2.draggable = true;
-        handle2.style.left = "-0.25vw";
-        handle2.style.top = "-0.25vw";
-        let pickedUpHandle2 = false;
-        handle2.addEventListener("mousedown", function(e) {
-            if (e.button == 0)
-            {
-                pickedUpHandle2 = true;
-            }
-        });
-
-        handle2.addEventListener("mouseup", function(e) {
-            if (e.button == 0)
-            {
-                pickedUpHandle2 = false;
-            }
-        })
-
-        handle2.addEventListener("contextmenu", function(e) {
-            e.preventDefault();
-        });
-
-        handle2.addEventListener("dragover", function(e) {
-            e.preventDefault();
-        });
-
-        handle2.addEventListener("dragend", function(e) {
-            pickedUpHandle2 = false;
-        });
-        
-        window.addEventListener("drop", function(e) {
-            if (pickedUpHandle1)
-            {
-                if (((e.clientX + viewport.scrollLeft)/(1+extraZoom/20))!=shape.x && ((e.clientY + viewport.scrollTop)/(1+extraZoom/20))!=shape.y)
-                {
-                    requestServer({c:"editDrawing", id: shape.id, x: ((e.clientX + viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.clientY + viewport.scrollTop)/(1+extraZoom/20))});
-                    updateMapData();
-                }
-            }
-            pickedUpHandle1 = false;
-
-            if (pickedUpHandle2)
-            {
-                if (((e.clientX + viewport.scrollLeft)/(1+extraZoom/20))!=shape.destX && ((e.clientY + viewport.scrollTop)/(1+extraZoom/20))!=shape.destY)
-                {
-                    requestServer({c:"editDrawing", id: shape.id, destX: ((e.clientX + viewport.scrollLeft)/(1+extraZoom/20)), destY: ((e.clientY + viewport.scrollTop)/(1+extraZoom/20))});
-                    updateMapData();
-                }
-            }
-            pickedUpHandle2 = false;
-        });
-        handleContainer2.appendChild(handle2);
-        shapeHandles.appendChild(handleContainer2);
-    }
 }
 
 function draw5Line(index, shape) {
@@ -1486,7 +1463,7 @@ function createToken(token)
     })
     
     imageElement.addEventListener("dragstart", function(e) {
-        if (!isPanning)
+        if (!isPanning && (!mapData.groupLock.includes(token.group) || e.ctrlKey))
         {
             if (browser == "f" && extraZoom>0)
             {   
@@ -1499,7 +1476,7 @@ function createToken(token)
                 tokenDragOffset.y = token.y - (e.pageY + viewport.scrollTop)/(1+extraZoom/20);
                 draggingToken = token.id;
                 isDraggingToken = true;
-                if (e.ctrlKey || event.metaKey)
+                if (e.ctrlKey || e.metaKey)
                 {
                     controlPressed = true;
                 }
@@ -1515,6 +1492,10 @@ function createToken(token)
                 document.body.style.cursor = "grabbing";
                 drawCanvas();
             }
+        }
+        else
+        {
+            e.preventDefault();
         }
         isPanning = false;
         document.body.style.cursor = "";
@@ -1718,7 +1699,7 @@ function createToken(token)
                                 }
                                 else
                                 {
-                                    alert("Layer must be > -1 and < 51 ");
+                                    alert("Layer must be > -1 and < 50 ");
                                 }
                             }}
                         ];
@@ -1813,20 +1794,24 @@ function createToken(token)
                         ];
                         if (isDM)
                         {
-                            subMenuOptions.push({text: "Hide tokens", callback: function() {
+                            subMenuOptions.push({text: "(Un)lock group", callback: async function() {
+                                await requestServer({c:"toggleGroupLock", group: token.group});
+                                updateMapData(true);
+                            }});
+                            subMenuOptions.push({text: "Hide tokens", callback: async function() {
                                 for (let a = 0; a < mapData.tokens.length; a++)
                                 {
                                     if (mapData.tokens[a].group == token.group) {
-                                        requestServer({c:"setTokenHidden", id: mapData.tokens[a].id, hidden: true});
-                                        updateMapData(true);
+                                        await requestServer({c:"setTokenHidden", id: mapData.tokens[a].id, hidden: true});
                                     }
                                 }
+                                updateMapData(true);
                             }})
-                            subMenuOptions.push({text: "Reveal tokens", callback: function() {
+                            subMenuOptions.push({text: "Reveal tokens", callback: async function() {
                                 for (let a = 0; a < mapData.tokens.length; a++)
                                 {
                                     if (mapData.tokens[a].group == token.group) {
-                                        requestServer({c:"setTokenHidden", id: mapData.tokens[a].id, hidden: false});
+                                        await requestServer({c:"setTokenHidden", id: mapData.tokens[a].id, hidden: false});
                                     }
                                 }
                                 updateMapData(true);
@@ -1980,6 +1965,9 @@ function createTracker(trackerData, index)
             isDraggingTracker = false;
         })
         initiativeItem.addEventListener("dragover", function(e) {
+            e.preventDefault();
+        });
+        initiativeItem.addEventListener("contextmenu", function(e) {
             e.preventDefault();
         });
         initiativeItem.addEventListener("click", function(e) {
@@ -2189,11 +2177,11 @@ function hideDetailsScreen()
 //#region misc Drag/Drop handlers
 let isDraggingToken = false;
 
-shapeMap.addEventListener("dragover", function(e) {
+map.addEventListener("dragover", function(e) {
     e.preventDefault();
 })
 
-shapeMap.addEventListener("dragend", function(e) {
+map.addEventListener("dragend", function(e) {
     e.preventDefault();
 })
 
@@ -2871,7 +2859,7 @@ document.body.addEventListener("keyup", async function(e) {
     }
 })
 
-shapeMap.addEventListener("mousedown", function(e) {
+map.addEventListener("mousedown", function(e) {
     if (e.button == 0)
     {
         selectedToken=-1;
@@ -2994,17 +2982,17 @@ shapeMap.addEventListener("mousedown", function(e) {
                         tokenText = f.toString();
                     }
                     if (newHP!=null) {
-                        requestServer({c: "createToken", text: tokenText, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
+                        requestServer({c: "createToken", text: tokenText, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: bulkInitSettings.tokenSizes, status: "", layer: 1, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
                     } else {
-                        requestServer({c: "createToken", text: tokenText, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum});
+                        requestServer({c: "createToken", text: tokenText, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: bulkInitSettings.tokenSizes, status: "", layer: 1, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum});
                     }
                 }
                 else
                 {
                     if (newHP!=null) {
-                        requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
+                        requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 1, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
                     } else {
-                        requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 0, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum});
+                        requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 1, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum});
                     }
                     
                 }
@@ -3062,21 +3050,13 @@ shapeMap.addEventListener("mousedown", function(e) {
         {
             lineMarkers.destX = ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20));
             lineMarkers.destY = ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
-            let dy = lineMarkers.destY - lineMarkers.y;
-            let dx = lineMarkers.destX - lineMarkers.x;
-            let distance = Math.sqrt(Math.pow((dx), 2) + Math.pow((dy), 2));
-            if (distance > lineMarkers.range)
-            {    
-                lineMarkers.destX = lineMarkers.x + dx / distance * lineMarkers.range;
-                lineMarkers.destY = lineMarkers.y + dy / distance * lineMarkers.range;
-            }
             if (isDM || CheckAntiBlockerPixel(e))
             {
                 let shapeIsVisible = true;
                 if (isDM) {
                     shapeIsVisible = confirm("Should the shape be visible?");
                 }
-                requestServer({c: "addDrawing", shape: "line", x: lineMarkers.x, y: lineMarkers.y, destX: lineMarkers.destX, destY: lineMarkers.destY, trueColor: shapeColor, visible: shapeIsVisible});
+                requestServer({c: "addDrawing", shape: "vertexLine", points:[{x: lineMarkers.x, y: lineMarkers.y}, {x: lineMarkers.destX, y: lineMarkers.destY}], trueColor: shapeColor, visible: shapeIsVisible});
             }
             updateMapData();
             isPlacingLine = false;
@@ -3131,16 +3111,21 @@ shapeMap.addEventListener("mousedown", function(e) {
             {
                 if (clickedShape.link==null)
                 {
-                    if (clickedShape.shape=="line")
+                    if (clickedShape.shape=="vertexLine")
                     {
                         selectedShapeId = clickedShape.id;
                         selectedBlocker = -1;
                         selectedToken = -1;
                         drawCanvas();
+                        shapeDragOffset.x = clickedShape.points[0].x - ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20));
+                        shapeDragOffset.y = clickedShape.points[0].y - ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
+                    }
+                    else
+                    {
+                        shapeDragOffset.x = clickedShape.x - ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20));
+                        shapeDragOffset.y = clickedShape.y - ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
                     }
                     document.body.style.cursor = "pointer";
-                    shapeDragOffset.x = clickedShape.x - ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20));
-                    shapeDragOffset.y = clickedShape.y - ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
                     movingShapeId = shapeId;
                     isMovingShape = true;
                     return;
@@ -3206,12 +3191,12 @@ window.addEventListener("mousemove", function(e) {
     }
 })
 
-shapeMap.addEventListener("dragstart", function(e) {
+map.addEventListener("dragstart", function(e) {
     e.preventDefault();
     e.stopPropagation();
 })
 
-shapeMap.addEventListener("contextmenu", function(e) {
+map.addEventListener("contextmenu", function(e) {
     e.preventDefault();
     if (!isPanning)
     {
@@ -3250,10 +3235,6 @@ function shapeContextMenu(e, pixel)
                 selectedShape = mapData.drawings[h];
             }
         }
-        let tmpText = "Hide shape";
-        if (!selectedShape.visible) {
-            tmpText = "Reveal shape";
-        }
         let menuOptions = [
             {text: "Erase shape", hasSubMenu: false, callback: async function() {
                 let result = await requestServer({c: "removeDrawing", id: shapeId, removedDrawings: mapData.removedDrawings});
@@ -3280,6 +3261,31 @@ function shapeContextMenu(e, pixel)
                 updateMapData();
             }}
         ];
+        let tmpText = "Hide shape";
+        if (!selectedShape.visible) {
+            tmpText = "Reveal shape";
+        }
+        if (selectedShape.shape == "vertexLine") {
+            menuOptions.splice(1, 0, {text: "Add vert", hasSubMenu: false, callback: async function() {
+                let vertX = ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20));
+                let vertY = ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
+                
+                for (let k = 1; k < selectedShape.points.length; k++)
+                {
+                    let originX = Math.min(selectedShape.points[k].x, selectedShape.points[k-1].x);
+                    let originY = Math.min(selectedShape.points[k].y, selectedShape.points[k-1].y);
+                    let width = Math.abs(selectedShape.points[k].x-selectedShape.points[k-1].x);
+                    let height = Math.abs(selectedShape.points[k].y-selectedShape.points[k-1].y);
+                    if (vertX >= originX && vertX <= (originX+width) && vertY >= originY && vertY <= (originY+height))
+                    {
+                        selectedShape.points.splice(k, 0, {x: vertX, y: vertY});
+                        k = selectedShape.points.length;
+                    }
+                }
+                await requestServer({c: "editDrawing", id: shapeId, points: selectedShape.points});
+                updateMapData();
+            }});
+        }
         if (isDM) {
             menuOptions.push({text: tmpText, hasSubMenu: false, callback: async function() {
                 await requestServer({c: "editDrawing", id: shapeId, visible: !selectedShape.visible});
@@ -3350,9 +3356,9 @@ function displayContextMenu(e)
                             if (tokenSize < 20 && tokenSize > 0)
                             {
                                 if (confirm("Make this a DM token?"))
-                                    requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 0, dm: true})
+                                    requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 1, dm: true})
                                 else
-                                    requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 0, dm: false})
+                                    requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 1, dm: false})
                                 
                                 console.log("Placing text token with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                                 updateMapData();
@@ -3366,7 +3372,7 @@ function displayContextMenu(e)
                         {
                             if (tokenSize < 6 && tokenSize > 0)
                             {
-                                requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 0, dm: false})
+                                requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 1, dm: false})
                                 console.log("Placing text token with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                                 updateMapData();
                             }
@@ -3396,7 +3402,7 @@ function displayContextMenu(e)
                         {
                             if (tokenSize < 20 && tokenSize > 0)
                             {
-                                requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", layer: 0, dm: false})
+                                requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", layer: 1, dm: false})
                                 console.log("Placing " + tokenList[i] + " with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                                 updateMapData();
                             }
@@ -3409,7 +3415,7 @@ function displayContextMenu(e)
                         {
                             if (tokenSize < 6 && tokenSize > 0)
                             {
-                                requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", layer: 0, dm: false})
+                                requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", layer: 1, dm: false})
                                 console.log("Placing " + tokenList[i] + " with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                                 updateMapData();
                             }
@@ -3437,7 +3443,7 @@ function displayContextMenu(e)
                         }
                         else
                         {
-                            requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: dmTokenList[i], size: tokenSize, status: "", layer: 0, dm: true})
+                            requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: dmTokenList[i], size: tokenSize, status: "", layer: 1, dm: true})
                             console.log("Placing " + dmTokenList[i] + " with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                             updateMapData();
                         }
@@ -3471,23 +3477,10 @@ function displayContextMenu(e)
                     drawCanvas();
                 }},
                 {text: "Draw Line", callback: function() {
-                    let rangeTextInput = prompt("Please enter the desired range of the line in feet, leave blank for no range limit");
-                    if (rangeTextInput!=null)
-                    {
-                        let rangeInput = parseFloat(rangeTextInput);
-                        if (rangeInput != null)
-                        {
-                            lineMarkers.range = rangeInput / feetPerSquare * gridSize;
-                        }
-                        else
-                        {
-                            lineMarkers.range = 999999;
-                        }
-                        lineMarkers.x = ((e.pageX+ viewport.scrollLeft)/(1+extraZoom/20));
-                        lineMarkers.y = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
-                        isPlacingLine = true;
-                        drawCanvas();
-                    }
+                    lineMarkers.x = ((e.pageX+ viewport.scrollLeft)/(1+extraZoom/20));
+                    lineMarkers.y = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
+                    isPlacingLine = true;
+                    drawCanvas();
                 }}
             ];
             displaySubMenu(e, subMenuOptions);
@@ -3510,9 +3503,9 @@ function displayContextMenu(e)
                         if (tokenSize < 20 && tokenSize > 0)
                         {
                             if (confirm("Make this a DM token?"))
-                                requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 0, dm: true, hidden: true})
+                                requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 1, dm: true, hidden: true})
                             else
-                                requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 0, dm: false, hidden: true})
+                                requestServer({c: "createToken", text: textToDisplay, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: tokenSize, status: "", layer: 1, dm: false, hidden: true})
                             
                             console.log("Placing text token with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                             updateMapData();
@@ -3542,7 +3535,7 @@ function displayContextMenu(e)
                     {
                         if (tokenSize < 20 && tokenSize > 0)
                         {
-                            requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", hidden: true, layer: 0, dm: true})
+                            requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: tokenList[i], size: tokenSize, status: "", hidden: true, layer: 1, dm: true})
                             console.log("Placing hidden " + tokenList[i] + " with size " + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                             updateMapData();
                         }
@@ -3567,7 +3560,7 @@ function displayContextMenu(e)
                     }
                     else
                     {
-                        requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: dmTokenList[i], size: tokenSize, status: "", hidden: true, layer: 0, dm: true})
+                        requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)), y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: dmTokenList[i], size: tokenSize, status: "", hidden: true, layer: 1, dm: true})
                         console.log("Placing " + dmTokenList[i] + " with size" + tokenSize + " at " + ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)).toString() + ":" + ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)).toString());
                         updateMapData();
                     }

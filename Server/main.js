@@ -196,6 +196,20 @@ app.post("/api", function(request, response) {
             response.send("[true]");
             break;
 
+        case "toggleGroupLock":
+            loadCurrentMap();
+            if (request.body.group!=null)
+            {
+                if (currentMap.groupLock.includes(request.body.group))
+                    currentMap.groupLock.splice(currentMap.groupLock.indexOf(request.body.group), 1);
+                else
+                    currentMap.groupLock.push(request.body.group);
+            }
+            checkGroupLock();
+            saveCurrentMap();
+            response.send("[true]");
+            break;
+
         case "editToken":
             loadCurrentMap();
             for (let i in currentMap.tokens)
@@ -250,10 +264,6 @@ app.post("/api", function(request, response) {
             }
             saveCurrentMap();
             response.send("[true]");
-
-        case "changeStatus":
-            request.body.id;
-            request.body.status;
             break;
 
         case "removeToken":
@@ -279,6 +289,7 @@ app.post("/api", function(request, response) {
                         removeDrawingById(currentMap.drawings[i].id);
                     }
                 }
+                checkGroupLock();
                 saveCurrentMap();
                 response.send("[true]");
                 removedTokens++;
@@ -301,24 +312,27 @@ app.post("/api", function(request, response) {
                 let currentToken = currentMap.tokens[i];
                 if (currentToken.id == request.body.id)
                 {
-                    let dx = request.body.x - currentMap.tokens[i].x;
-                    let dy = request.body.y - currentMap.tokens[i].y;
-                    if (currentMap.tokens[i].group != null && !request.body.bypassLink)
+                    if (!currentMap.groupLock.includes(currentToken.group) || !request.body.bypassLink)
                     {
-                        for (let j in currentMap.tokens)
+                        let dx = request.body.x - currentToken.x;
+                        let dy = request.body.y - currentToken.y;
+                        if (currentToken.group != null && !request.body.bypassLink)
                         {
-                            if (j != i && currentMap.tokens[j].group == currentMap.tokens[i].group)
+                            for (let j in currentMap.tokens)
                             {
-                                currentMap.tokens[j].x = currentMap.tokens[j].x + dx;
-                                currentMap.tokens[j].y = currentMap.tokens[j].y + dy;
-                                moveLinkedShapes(currentMap.tokens[j]);
+                                if (j != i && currentMap.tokens[j].group == currentToken.group)
+                                {
+                                    currentMap.tokens[j].x = currentMap.tokens[j].x + dx;
+                                    currentMap.tokens[j].y = currentMap.tokens[j].y + dy;
+                                    moveLinkedShapes(currentMap.tokens[j]);
+                                }
+                                
                             }
-                            
                         }
+                        currentToken.x = request.body.x;
+                        currentToken.y = request.body.y;
+                        moveLinkedShapes(currentToken);
                     }
-                    currentMap.tokens[i].x = request.body.x;
-                    currentMap.tokens[i].y = request.body.y;
-                    moveLinkedShapes(currentMap.tokens[i]);
                 }
             }
             saveCurrentMap();
@@ -381,6 +395,10 @@ app.post("/api", function(request, response) {
                     tmpDrawing.destX = request.body.destX;
                     tmpDrawing.destY = request.body.destY;
                     break;
+                case "vertexLine":
+                    isShape = true;
+                    tmpDrawing.points = request.body.points;
+                    break;
                 case "5ftLine":
                     isShape = true;
                     tmpDrawing.x = request.body.x;
@@ -419,14 +437,15 @@ app.post("/api", function(request, response) {
                 let currentDrawing = currentMap.drawings[i];
                 if (currentDrawing.id == request.body.id)
                 {
-                    if (currentDrawing.shape == "line" && request.body.both)
+                    if (currentDrawing.shape == "vertexLine" && request.body.both)
                     {
-                        let dx = currentMap.drawings[i].destX - currentMap.drawings[i].x;
-                        let dy = currentMap.drawings[i].destY - currentMap.drawings[i].y;
-                        currentMap.drawings[i].destX = request.body.x + dx;
-                        currentMap.drawings[i].destY = request.body.y + dy;
-                        currentMap.drawings[i].x = request.body.x;
-                        currentMap.drawings[i].y = request.body.y;
+                        let dx = request.body.x - currentDrawing.points[0].x;
+                        let dy = request.body.y - currentDrawing.points[0].y;
+                        for (let i = 0; i < currentDrawing.points.length; i++)
+                        {
+                            currentDrawing.points[i].x = currentDrawing.points[i].x + dx;
+                            currentDrawing.points[i].y = currentDrawing.points[i].y + dy;
+                        }
                     }
                     else
                     {
@@ -436,6 +455,8 @@ app.post("/api", function(request, response) {
                             let dy = request.body.y - currentMap.drawings[i].y;
                             moveShapeGroup(currentDrawing.id, dx, dy, currentDrawing.shapeGroup);
                         }
+                        if (request.body.points!=null)
+                        { currentMap.drawings[i].points = request.body.points; }
                         if (request.body.destX!=null)
                         { currentMap.drawings[i].destX = request.body.destX; }
                         if (request.body.destY!=null)
@@ -806,6 +827,43 @@ app.post('/upload', function(req, res) {
 app.use(express.static('client'));
 app.listen(port);
 
+function checkGroupLock()
+{
+    for (let i = currentMap.groupLock.length-1; i >= 0; i--)
+    {
+        let groupActive = false;
+        let maxLayerInGroup = 0;
+        for (let j = 0; j < currentMap.tokens.length; j++)
+        {
+            let currentToken = currentMap.tokens[j];
+            if (currentToken.group==currentMap.groupLock[i])
+            {
+                if (maxLayerInGroup<currentToken.layer)
+                    maxLayerInGroup = currentToken.layer;
+                if (currentToken.layer<maxLayerInGroup)
+                    currentToken.layer = maxLayerInGroup;
+                groupActive = true;
+            }
+        }
+        if (!groupActive)
+        {
+            currentMap.groupLock.splice(i, 1);
+        }
+        else
+        {
+            for (let j = 0; j < currentMap.tokens.length; j++)
+            {
+                let currentToken = currentMap.tokens[j];
+                if (currentToken.group!=currentMap.groupLock[i])
+                {
+                    if (currentToken.layer <= maxLayerInGroup)
+                        currentMap.tokens[j].layer = maxLayerInGroup+1;
+                }
+            }
+        }
+    }
+}
+
 function moveShapeGroup(moveShapeOriginId, dx, dy, targetShapeGroup)
 {
     if (targetShapeGroup!=null)
@@ -886,6 +944,8 @@ function loadCurrentMap()
         currentMap.portalY = 0;
     if (currentMap.portalData == null)
         currentMap.portalData = "";
+    if (currentMap.groupLock == null)
+        currentMap.groupLock = [];
     currentMap.mapName = selectedMap;
     currentMap.tokenList = readDirectory(publicFolder + "tokens", "jpg|png|jpeg|gif");
     currentMap.dmTokenList = readDirectory(publicFolder + "dmTokens", "jpg|png|jpeg|gif");
@@ -895,7 +955,7 @@ function loadCurrentMap()
 
 function saveCurrentMap() 
 {
-    writeFile("data/" + selectedMap + ".json", JSON.stringify(currentMap));
+    writeFile("data/" + selectedMap + ".json", JSON.stringify(currentMap, null, 4));
 }
 
 function returnMaps() 
