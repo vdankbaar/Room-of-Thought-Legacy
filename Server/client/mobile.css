@@ -1,0 +1,548 @@
+:root {
+    --blocker-color: rgb(0, 0, 0);
+    --antiBlocker-color: rgb(0, 0, 0);
+    --token-index: 4;
+    --sidemenu-width: 12vw;
+
+    --sidemenu-color: #23232e;
+    --sidemenu-text-color: lightgray;
+    --toggle-highlighted-color: #54aeeb;
+    --input-color: #14141c;
+}
+
+/* #region Non Sidebar */
+body {
+    margin: 0px;
+    background-color: rgb(53, 53, 53);
+    z-index: -2;
+}
+
+body p {user-select: none;}
+body label {user-select: none;}
+body a {user-select: none;}
+body h3 {user-select: none;}
+
+/* #region Side Menu */
+#tracker {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--sidemenu-color);
+    height: 100%;
+    overflow: auto;
+    width: 96vw;
+    position: fixed;
+    padding: 0px 2vw;
+    z-index: 999;
+    color: var(--sidemenu-text-color);
+}
+
+#initSearch {
+    width: 100%;
+    height: 5vh;
+    font-size: 3vw;
+    padding: 1vh;
+    border: 0px;
+    margin-bottom: 1vh;
+    margin-top: 1vh;
+    background-color: #14141c;
+    color: lightgray;
+}
+
+/* #endregion */
+
+/* #region Initiative Tracker */
+#tracker p {
+    margin: 0px;
+    font-size: 4vw;
+    font-family: Segoe UI,Frutiger,Frutiger Linotype,Dejavu Sans,Helvetica Neue,Arial,sans-serif;
+}
+
+#initiativeTracker {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    justify-content: flex-start;
+    font-size: 4vw;
+    font-family: Helvetica;
+    flex-grow: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 5vw;
+}
+
+#initiativeTracker::-webkit-scrollbar {width: 0.3vw; margin-left: 0.2vw;}
+#initiativeTracker::-webkit-scrollbar-thumb {background-color: grey;}
+#initiativeTracker::-webkit-scrollbar-track {background-color: transparent;}
+
+.initiativeItem {
+    font-size: 5vw;
+    margin-bottom: 2vw;
+    border-radius: 3vw;
+    background-color: rgb(66, 66, 84);
+    display: grid;
+    user-select: none;
+    width: 100%;
+    grid-template-columns: 16vw 11.2vw 51.2vw auto;
+    grid-template-rows: 16vw 16vw;
+    grid-template-areas:
+        "initiative name name name"
+        "ac actext health healthtext"
+}
+
+.initiative {
+    grid-area: initiative;
+    background-color: #14141c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 1vw;
+    text-align: center;
+    border-radius: 2.4vw;
+}
+
+.oneLineInitiative {
+    grid-template-columns: 10vw auto 10vw 5vw 30.2vw 5vw;
+    grid-template-rows: 10vw;
+    grid-template-areas:
+        "initiative name ac actext health healthtext"
+}
+
+.trackerName {
+    grid-area: name;
+    background-color: #14141c;
+    display: flex;
+    align-items: center;
+    margin: 1vw;
+    border-radius: 2.4vw;
+    padding: 0px 2.8vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.trackerHitpointsSection {grid-area: health; display: flex; flex-direction: row-reverse; align-items: center;}
+
+.trackerArmorClass {
+    grid-area: ac;
+    background-color: #14141c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 1vw;
+    text-align: center;
+    border-radius: 2.4vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.trackerArmorClassText {
+    grid-area: actext;
+    display: flex;
+    align-items: center;
+    font-size: 3vw;
+}
+
+.trackerDamageButton {
+    width: 8vw;
+    height: 14vw;
+    border: none;
+    padding: 0px;
+    text-align: center;
+    line-height: 50%;
+    border-radius: calc(0.3vw);
+    background-color: transparent;
+}
+
+.trackerDamageButton:focus {
+    outline: none;
+}
+
+.initiativeItem img {height: 8vw;}
+
+
+.trackerHitpoints {
+    background-color: #14141c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin: calc(0.15vw);
+    height: 14vw;
+    max-width: 29vw;
+    padding: 0px 2vw;
+    border-radius: 2.4vw;
+    border: none;
+    font-size: 5vw;
+    font-family: helvetica;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.oneLineInitiative .trackerHitpoints {
+    height: 8vw;
+}
+
+.trackerHitpoints:focus {outline: none;}
+
+.trackerHitpointsMax {
+    background-color: #14141c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin: calc(0.15vw);
+    height: 14vw;
+    max-width: 29vw;
+    padding: 0px 2vw;
+    border-radius: 2.4vw;
+    border: none;
+    font-size: 5vw;
+    font-family: helvetica;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.oneLineInitiative .trackerHitpointsMax {
+    height: 8vw;
+}
+
+
+.trackerHealthText {
+    grid-area: healthtext;
+    display: flex;
+    align-items: center;
+    font-size: 3vw;
+}
+
+.initiativeHR {
+    background-color: #14141c;
+    margin: calc(0.2vw);
+    height: 0.3vh;
+    width: auto;
+    border-style: none;
+    overflow: auto;
+    border: 0;
+    clear:both;
+    display:block;
+}
+/* #endregion */
+
+/* #region Details Screen */
+#detailsScreen {
+    padding-left: 2vw;
+    font-family: helvetica;
+    color: lightgray;
+    display: grid;
+    box-shadow: 0 -0.4vw 2vw -0.4vw black;
+    font-size: 3vw;
+    grid-template-columns: 25vw 10vw 25vw 5vw 25vw;
+    grid-template-rows: 5vw 12.5vw 12.5vw 5vw 15vw 5vw 15vw 5vw;
+    grid-template-areas:
+        "title title title title title"
+        "icon hpicon health health toggles"
+        "icon acicon armor armor toggles"
+        "name name name name initiative"
+        "nameinput nameinput nameinput nameinput initiativeinput"
+        "status status status status group"
+        "statusinput statusinput statusinput statusinput groupinput"
+}
+
+#armorIconDiv {
+    display: flex;
+    align-items: center;
+}
+
+/*
+#detailsScreen {
+    font-family: helvetica;
+    color: lightgray;
+    display: grid;
+    box-shadow: 0 -0.4vw 2vw -0.4vw black;
+    font-size: 3vw;
+    margin-bottom: 0.25vw;
+    grid-template-columns: 14.8vw 8vw 14.8vw 10.4vw;
+    grid-template-rows: 4vw 8vw 8vw 4vw 8vw 4vw 8vw 4vw 16vw;
+    grid-template-areas:
+        "title title title title"
+        "icon hpicon health health"
+        "icon acicon armor armor"
+        "name name name name"
+        "nameinput nameinput nameinput toggles"
+        "status status status toggles"
+        "statusinput statusinput statusinput toggles"
+        "initiative initiative group toggles"
+        "initiativeinput initiativeinput groupinput toggles"
+}
+
+#detailsScreen {
+    font-family: helvetica;
+    color: lightgray;
+    display: grid;
+    box-shadow: 0 -0.4vw 0.5vw -0.4vw black;
+    font-size: 3vw;
+    margin-bottom: 0.25vw;
+    grid-template-columns: 3.7vw 2vw 3.7vw 2.6vw;
+    grid-template-rows: 1vw 2vw 2vw 1vw 2vw 1vw 2vw 1vw 4vw;
+    grid-template-areas:
+        "title title title title"
+        "icon hpicon health health"
+        "icon acicon armor armor"
+        "name name name name"
+        "nameinput nameinput nameinput toggles"
+        "status status status toggles"
+        "statusinput statusinput statusinput toggles"
+        "initiative initiative group toggles"
+        "initiativeinput initiativeinput groupinput toggles"
+}*/
+
+
+#detailsIcon {
+    grid-area: icon;
+}
+
+#detailsIcon img {height: 100%; user-select: none; margin: 0px auto;}
+
+#hitpointsIcon {grid-area: hpicon; width: 100%; height: 100%}
+#armorIconDiv {grid-area: acicon; width: 100%; height: 100%}
+#armorIcon {width: 100%; height: 100%}
+
+#currentHitpoints {
+    background-color: var(--input-color);
+    color: lightgray;
+    text-align: center;
+    margin: 0.6vw;
+    height: 75%;
+    width: 10vw;
+    border-radius: 1.2vw;
+    padding: 0px 0.8vw;
+    border: none;
+    font-size: 4vw;
+    font-family: helvetica;
+}
+#maxHitpoints {
+    background-color: var(--input-color);
+    color: lightgray;
+    text-align: center;
+    margin: 0.6vw;
+    height: 75%;
+    width: 10vw;
+    border-radius: 1.2vw;
+    padding: 0px 0.8vw;
+    border: none;
+    font-size: 4vw;
+    font-family: helvetica;
+}
+
+#detailsHitpoints {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#detailsAC {
+    grid-area: armor;
+    display: flex;
+    align-items: center;
+}
+
+#armorClass {
+    background-color: var(--input-color);
+    color: lightgray;
+    text-align: center;
+    margin: 0.6vw;
+    height: 75%;
+    width: 100%;
+    border-radius: 1.2vw;
+    padding: 0px 0.8vw;
+    border: none;
+    font-size: 4vw;
+    font-family: helvetica;
+}
+
+#detailsNameInput {
+    grid-area: nameinput;
+    background-color: var(--input-color);
+    color: lightgray;
+    text-align: left;
+    margin: 1vw;
+    margin-bottom: 2vw;
+    height: auto;
+    border-radius: 1.2vw;
+    padding: 0px 0.8vw;
+    border: none;
+    font-size: 200%;
+    font-family: helvetica;
+    width: 100%;
+}
+
+#detailsStatusInput {
+    grid-area: statusinput;
+    background-color: var(--input-color);
+    color: lightgray;
+    text-align: left;
+    margin: 0.6vw;
+    margin-bottom: 2vw;
+    height: auto;
+    border-radius: 1.2vw;
+    padding: 0px 0.8vw;
+    border: none;
+    font-size: 200%;
+    font-family: helvetica;
+    width: 100%;
+}
+
+.detailsBottom {
+    width: 80%;
+    height: 90%;
+    margin-left: 10%;
+    margin-right: 10%;
+    background-color: var(--input-color);
+    color: lightgray;
+    text-align: center;
+    border-radius: 1.2vw;
+    border: none;
+    font-size: 8vw;
+}
+
+#detailsInitiativeDiv {
+    grid-area: initiativeinput;
+}
+
+#detailsGroup {grid-area: groupinput}
+
+#detailsToggles {
+    grid-area: toggles;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: black;
+    font-size: 6vw;
+}
+
+#detailsToggles button {
+    background-color: #c2c9d2;
+    border: 0px;
+    color: var(--input-color);
+    font-size: 6vw;
+    width: 15vw;
+    height: 15vw;
+    border-radius: 15vw;
+    padding: 0px;
+}
+
+#detailsToggles button:focus {outline:none}
+
+#detailsToggles button b {
+    pointer-events: none;
+}
+
+#detailsToggles button img {
+    pointer-events: none;
+}
+
+#visibilityIcon {
+    width: 6vw;
+    height: 6vw;
+}
+/* #endregion */
+
+#hitboxMap {
+    position: absolute;
+    margin: 0px;
+    padding: 0px;
+    z-index: -1;
+}
+
+.blocker {
+    position: absolute;
+    margin: 0px;
+    padding: 0px;
+    z-index: 50;
+    overflow: hidden;
+    background-color: var(--blocker-color);
+    background: var(--blocker-color);
+}
+
+.blocker div:not(.blocker){
+    z-index: inherit;
+}
+
+#tokens div {
+    pointer-events: none;
+    position: absolute;
+    display: flex;
+}
+
+.token a {
+    text-align: center;
+    position: absolute;
+    pointer-events: none;
+    align-self: center;
+}
+
+.token {
+    position: absolute;
+}
+
+.hiddenToken {
+    position: absolute;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.concentratingText {
+    position: absolute;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.custom-menu {
+    margin: 0px;
+    overflow-y: overlay;
+    overflow-x: hidden;
+    width: 10vw;
+    height: 24vh;
+    display: none;
+    z-index: 1000;
+    position: absolute;
+    border: 0.25vw solid rgb(100, 100, 100);
+    white-space: nowrap;
+    font-family: sans-serif;
+    background: rgb(50, 50, 50);
+    color: rgb(128, 128, 128);
+    border-radius: 0.25vw;
+    list-style: none;
+    padding: 0px;
+}
+
+.custom-menu::-webkit-scrollbar {
+    width: 0.5vw;
+}
+
+.custom-menu::-webkit-scrollbar-track {
+    opacity: 0;
+}
+
+.custom-menu::-webkit-scrollbar-thumb {
+    border-radius: 1vh;
+    background: #c2c9d2;
+}
+
+.custom-menu-element:hover {
+    background-color: rgb(75, 75, 75);
+}
+
+.custom-menu-element {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1vw;
+    cursor: pointer;
+    
+    width: 10vw;
+    height: 4vh;
+}

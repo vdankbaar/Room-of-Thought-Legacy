@@ -834,6 +834,12 @@ body h3 {user-select: none;}
     pointer-events: none;
 }
 
+.linkImage {
+    position: absolute;
+    z-index: 10;
+    pointer-events: none;
+}
+
 .concentratingText {
     position: absolute;
     z-index: 10;

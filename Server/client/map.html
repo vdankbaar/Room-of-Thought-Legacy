@@ -53,6 +53,7 @@
                 <input id="switchBlockerTypeButton" class="dmOnly" type="button" value="Switch blocker type">
                 <input id="invertBlockerButton" class="dmOnly" type="button" value="Invert blockers">
                 <input id="togglePlayerMode" class="dmOnly" type="button" value="Toggle player mode (M)">
+                <input id="clearPortals" class="dmOnly" type="button" value="Clear portal data">
                 <input id="toggleExtraOptions" class="dmOnly" type="button" value="Toggle extra options">
                 <!--
                 OLD options: these have proven to be less useful than expected so they have been disabled by default to reduce clutter and make space for newer options -->
@@ -118,6 +119,9 @@
             }
             function hideHitmap() {
                 hbMap.style.top = 0;
+            }
+            function setPortal() {
+                
             }
         </script>
         <iframe style="display:none;" id="hiddenFrame"></iframe>

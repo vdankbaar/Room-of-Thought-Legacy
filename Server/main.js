@@ -31,12 +31,14 @@ for (let i = 0; i<currentMap.drawings.length; i++) {
         currentMap.drawings[i].visible = true;
     }
 }
+currentMap.portalData = [];
 saveCurrentMap();
 let removedTokens = 0;
 let previousRemovedTokenId = -1;
 let removedDrawings = 0;
 let previousRemovedDrawingId = -1;
 let playerNameList = [];
+let nonLoggedCommands = ["currentMapData", "setLiftedMinis", "setPortalData"]
 
 app.post("/api", function(request, response) {
     let playerName = GetCookie(request, "playerName");
@@ -46,18 +48,74 @@ app.post("/api", function(request, response) {
         playerNameList.push(playerName);
         console.log("Currently connected: " + JSON.stringify(playerNameList));
     }
-    if (request.body.c != "currentMapData")
+    if (!nonLoggedCommands.includes(request.body.c))
         console.log(playerName + ": " + JSON.stringify(request.body));
     switch(request.body.c) 
     {
+        case "log":
+            console.log(request.body.data);
+            response.send(true);
+            break;
+
+        case "setLiftedMinis":
+            loadCurrentMap();
+            if (request.body.id != null) {
+                let selectedPortal = parseInt(request.body.id);
+                if (!isNaN(selectedPortal))
+                {
+                    if (selectedPortal==-1 || selectedPortal>=currentMap.portalData.length) {
+                        selectedPortal = currentMap.portalData.push({}) - 1
+                    }
+                    if (request.body.lifted != null)
+                    { currentMap.portalData[selectedPortal].lifted = JSON.parse(request.body.lifted); }
+                    response.send(selectedPortal.toString());
+                }
+            }
+            else
+            {
+                response.send(false);
+            }
+            saveCurrentMap();
+            break;
+
         case "setPortalData":
             loadCurrentMap();
-            if (request.body.portalX != null)
-            { currentMap.portalX = parseInt(request.body.portalX); }
-            if (request.body.portalY != null)
-            { currentMap.portalY = parseInt(request.body.portalY); }
-            if (request.body.portalData != null)
-            { currentMap.portalData = request.body.portalData; }
+            if (request.body.id != null) {
+                let selectedPortal = parseInt(request.body.id);
+                if (!isNaN(selectedPortal))
+                {
+                    if (selectedPortal==-1 || selectedPortal>=currentMap.portalData.length) {
+                        selectedPortal = currentMap.portalData.push({}) - 1
+                    }
+                    if (request.body.links != null)
+                    { currentMap.portalData[selectedPortal].links = JSON.parse(request.body.links); }
+                    if (request.body.name != null)
+                    { currentMap.portalData[selectedPortal].name = request.body.name; }
+                    if (!isNaN(parseInt(request.body.x)))
+                    { currentMap.portalData[selectedPortal].portalX = parseInt(request.body.x); }
+                    if (!isNaN(parseInt(request.body.y)))
+                    { currentMap.portalData[selectedPortal].portalY = parseInt(request.body.y); }
+                    if (!isNaN(parseInt(request.body.originX)))
+                    { currentMap.portalData[selectedPortal].originX = parseInt(request.body.originX); }
+                    if (!isNaN(parseInt(request.body.originY)))
+                    { currentMap.portalData[selectedPortal].originY = parseInt(request.body.originY); }
+                    if (request.body.lifted != null)
+                    { currentMap.portalData[selectedPortal].lifted = JSON.parse(request.body.lifted); }
+                    if (request.body.crash != null)
+                    { currentMap.portalData[selectedPortal].crash = request.body.crash; }
+                    response.send(selectedPortal.toString());
+                }
+            }
+            else
+            {
+                response.send(false);
+            }
+            saveCurrentMap();
+            break;
+
+        case "clearPortals":
+            loadCurrentMap();
+            currentMap.portalData = [];
             response.send(true);
             saveCurrentMap();
             break;
@@ -165,8 +223,10 @@ app.post("/api", function(request, response) {
                     tmpToken.hp = request.body.hp;    
                 if (request.body.group != null)
                     tmpToken.group = request.body.group;
+                if (request.body.hideTracker != null)
+                    tmpToken.hideTracker = request.body.hideTracker;
                 currentMap.tokens.push(tmpToken);
-                response.send("[true]");
+                response.send(tmpToken.id.toString());
                 saveCurrentMap();
             }
             else
@@ -424,6 +484,10 @@ app.post("/api", function(request, response) {
                 if (request.body.link != null)
                     tmpDrawing.link = request.body.link;
                 currentMap.drawings.push(tmpDrawing);
+                for (let token of currentMap.tokens)
+                {
+                    moveLinkedShapes(token);
+                }
                 saveCurrentMap();
             }
         
@@ -956,14 +1020,14 @@ function loadCurrentMap()
         currentMap.usePolyBlockers = false;
     if (currentMap.polyBlockers == null)
         currentMap.polyBlockers = [];
-    if (currentMap.portalX == null)
-        currentMap.portalX = 0;
-    if (currentMap.portalY == null)
-        currentMap.portalY = 0;
-    if (currentMap.portalData == null)
-        currentMap.portalData = "";
+    if (currentMap.portalX != null)
+        delete currentMap.portalX;
+    if (currentMap.portalY != null)
+        delete currentMap.portalY;
     if (currentMap.groupLock == null)
         currentMap.groupLock = [];
+    if (currentMap.portalData == null || currentMap.portalData=="")
+        currentMap.portalData = [];
     currentMap.mapName = selectedMap;
     currentMap.tokenList = readDirectory(publicFolder + "tokens", "jpg|png|jpeg|gif");
     currentMap.dmTokenList = readDirectory(publicFolder + "dmTokens", "jpg|png|jpeg|gif");
@@ -1141,12 +1205,15 @@ function deleteDirectory(path)
 //#region Cookies
 function GetCookie(request, cookieName) 
 {
-    let cookies = request.headers.cookie.replace(/ /g, '').split(";");
-    for (let i in cookies)
+    if (request.headers.cookie)
     {
-        let splitCookie = cookies[i].split("=");
-        if (splitCookie[0] == cookieName)
-            return splitCookie[1];
+        let cookies = request.headers.cookie.replace(/ /g, '').split(";");
+        for (let i in cookies)
+        {
+            let splitCookie = cookies[i].split("=");
+            if (splitCookie[0] == cookieName)
+                return splitCookie[1];
+        }
     }
     return "No cookie!";
 }

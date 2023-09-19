@@ -1,0 +1,62 @@
+<html>
+    <head>
+        <link rel="stylesheet" type="text/css" href="mobile.css">
+        <title>Initiative tracker</title>
+        <link rel="icon" href="images/Favicon.png">
+        <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' >
+    </head>
+    
+    <body>
+        <div id="tracker">
+            <input class="dmOnly" type="text" id="initSearch" placeholder="Search..." autocomplete="off" spellcheck="false">
+            <div id="initiativeTracker">
+                <div class="initiativeItem oneLineInitiative">
+                    <div class="initiative">21</div>
+                    <div class="trackerName">Yike</div>
+                    <div class="trackerArmorClass">15</div>
+                    <div class="trackerArmorClassText">AC</div>
+                    <div class="trackerHitpointsSection">
+                        <div class="trackerHitpointsMax">77</div>
+                        /
+                        <div class="trackerHitpoints">45</div>
+                        <button class="trackerDamageButton">
+                            <img src="images/swap_vert-24px.svg">
+                        </button>
+                    </div>
+                    <div class="trackerHealthText">HP</div>
+                </div>
+            </div>
+    
+            <div id="detailsScreen" style="display: grid;">
+                <h3 style="grid-area: title; margin: 0px;"></h3>
+                <div id="detailsIcon"><img src="public/blankToken.png"></div>
+                <img id="hitpointsIcon" title="Click here to deduct HP" type="image/svg+xml" src="images/favorite-24px.svg"></img>
+                <div id="detailsHitpoints">
+                    <input id="currentHitpoints" autocomplete="off" spellcheck="false"></input>
+                    <p>/</p>
+                    <input id="maxHitpoints" autocomplete="off" spellcheck="false"></input>
+                </div>
+                <div id="armorIconDiv">
+                    <object id="armorIcon" type="image/svg+xml" data="images/security-24px.svg"></object>
+                </div>
+                <div id="detailsAC">
+                    <input id="armorClass" autocomplete="off" spellcheck="false"></input>
+                </div>
+                <p style="grid-area: name; margin: 0px;">Name:</p>
+                <input type="text" id="detailsNameInput" autocomplete="off" spellcheck="false"></input>
+                <p style="grid-area: status; margin: 0px;">Status:</p>
+                <input type="text" id="detailsStatusInput" autocomplete="off" spellcheck="false"></input>
+                <p style="grid-area: initiative; margin: 0px; text-align: center;">Initiative:</p>
+                <p style="grid-area: group; margin: 0px; text-align: center;">Group:</p>
+                <div id="detailsInitiativeDiv">
+                    <input type="text" id="detailsInitiative" class="detailsBottom" autocomplete="off" spellcheck="false"></input>
+                </div>
+                <input type="text" id="detailsGroup" class="detailsBottom" autocomplete="off" spellcheck="false"></input>
+                <div id="detailsToggles">
+                    <button id="concentrating" title="Toggle concentration"><b>C</b></button>
+                </div>
+            </div>
+        </div>
+        <script src="mobile.js"></script>
+    </body>
+</html>

@@ -1,8 +1,26 @@
 <html>
     <head>
+        <link rel="stylesheet" type="text/css" href="portal.css">
+        <title>Link viewer</title>
+        <link rel="icon" href="images/Favicon.png">
     </head>
     <body>
-        <div id="gridDiv"></div>
+        <div id="headerDiv">
+            <select id="portals">
+            </select>
+            <input id="attachAll" type="button" value="Attach all minis"></input>
+            <input id="detachAll" type="button" value="Detach all minis"></input>
+            <input id="clearLifted" type="button" value="Clear lifted minis"></input>
+            <input id="removeAll" type="button" value="Remove all links"></input>
+        </div>
+        <div id="headerTitles">
+            <div style="width:150px;">Token:</div>
+            <div>Name:</div>
+            <div>X:</div>
+            <div>Y:</div>
+        </div>
+        <div id="gridDiv">
+        </div>
         <script src="portal.js"></script>
     </body>
 </html>

@@ -1,5 +1,5 @@
 let GridActive = true;
-let GridSnap = false;
+let GridSnap = true;
 let autoUpdate = true;
 let mapUpdateInterval = 1000;
 let offsetX = 0;
@@ -120,6 +120,7 @@ let quickPolyBlockerMode = false;
 let newPolyBlockerVerts = [];
 let selectedNewVertHandle = -1;
 let playerMode = false;
+let selectedPortal = -1;
 
 window.onload = function() {
     if (getCookie("isDM") == 1)
@@ -133,6 +134,7 @@ window.onload = function() {
         for (let i = elementsToRemove.length - 1; i >= 0; i--)
             elementsToRemove[i].parentElement.removeChild(elementsToRemove[i]);
     }
+
     if (getCookie("sideMenuWidth")!="") {
         document.body.style.setProperty("--sidemenu-width", getCookie("sideMenuWidth"));
     }
@@ -321,6 +323,16 @@ function returnToken(id) {
             return mapData.tokens[h];
     }
 }
+
+//#region Portal stuff
+function setPortal(portalID)
+{
+    if (portalID<mapData.portalData.length && portalID>=0)
+    {
+        selectedPortal = portalID;
+    }
+}
+//#endregion
 
 //#region Custom zoom
 var browser = "";
@@ -519,7 +531,7 @@ function drawCanvas(skipMap)
         mapCanvas.translate(0.5, 0.5);
         shapeCanvas.translate(0.5, 0.5);
         hitboxCanvas.translate(0.5, 0.5);
-        gridSize = (map.width / mapData.x + map.height / mapData.y) / 2;
+        gridSize = Math.min(map.width / mapData.x, map.height / mapData.y);
     }
     
     if (mapData.usePolyBlockers)
@@ -1345,8 +1357,8 @@ function createToken(token)
     }
 
     imageElement.className = "token";
-    imageElement.style.top = token.y - (gridSize * token.size) / 2 + "px";
-    imageElement.style.left = token.x - (gridSize * token.size) / 2 + "px";
+    imageElement.style.top = token.y - (gridSize * token.size) / 2 + 0.5*GridLineWidth + "px";
+    imageElement.style.left = token.x - (gridSize * token.size) / 2 + 0.5*GridLineWidth + "px";
     imageElement.style.width = (token.size * gridSize).toString() + "px";
     imageElement.style.height = (token.size * gridSize).toString() + "px";
 
@@ -1360,16 +1372,76 @@ function createToken(token)
             return;
         }
         let hiddenImage = document.createElement("img");
-        hiddenImage.src = "public/hidden.png";
+        hiddenImage.src = "images/hidden.png";
         hiddenImage.className = "hiddenToken";
         hiddenImage.style.width = (token.size * gridSize / 3).toString() + "px";
         hiddenImage.style.height = (token.size * gridSize / 3).toString() + "px";
         hiddenImage.style.top = token.y - (gridSize * token.size) / 2 + "px";
-        hiddenImage.style.left = token.x - (gridSize * token.size) / 2 + "px";
+        hiddenImage.style.left = token.x - (gridSize * token.size) / 2  + "px";
         hiddenImage.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
         tokensDiv.appendChild(hiddenImage);
     }
 
+    if (mapData.portalData!={} && mapData.portalData[selectedPortal]!=null)
+    {
+        for (let link of mapData.portalData[selectedPortal].links)
+        {
+            if (link.id == token.id)
+            {
+                let linkImage = document.createElement("img");
+                let tokenX = Math.round((token.x-mapData.offsetX)/gridSize-0.5*token.size);
+                let tokenY = Math.round((token.y-mapData.offsetY)/gridSize-0.5*token.size);
+                if (tokenX == (mapData.portalData[selectedPortal].originX+link.x) && tokenY == (mapData.portalData[selectedPortal].originY+link.y))
+                {
+                    linkImage.src = "images/link.png";
+                    linkImage.style.filter = "invert(98%) sepia(29%) saturate(3387%) hue-rotate(49deg) brightness(95%) contrast(81%)";
+                }
+                else
+                {
+                    linkImage.src = "images/unlink.png";
+                    linkImage.style.filter = "invert(47%) sepia(71%) saturate(6403%) hue-rotate(341deg) brightness(101%) contrast(87%)";
+
+                    let ghostElement = document.createElement("img");
+                    ghostElement.className = "token";
+                    ghostElement.style.top = (link.y+mapData.portalData[selectedPortal].originY)*gridSize + "px";
+                    ghostElement.style.left = (link.x+mapData.portalData[selectedPortal].originX)*gridSize + "px";
+                    ghostElement.style.width = (token.size * gridSize).toString() + "px";
+                    ghostElement.style.height = (token.size * gridSize).toString() + "px";
+                    ghostElement.style.opacity = "0.5";
+                    ghostElement.style.pointerEvents = "none";
+                    ghostElement.style.zIndex = (token.layer + baseTokenIndex).toString();
+                    if (token.image!=null)
+                    {
+                        if (mapData.tokenList.includes(token.image))
+                        {
+                            ghostElement.src = "public/tokens/" + token.image;
+                        }
+                        else
+                        {
+                            ghostElement.src = "public/dmTokens/" + token.image;
+                        }
+                    }
+                    else
+                    {
+                        if (token.text!=null)
+                        {
+                            ghostElement.src = "public/blankToken.png";
+                        }
+                    }
+                    tokensDiv.appendChild(ghostElement);
+                }
+                    
+                linkImage.className = "linkImage";
+                tokensDiv.appendChild(linkImage);
+                linkImage.style.width = (token.size * gridSize / 3).toString() + "px";
+                linkImage.style.height = (token.size * gridSize / 3).toString() + "px";
+                linkImage.style.top = token.y - (gridSize * token.size) / 2 + "px";
+                linkImage.style.left = token.x + (gridSize * token.size) / 2 - linkImage.offsetWidth + "px";
+                linkImage.style.zIndex = (token.layer + baseTokenIndex + 1).toString();
+            }
+        }
+    }
+        
     if (token.concentrating)
     {
         if (!token.dm || (isDM&&!playerMode))
@@ -1745,6 +1817,26 @@ function createToken(token)
                     displaySubMenu(e, subMenu);
                 }});
                 
+                menuOptions.push({text: "Duplicate token", hasSubMenu: false, callback: async function() {
+                    let tokenDupeCommand = JSON.parse(JSON.stringify(token));
+                    delete tokenDupeCommand.id;
+                    tokenDupeCommand.c = 'createToken';
+                    tokenDupeCommand.x += 10;
+                    let newId = parseInt(await requestServer(tokenDupeCommand));
+                    for (let drawing of mapData.drawings)
+                    {
+                        if (drawing.link == token.id)
+                        {
+                            let drawingDupeCommand = JSON.parse(JSON.stringify(drawing));
+                            delete drawingDupeCommand.id;
+                            drawingDupeCommand.c = 'addDrawing';
+                            drawingDupeCommand.link = newId;
+                            await requestServer(drawingDupeCommand);
+                        }
+                    }
+                    updateMapData();
+                }});
+
                 if (token.group != null)
                 {
                     menuOptions.push({text: "Group options", hasSubMenu: true, callback: async function() {
@@ -1842,8 +1934,8 @@ function createToken(token)
     {
         let textHolder = document.createElement("div");
         textHolder.style.zIndex = parseInt(imageElement.style.zIndex);
-        textHolder.style.left = (token.x - 0.4*token.size*gridSize).toString() + "px";
-        textHolder.style.top = (token.y - 0.25*token.size*gridSize).toString() + "px";
+        textHolder.style.left = (token.x - 0.4*token.size*gridSize + 0.5*GridLineWidth).toString() + "px";
+        textHolder.style.top = (token.y - 0.25*token.size*gridSize + 0.5*GridLineWidth).toString() + "px";
         textHolder.style.width = (token.size*gridSize*0.8).toString() + "px";
         textHolder.style.height = (token.size*gridSize*0.5).toString() + "px";
         textHolder.style.lineHeight = (token.size*gridSize*0.5).toString() + "px";
@@ -1936,6 +2028,11 @@ function createTracker(trackerData, index)
                 isDraggingTracker = false;
             }
         });
+        initiativeItem.addEventListener("dblclick", function() {
+            viewport.scrollLeft = ((trackerData.x)/(1+extraZoom/20))-window.innerWidth*0.5+0.5*trackerData.size*gridSize;
+            viewport.scrollTop = ((trackerData.y)/(1+extraZoom/20))-window.innerHeight*0.5+0.5*trackerData.size*gridSize;
+        });
+
         initiativeItem.addEventListener("dragstart", function(e) {
             isDraggingTracker = true;
             e.dataTransfer.setData("trackerId", index);
@@ -2212,7 +2309,6 @@ bulkTokenConfirm.onclick = function() {
 }
 //#endregion
 
-
 //#region Side buttons
 document.getElementById("toggleGridButton").onclick = function() {
     GridActive = !GridActive;
@@ -2473,6 +2569,11 @@ document.getElementById("togglePlayerMode").onclick = function() {
     updateMapData(true);
 }
 
+document.getElementById("clearPortals").onclick = function() {
+    requestServer({c: "clearPortals"});
+    updateMapData(true);
+}
+
 let extraOptions = [
     document.getElementById("startAlignTool"),
     document.getElementById("hideInits"),
@@ -2541,13 +2642,9 @@ function CheckAntiBlockerPixel(e) {
 
 function updateSelectedTokenData()
 {
-    for (let i in mapData.tokens)
-    {
-        if (mapData.tokens[i].id == selectedToken)
-        {
-            selectedTokenData = mapData.tokens[i];
-        }
-    }  
+    for (let token of mapData.tokens)
+        if (token.id == selectedToken)
+            selectedTokenData = token;
 }
 
 function CheckTokenPermission(token) {
@@ -2750,6 +2847,16 @@ document.body.addEventListener("keyup", async function(e) {
     if (document.activeElement.tagName!="INPUT" && document.activeElement.tagName!="TEXTAREA")
     {
         switch (e.code) {
+            case "KeyC":
+                colorPicker.click();
+                break;
+
+            case "Digit0":
+                if (mapData.portalData.length>0)
+                    setPortal(parseInt(prompt("Enter your desired portal ID (0-"+(mapData.portalData.length-1).toString()+"):")));
+                    updateMapData(true);
+                break;
+
             case "KeyG":
                 GridActive = !GridActive;
                 updateButtonColors();
@@ -2816,7 +2923,7 @@ document.body.addEventListener("keyup", async function(e) {
     }
 })
 
-map.addEventListener("mousedown", function(e) {
+map.addEventListener("mousedown", async function(e) {
     if (e.button == 0)
     {
         selectedToken=-1;
@@ -2857,7 +2964,7 @@ map.addEventListener("mousedown", function(e) {
             }
             Xcount += (map.width - gridToolData.endX)/gridToolData.gridX;
             Ycount += (map.height - gridToolData.endY)/gridToolData.gridY;
-            requestServer({c: "setMapData", map: mapData.map, x: Xcount, y: Ycount, offsetX: (gridToolData.startX - gridToolData.gridX), offsetY: (gridToolData.startY - gridToolData.gridY), hideInit: mapData.hideInit});
+            await requestServer({c: "setMapData", map: mapData.map, x: Xcount, y: Ycount, offsetX: (gridToolData.startX - gridToolData.gridX), offsetY: (gridToolData.startY - gridToolData.gridY), hideInit: mapData.hideInit});
             updateMapData();
             alignToolStep = 0;
             return;
@@ -2868,19 +2975,16 @@ map.addEventListener("mousedown", function(e) {
             let autoGenInit = confirm("Automatically generate initiatives for the new tokens?");
             let sameInit = false;
             if (autoGenInit)
-            {
                 sameInit = confirm("Should all the tokens have the same initiative?");
-            }
-            
+
             let dexMod;
             if (autoGenInit)
-            {
                 dexMod = prompt("Enter the dex mod of the new tokens");
-            }
+
             let tmpInit;
             if (autoGenInit && sameInit)
             {
-                tmpInit = Math.ceil(Math.random()*20)+parseInt(dexMod);
+                tmpInit = randomRandom(20)+parseInt(dexMod);
                 if (isNaN(tmpInit))
                 {
                     placingBulkOrigin = false;
@@ -2898,6 +3002,7 @@ map.addEventListener("mousedown", function(e) {
                     return;
                 }
             }
+
             let hideTokens = confirm("Should the tokens be hidden?");
             let commonNameInText;
             let newAC;
@@ -2912,15 +3017,19 @@ map.addEventListener("mousedown", function(e) {
                     return;
                 }
             }
+
             if (bulkInitSettings.image == "number")
-            {
                 commonNameInText = confirm("Display common name in token text?");
-            }
+
+            let hideTracker;
+            if (isDM)
+                hideTracker = confirm("Hide the new tokens in the initiative tracker?");
+
             for (let f = 1; f <= bulkInitSettings.tokenAmount; f++)
             {
                 if (autoGenInit && !sameInit)
                 {
-                    tmpInit = Math.ceil(Math.random()*20)+parseInt(dexMod);
+                    tmpInit = randomRandom(20)+parseInt(dexMod);
                     if (isNaN(tmpInit))
                     {
                         placingBulkOrigin = false;
@@ -2931,27 +3040,21 @@ map.addEventListener("mousedown", function(e) {
                 {
                     let tokenText;
                     if (commonNameInText)
-                    {
                         tokenText = bulkInitSettings.commonName+" "+f.toString();
-                    }
                     else
-                    {
                         tokenText = f.toString();
-                    }
-                    if (newHP!=null) {
-                        requestServer({c: "createToken", text: tokenText, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: bulkInitSettings.tokenSizes, status: "", layer: 1, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
-                    } else {
-                        requestServer({c: "createToken", text: tokenText, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: bulkInitSettings.tokenSizes, status: "", layer: 1, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum});
-                    }
+
+                    if (newHP!=null) 
+                        await requestServer({c: "createToken", text: tokenText, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + ((f-1)%Math.ceil(Math.sqrt(bulkInitSettings.tokenAmount)))*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)) + (Math.floor((f-1)/Math.ceil(Math.sqrt(bulkInitSettings.tokenAmount))))*bulkInitSettings.tokenSizes*gridSize, size: bulkInitSettings.tokenSizes, status: "", layer: 1, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hideTracker: hideTracker, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
+                    else
+                        await requestServer({c: "createToken", text: tokenText, x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), size: bulkInitSettings.tokenSizes, status: "", layer: 1, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hideTracker: hideTracker});
                 }
                 else
                 {
-                    if (newHP!=null) {
-                        requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 1, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
-                    } else {
-                        requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 1, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum});
-                    }
-                    
+                    if (newHP!=null) 
+                        await requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 1, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hideTracker: hideTracker, hp: newHP.toString()+"/"+newHP.toString(), ac: newAC});
+                    else
+                        await requestServer({c: "createToken", x: ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) + (f-1)*bulkInitSettings.tokenSizes*gridSize, y: ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)), image: bulkInitSettings.image, size: bulkInitSettings.tokenSizes, status: "", layer: 1, dm: true, name: bulkInitSettings.commonName+" "+f.toString(), initiative: tmpInit, hidden: hideTokens, group: groupNum, hideTracker: hideTracker});
                 }
             }
             placingBulkOrigin = false;
@@ -2977,7 +3080,7 @@ map.addEventListener("mousedown", function(e) {
                     if (isDM) {
                         shapeIsVisible = confirm("Should the shape be visible?");
                     }
-                    requestServer({c: "addDrawing", shape: "square", x: squareMarkers.x, y: squareMarkers.y, width: squareMarkers.width, height: squareMarkers.height, trueColor: shapeColor, visible: shapeIsVisible});
+                    await requestServer({c: "addDrawing", shape: "square", x: squareMarkers.x, y: squareMarkers.y, width: squareMarkers.width, height: squareMarkers.height, trueColor: shapeColor, visible: shapeIsVisible});
                 }
                 updateMapData();
             }
@@ -2995,7 +3098,7 @@ map.addEventListener("mousedown", function(e) {
             {
                 blockerMarkers.width = ((e.pageX+viewport.scrollLeft)/(1+extraZoom/20)) - blockerMarkers.x;
                 blockerMarkers.height = ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20)) - blockerMarkers.y;
-                requestServer({c: "addBlocker", x: blockerMarkers.x, y: blockerMarkers.y, width: blockerMarkers.width, height: blockerMarkers.height});
+                await requestServer({c: "addBlocker", x: blockerMarkers.x, y: blockerMarkers.y, width: blockerMarkers.width, height: blockerMarkers.height});
             }
             isPlacingBlocker = false;
             updateMapData(true);
@@ -3010,10 +3113,9 @@ map.addEventListener("mousedown", function(e) {
             if ((isDM&&!playerMode) || CheckAntiBlockerPixel(e))
             {
                 let shapeIsVisible = true;
-                if (isDM) {
+                if (isDM)
                     shapeIsVisible = confirm("Should the shape be visible?");
-                }
-                requestServer({c: "addDrawing", shape: "vertexLine", points:[{x: lineMarkers.x, y: lineMarkers.y}, {x: lineMarkers.destX, y: lineMarkers.destY}], trueColor: shapeColor, visible: shapeIsVisible});
+                await requestServer({c: "addDrawing", shape: "vertexLine", points:[{x: lineMarkers.x, y: lineMarkers.y}, {x: lineMarkers.destX, y: lineMarkers.destY}], trueColor: shapeColor, visible: shapeIsVisible});
             }
             updateMapData();
             isPlacingLine = false;
@@ -3025,11 +3127,13 @@ map.addEventListener("mousedown", function(e) {
             let destY = ((e.pageY+ viewport.scrollTop)/(1+extraZoom/20));
             let angle = Math.atan2((destY - thickLineMarkers.y), (destX - thickLineMarkers.x));
             if (angle<0) { angle+=2*Math.PI; }
-            let shapeIsVisible = true;
-            if (isDM) {
-                shapeIsVisible = confirm("Should the shape be visible?");
+            if ((isDM&&!playerMode) || CheckAntiBlockerPixel(e))
+            {
+                let shapeIsVisible = true;
+                if (isDM)
+                    shapeIsVisible = confirm("Should the shape be visible?");
+                await requestServer({c: "addDrawing", shape: "5ftLine", x: thickLineMarkers.x, y: thickLineMarkers.y, angle: angle, trueColor: shapeColor, link: thickLineMarkers.linkId, range: thickLineMarkers.range, visible: shapeIsVisible});
             }
-            requestServer({c: "addDrawing", shape: "5ftLine", x: thickLineMarkers.x, y: thickLineMarkers.y, angle: angle, trueColor: shapeColor, link: thickLineMarkers.linkId, range: thickLineMarkers.range, visible: shapeIsVisible});
             updateMapData();
             isPlacing5ftLine = false;
             return;
@@ -3040,11 +3144,13 @@ map.addEventListener("mousedown", function(e) {
             let destY = ((e.pageY + viewport.scrollTop)/(1+extraZoom/20));
             let angle = Math.atan2((destY - coneMarkers.y), (destX - coneMarkers.x));
             if (angle<0) { angle+=2*Math.PI; }
-            let shapeIsVisible = true;
-            if (isDM) {
-                shapeIsVisible = confirm("Should the shape be visible?");
+            if ((isDM&&!playerMode) || CheckAntiBlockerPixel(e))
+            {
+                let shapeIsVisible = true;
+                if (isDM)
+                    shapeIsVisible = confirm("Should the shape be visible?");
+                await requestServer({c: "addDrawing", shape: "cone", link: coneMarkers.linkId, x: coneMarkers.x, y: coneMarkers.y, angle: angle, range: coneMarkers.range, trueColor: shapeColor, visible: shapeIsVisible, is90Deg: coneMarkers.is90Deg});
             }
-            requestServer({c: "addDrawing", shape: "cone", link: coneMarkers.linkId, x: coneMarkers.x, y: coneMarkers.y, angle: angle, range: coneMarkers.range, trueColor: shapeColor, visible: shapeIsVisible, is90Deg: coneMarkers.is90Deg});
             updateMapData();
             isPlacingCone = false;
             return;
@@ -3613,13 +3719,13 @@ document.body.ondrop = async function(e)
             let tY;
             if (draggingTokenData.size >= 1)
             {
-                tX = Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridX * draggingTokenData.size)/gridX) * gridX + 0.5 * gridX * draggingTokenData.size + 1 + offsetX;
-                tY = Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridY * draggingTokenData.size)/gridY) * gridY + 0.5 * gridY * draggingTokenData.size + 1 + offsetY;
+                tX = Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridX * draggingTokenData.size)/gridX) * gridX + 0.5 * gridX * draggingTokenData.size + offsetX + 1;
+                tY = Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridY * draggingTokenData.size)/gridY) * gridY + 0.5 * gridY * draggingTokenData.size + offsetY + 1;
             }
             else
             {
                 tX = Math.round(((e.pageX + viewport.scrollLeft + tokenDragOffset.x)/(1+extraZoom/20) - mapData.offsetX - 0.5 * gridX * draggingTokenData.size) / (gridX * draggingTokenData.size)) * (gridX * draggingTokenData.size) + 0.5 * gridX * draggingTokenData.size + offsetX + 1;
-                tY = Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridY * draggingTokenData.size) / (gridY * draggingTokenData.size)) * (gridY * draggingTokenData.size) + 0.5 * gridY * draggingTokenData.size + offsetY + 1;
+                tY = Math.round(((e.pageY + viewport.scrollTop + tokenDragOffset.y)/(1+extraZoom/20) - mapData.offsetY - 0.5 * gridY * draggingTokenData.size) / (gridY * draggingTokenData.size)) * (gridY * draggingTokenData.size) + 0.5 * gridY * draggingTokenData.size + offsetY;
             }
             if (tX != draggingTokenData.x || tY != draggingTokenData.y)
             {
@@ -3770,6 +3876,15 @@ document.body.ondrop = async function(e)
 //#endregion
 
 //#region Low level functions
+function randomRandom(max) {
+    let randomNums = []
+    for (let i = 0; i < 20; i++)
+    {
+        randomNums.push(Math.ceil(Math.random()*max));
+    }
+    return randomNums[Math.floor(Math.random()*20)];
+}
+
 function colorToSigned24Bit(s) {
     return (parseInt(s.substr(1), 16) << 8) / 256;
 }
