@@ -158,7 +158,6 @@ async function updateMapData(force)
     if (oldData != stringData || force)
     {
         console.log("Data is not identical or update has been forced, updating map!");
-        clearCanvas();
         GridColor = mapData.gridColor;
         if (mapData.antiBlockerOn)
         {
@@ -185,20 +184,8 @@ async function updateMapData(force)
         }
 
         if (isDM) { document.getElementById("exportMap").title = mapData.mapName + " : " + mapData.map; }
-        
-        if (oldParsedData) {
-            if (oldParsedData.map!=mapData.map) {
-                selectedToken = -1;
-                selectedBlocker = -1;
-                selectedShapeId = -1;
-                selectedVertHandle = -1;
-                hideDetailsScreen();
-            }
-        }
 
-        loadedMap.src = "/public/maps/" + mapData.map;
         mapSelect.innerHTML = "";
-        
         for (let i = 0; i < mapData.maps.length; i++)
         {
             let tmpOption = document.createElement("option");
@@ -251,12 +238,47 @@ async function updateMapData(force)
         if (document.activeElement!=gridColorPicker) {gridColorPicker.value = mapData.gridColor;}
         offsetX = mapData.offsetX;
         offsetY = mapData.offsetY;
-        loadedMap.onload = function() 
-        {
-            drawCanvas();
-            oldData = stringData;
-            if (oldData) {
-                oldParsedData = JSON.parse(oldData);
+
+        if (oldParsedData) {
+            if (oldParsedData.map!=mapData.map) {
+                clearCanvas();
+                loadedMap.src = "/public/maps/" + mapData.map;
+                selectedToken = -1;
+                selectedBlocker = -1;
+                selectedShapeId = -1;
+                selectedVertHandle = -1;
+                hideDetailsScreen();
+                loadedMap.onload = function() 
+                {
+                    drawCanvas();
+                    oldData = stringData;
+                    if (oldData) {
+                        oldParsedData = JSON.parse(oldData);
+                    }
+                }
+            } else {
+                let skipMapRedraw = true;
+                if (oldParsedData.x != mapData.x) { skipMapRedraw = false; }
+                if (oldParsedData.y != mapData.y) { skipMapRedraw = false; }
+                if (oldParsedData.offsetX != mapData.offsetX) { skipMapRedraw = false; }
+                if (oldParsedData.offsetY != mapData.offsetY) { skipMapRedraw = false; }
+                if (oldParsedData.gridColor != mapData.gridColor) { skipMapRedraw = false; }
+                drawCanvas(skipMapRedraw);
+                oldData = stringData;
+                if (oldData) {
+                    oldParsedData = JSON.parse(oldData);
+                }
+            }
+        } else {
+            clearCanvas();
+            loadedMap.src = "/public/maps/" + mapData.map;
+            loadedMap.onload = function() 
+            {
+                drawCanvas();
+                oldData = stringData;
+                if (oldData) {
+                    oldParsedData = JSON.parse(oldData);
+                }
             }
         }
     }
@@ -401,24 +423,27 @@ offsetYInput.onchange = function() {
 //#endregion
 
 //#region Drawing functions
-function drawCanvas()
+function drawCanvas(skipMap)
 {
-    map.width = loadedMap.naturalWidth;
-    map.height = loadedMap.naturalHeight;
-    mapCanvas.strokeStyle = GridColor;
-    mapCanvas.lineWidth = GridLineWidth;
-    polyBlockers.setAttribute("width", loadedMap.naturalWidth.toString());
-    polyBlockers.setAttribute("height", loadedMap.naturalHeight.toString());
-    shapeMap.width = loadedMap.naturalWidth;
-    shapeMap.height = loadedMap.naturalHeight;
-    hitboxMap.width = loadedMap.naturalWidth;
-    hitboxMap.height = loadedMap.naturalHeight;
-    antiBlockerMap.width = loadedMap.naturalWidth;
-    antiBlockerMap.height = loadedMap.naturalHeight;
-    mapCanvas.translate(0.5, 0.5);
-    shapeCanvas.translate(0.5, 0.5);
-    hitboxCanvas.translate(0.5, 0.5);
-    gridSize = (map.width / mapData.x + map.height / mapData.y) / 2;
+    if (!skipMap) {
+        map.width = loadedMap.naturalWidth;
+        map.height = loadedMap.naturalHeight;
+        mapCanvas.strokeStyle = GridColor;
+        mapCanvas.lineWidth = GridLineWidth;
+        polyBlockers.setAttribute("width", loadedMap.naturalWidth.toString());
+        polyBlockers.setAttribute("height", loadedMap.naturalHeight.toString());
+        shapeMap.width = loadedMap.naturalWidth;
+        shapeMap.height = loadedMap.naturalHeight;
+        hitboxMap.width = loadedMap.naturalWidth;
+        hitboxMap.height = loadedMap.naturalHeight;
+        antiBlockerMap.width = loadedMap.naturalWidth;
+        antiBlockerMap.height = loadedMap.naturalHeight;
+        mapCanvas.translate(0.5, 0.5);
+        shapeCanvas.translate(0.5, 0.5);
+        hitboxCanvas.translate(0.5, 0.5);
+        gridSize = (map.width / mapData.x + map.height / mapData.y) / 2;
+    }
+    
     if (mapData.usePolyBlockers)
     {
         drawPolyBlockers()
@@ -427,10 +452,12 @@ function drawCanvas()
     {
         drawBlockers();
     }
-    drawMap();
-    if (GridActive)
-    {
-        drawGrid();
+    if (!skipMap) {
+        drawMap();
+        if (GridActive)
+        {
+            drawGrid();
+        }
     }
     drawTokens();
     drawShapes();
@@ -3339,14 +3366,14 @@ async function requestServer(data)
 //#endregion
 
 //#region Cookies
-export function setCookie(cname, cvalue, exdays) {
+function setCookie(cname, cvalue, exdays) {
     let d = new Date();
     d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
     let expires = "expires=" + d.toUTCString();
     document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
 }
 
-export function getCookie(cname) {
+function getCookie(cname) {
     let name = cname + "=";
     let ca = document.cookie.split(';');
     for( let i = 0; i < ca.length; i++) {
