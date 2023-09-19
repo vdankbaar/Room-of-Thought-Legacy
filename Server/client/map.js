@@ -287,10 +287,9 @@ async function updateMapData(force)
                 selectedShapeId = -1;
                 selectedVertHandle = -1;
                 detailsScreen.style.display = "none";
-                await loadedMap.decode()
-                drawCanvas();
-                oldData = stringData;
-                oldParsedData = oldData?JSON.parse(oldData):oldParsedData;
+                loadedMap.onload = function() {
+                    drawCanvas();
+                }
             } else {
                 let skipMapRedraw = true;
                 if (oldParsedData.x != mapData.x) { skipMapRedraw = false; }
@@ -300,18 +299,19 @@ async function updateMapData(force)
                 if (oldParsedData.gridColor != mapData.gridColor) { skipMapRedraw = false; }
                 if (force) { skipMapRedraw = false; }
                 drawCanvas(skipMapRedraw);
-                oldData = stringData;
-                oldParsedData = oldData?JSON.parse(oldData):oldParsedData;
             }
+            oldData = stringData;
+            oldParsedData = oldData?JSON.parse(oldData):oldParsedData;
         } else {
             mapCanvas.clearRect(0, 0, map.width, map.height);
             loadedMap.src = "/public/maps/" + mapData.map;
-            await loadedMap.decode();
-            drawCanvas();
-            oldData = stringData;
-            oldParsedData = oldData?JSON.parse(oldData):oldParsedData;
-            if (autoUpdate)
-                mapUpdateInterval = setInterval(function() {updateMapData();}, mapUpdateIntervalTime);
+            loadedMap.onload = function() {
+                drawCanvas();
+                oldData = stringData;
+                oldParsedData = oldData?JSON.parse(oldData):oldParsedData;
+                if (autoUpdate)
+                    mapUpdateInterval = setInterval(function() {updateMapData();}, mapUpdateIntervalTime);
+            }
         }
     }
     else
