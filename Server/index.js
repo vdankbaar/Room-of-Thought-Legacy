@@ -11,6 +11,10 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(fileUpload());
 LoadCurrentMap();
+let removedTokens = 0;
+let previousRemovedTokenId = -1;
+let removedDrawings = 0;
+let previousRemovedDrawingId = -1;
 
 app.post("/api", function(request, response) {
     let playerName = GetCookie(request, "playerName");
@@ -20,6 +24,8 @@ app.post("/api", function(request, response) {
     {
         case "currentMapData":
             LoadCurrentMap();
+            currentMap.removedTokens = removedTokens;
+            currentMap.removedDrawings = removedDrawings;
             response.send(JSON.stringify(currentMap));
             break;
 
@@ -69,22 +75,31 @@ app.post("/api", function(request, response) {
 
         case "removeToken":
             LoadCurrentMap();
-            let tokenFound = 0;
-            for (let i in currentMap.tokens)
+            if (request.body.id==previousRemovedTokenId && request.body.tokensRemoved < removedTokens)
             {
-                let currentToken = currentMap.tokens[i];
-                if (currentToken.id == request.body.id)
+                response.send("[false]");
+            }
+            else
+            {
+                let tokenFound = 0;
+                for (let i in currentMap.tokens)
                 {
-                    tokenFound = i;
-                    currentMap.tokens.splice(i, 1);
+                    let currentToken = currentMap.tokens[i];
+                    if (currentToken.id == request.body.id)
+                    {
+                        tokenFound = i;
+                        currentMap.tokens.splice(i, 1);
+                    }
                 }
+                for (let i = tokenFound; i<currentMap.tokens.length; i++)
+                {
+                    currentMap.tokens[i].id = currentMap.tokens[i].id-1;
+                }
+                SaveCurrentMap();
+                response.send("[true]");
+                removedTokens++;
+                previousRemovedTokenId = request.body.id;
             }
-            for (let i = tokenFound; i<currentMap.tokens.length; i++)
-            {
-                currentMap.tokens[i].id = currentMap.tokens[i].id-1;
-            }
-            SaveCurrentMap();
-            response.send("[true]");
             break;
 
         case "moveToken":
@@ -109,10 +124,7 @@ app.post("/api", function(request, response) {
             switch(request.body.shape)
             {
                 case "circle":
-                    if (minMax(request.body.radius, 0, 200))
-                    {
-                        isShape = true;
-                    }
+                    isShape = true;
                     tmpDrawing.x = request.body.x;
                     tmpDrawing.y = request.body.y;
                     tmpDrawing.radius = request.body.radius;
@@ -143,24 +155,57 @@ app.post("/api", function(request, response) {
         response.send("[true]");
         break;
 
-        case "removeDrawing":
+        case "editDrawing":
             LoadCurrentMap();
-            let shapeFound = 0;
             for (let i in currentMap.drawings)
             {
                 let currentDrawing = currentMap.drawings[i];
+                console.log(currentDrawing);
                 if (currentDrawing.id == request.body.id)
                 {
-                    shapeFound = i;
-                    currentMap.drawings.splice(i, 1);
+                    if (currentMap.drawings[i].shape=="line")
+                    {
+                        let dx = currentMap.drawings[i].destX - currentMap.drawings[i].x;
+                        let dy = currentMap.drawings[i].destY - currentMap.drawings[i].y;
+                        currentMap.drawings[i].destX = request.body.x + dx;
+                        currentMap.drawings[i].destY = request.body.y + dy;
+                    }
+                    currentMap.drawings[i].x = request.body.x;
+                    currentMap.drawings[i].y = request.body.y;
                 }
-            }
-            for (let i = shapeFound; i<currentMap.drawings.length; i++)
-            {
-                currentMap.drawings[i].id = currentMap.drawings[i].id-1;
             }
             SaveCurrentMap();
             response.send("[true]");
+            break;
+
+        case "removeDrawing":
+            LoadCurrentMap();    
+            if (request.body.id==previousRemovedDrawingId && request.body.drawingsRemoved < removedDrawings)
+            {
+                response.send("[false]");
+            }
+            else
+            {
+            
+                let shapeFound = 0;
+                for (let i in currentMap.drawings)
+                {
+                    let currentDrawing = currentMap.drawings[i];
+                    if (currentDrawing.id == request.body.id)
+                    {
+                        shapeFound = i;
+                        currentMap.drawings.splice(i, 1);
+                    }
+                }
+                for (let i = shapeFound; i<currentMap.drawings.length; i++)
+                {
+                    currentMap.drawings[i].id = currentMap.drawings[i].id-1;
+                }
+                SaveCurrentMap();
+                response.send("[true]");
+                previousRemovedDrawingId = request.body.id;
+                removedDrawings++;
+            }
             break;
 
         case "addBlocker":

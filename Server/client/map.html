@@ -19,7 +19,10 @@
         <ul id="contextMenu" class='custom-menu' oncontextmenu="event.preventDefault();"></ul>
         <ul id="subContextMenu" class='custom-menu' oncontextmenu="event.preventDefault();"></ul>
         <div id="buttonDiv">
-            <input type=color id="shapeColorPicker" value="#ff0000">
+            <input type="button" id="toggleGridButton" value="Toggle grid"></input>
+            <br>
+            <p style="margin: 0px; font-size: 1vw;">Draw Color:</p>
+            <input type="color" id="shapeColorPicker" value="#ff0000"></input>
             <br>
             <input id="importMap" type="button" class="btn" value="Load Map"></label>
             <br>
@@ -33,6 +36,16 @@
                 <input type="submit" id="submitMap">
             </form>
         </div>
+        <script>
+            function showHitmap() {
+                let hbMap = document.getElementById("hitboxMap");
+                hbMap.style.top = document.getElementById("map").clientHeight;
+            }
+            function hideHitmap() {
+                let hbMap = document.getElementById("hitboxMap");
+                hbMap.style.top = 0;
+            }
+        </script>
     </body>
     <script type="module" src="map.js"></script>
     <iframe name="hiddenFrame" width="0" height="0" style="display: none;"></iframe>

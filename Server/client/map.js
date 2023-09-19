@@ -2,6 +2,7 @@ let GridActive = true;
 let GridColor = "#222222FF";
 let shapeColor = "#FF0000";
 let shapeWidth = 2;
+let hitboxMultiplier = 3;
 let GridLineWidth = 1;
 var map = document.getElementById("map");
 var loadedMap = document.getElementById("hiddenMapLoader");
@@ -14,15 +15,18 @@ var shapeCanvas;
 var hitboxCanvas;
 var mapData;
 var gridSize;
-let mapUpdateInterval = 1500;
+let mapUpdateInterval = 1000;
 let tokenDragOffset = {x: 0, y: 0};
 let blockerDragOffset = {x: 0, y: 0};
+let shapeDragOffset = {x: 0, y: 0};
 let blockerMarkers = {x: 0, y: 0, width: 0, height: 0};
 let circleMarkers = {x: 0, y: 0, radius: 0};
 let squareMarkers = {x: 0, y: 0, width: 0, height: 0};
 let lineMarkers = {x: 0, y: 0, destX: 0, destY: 0, range: 100};
 var isDM = false;
 var clientName = getCookie("playerName");
+if (clientName=="")
+    window.location.href = "/";
 let feetPerSquare = 5;
 let isPlacingBlocker = false;
 let isPlacingSquare = false;
@@ -30,6 +34,8 @@ let isPlacingLine = false;
 let isDraggingBlocker = false;
 let draggedBlocker = {x: 0, y: 0};
 let hiddenMapImportButton = document.getElementById("fileImport");
+let isMovingShape = false;
+let movingShapeId = 0;
 
 window.onload = function() {
     if (getCookie("isDM")==1)
@@ -39,7 +45,10 @@ window.onload = function() {
     }
     else
     {
-        document.getElementById("buttonDiv").parentElement.removeChild(document.getElementById("buttonDiv"));
+        document.getElementById("buttonDiv").removeChild(document.getElementById("importMap"));
+        document.getElementById("buttonDiv").removeChild(document.getElementById("exportMap"));
+        document.getElementById("buttonDiv").removeChild(document.getElementById("fileForm"));
+        document.getElementById("buttonDiv").style.height = "13.5vh";
     }
         
     while (clientName=="")
@@ -53,6 +62,11 @@ let exportButton = document.getElementById("exportMap");
 exportButton.onclick = function() {
     RequestServer({c: "exportMap"});
     window.open("/public/export/currentSettings.json");
+}
+
+document.getElementById("toggleGridButton").onclick = function() {
+    GridActive = !GridActive;
+    drawCanvas();
 }
 
 MainScript();
@@ -159,7 +173,7 @@ function drawCircle(index, shape)
     shapeCanvas.stroke();
 
     let colorString = "#";
-    let hex = (index*16).toString(16);
+    let hex = ((parseInt(index)+1)*16).toString(16);
     for (let f = 0; f<(6-hex.length); f++)
     {
         colorString += "0";
@@ -167,7 +181,7 @@ function drawCircle(index, shape)
         
     colorString+=hex;
     hitboxCanvas.strokeStyle = colorString;
-    hitboxCanvas.lineWidth = shapeWidth*3;
+    hitboxCanvas.lineWidth = shapeWidth*hitboxMultiplier;
     hitboxCanvas.beginPath();
     hitboxCanvas.arc(shape.x, shape.y, shape.radius, 0, 2*Math.PI);
     hitboxCanvas.stroke();
@@ -182,7 +196,7 @@ function drawSquare(index, shape)
     shapeCanvas.stroke();
 
     let colorString = "#";
-    let hex = (index*16).toString(16);
+    let hex = ((parseInt(index)+1)*16).toString(16);
     for (let f = 0; f<(6-hex.length); f++)
     {
         colorString += "0";
@@ -190,7 +204,7 @@ function drawSquare(index, shape)
         
     colorString+=hex;
     hitboxCanvas.strokeStyle = colorString;
-    hitboxCanvas.lineWidth = shapeWidth*3;
+    hitboxCanvas.lineWidth = shapeWidth*hitboxMultiplier;
     hitboxCanvas.beginPath();
     hitboxCanvas.rect(shape.x, shape.y, shape.width, shape.height);
     hitboxCanvas.stroke();
@@ -206,7 +220,7 @@ function drawLine(index, shape)
     shapeCanvas.stroke();
 
     let colorString = "#";
-    let hex = (index*16).toString(16);
+    let hex = ((parseInt(index)+1)*16).toString(16);
     for (let f = 0; f<(6-hex.length); f++)
     {
         colorString += "0";
@@ -214,7 +228,7 @@ function drawLine(index, shape)
 
     colorString+=hex;
     hitboxCanvas.strokeStyle = colorString;
-    hitboxCanvas.lineWidth = shapeWidth*3;
+    hitboxCanvas.lineWidth = shapeWidth*hitboxMultiplier;
     hitboxCanvas.beginPath();
     hitboxCanvas.moveTo(shape.x, shape.y);
     hitboxCanvas.lineTo(shape.destX, shape.destY);
@@ -294,8 +308,6 @@ function drawBlockers()
                     if (isDraggingBlocker)
                     {
                         isDraggingBlocker = false;
-                        console.log(draggedBlocker);
-
                         let newX = draggedBlocker.x + blockerDragOffset.x;
                         let newY = draggedBlocker.y + blockerDragOffset.y;
                         RequestServer({c: "editBlocker", id: currentBlocker.id, x: newX, y: newY, width: tmpBlocker.offsetWidth, height: tmpBlocker.offsetHeight});
@@ -363,7 +375,6 @@ function createToken(token)
         hiddenImage.style.height = (token.size * gridSize/3).toString()+"px";
         hiddenImage.style.top = token.y - (gridSize*token.size)/2;
         hiddenImage.style.left = token.x - (gridSize*token.size)/2;
-        //hiddenImage.addEventListener("dragstart", function(e) { e.preventDefault(); });
         tokensDiv.appendChild(hiddenImage);
     }
     
@@ -384,9 +395,12 @@ function createToken(token)
         CloseSubMenu();
         e.preventDefault();
         let menuOptions = [
-            {text: "Remove token", hasSubMenu: false, callback: function() {
-                RequestServer({c: "removeToken", id: token.id});
-                UpdateMapData();
+            {text: "Remove token", hasSubMenu: false, callback: async function() {
+                let result = await RequestServer({c: "removeToken", id: token.id, tokensRemoved: mapData.removedTokens});
+                if(result[0]==true)
+                    UpdateMapData();
+                else
+                    alert("That token has already been removed by someone else");
             }},
             {text: "Edit token", hasSubMenu: true, callback: function() {
                 let subMenuOptions = [
@@ -460,48 +474,81 @@ document.body.ondrop = async function(e)
 //#endregion
 
 //#region Main event handlers
-shapeMap.addEventListener("click", function(e) {
-    if (isPlacingBlocker)
+shapeMap.addEventListener("mousedown", function(e) {
+    if (e.button==0)
     {
-        if (isDM)
+        if (isPlacingBlocker)
         {
-            blockerMarkers.width = e.pageX-blockerMarkers.x;
-            blockerMarkers.height = e.pageY-blockerMarkers.y;
-            RequestServer({c: "addBlocker", x: blockerMarkers.x, y: blockerMarkers.y, width: blockerMarkers.width, height: blockerMarkers.height});
+            if (isDM)
+            {
+                blockerMarkers.width = e.pageX-blockerMarkers.x;
+                blockerMarkers.height = e.pageY-blockerMarkers.y;
+                RequestServer({c: "addBlocker", x: blockerMarkers.x, y: blockerMarkers.y, width: blockerMarkers.width, height: blockerMarkers.height});
+                UpdateMapData();
+            }
+            isPlacingBlocker = false;
+            return;
+        }
+        if (isPlacingSquare)
+        {
+            squareMarkers.width = e.pageX - squareMarkers.x;
+            squareMarkers.height = e.pageY - squareMarkers.y;
+            if (squareMarkers.width>=-map.width && squareMarkers.width<=map.width && squareMarkers.height>=-map.height && squareMarkers.height<=map.height)
+            {
+                RequestServer({c: "addDrawing", shape: "square", x: squareMarkers.x, y: squareMarkers.y, width: squareMarkers.width, height: squareMarkers.height, trueColor: shapeColor});
+                UpdateMapData();
+            }
+            else
+            {
+                alert("That square was too large or too small");
+            }
+            isPlacingSquare = false;
+            return;
+        }
+        if (isPlacingLine)
+        {
+            lineMarkers.destX = e.pageX;
+            lineMarkers.destY = e.pageY;
+            let dy = lineMarkers.destY-lineMarkers.y;
+            let dx = lineMarkers.destX-lineMarkers.x;
+            let distance = Math.sqrt(Math.pow((dx), 2) + Math.pow((dy), 2));
+            if (distance>lineMarkers.range)
+            {    
+                lineMarkers.destX = lineMarkers.x + dx/distance*lineMarkers.range;
+                lineMarkers.destY = lineMarkers.y + dy/distance*lineMarkers.range;
+            }
+            RequestServer({c: "addDrawing", shape: "line", x: lineMarkers.x, y: lineMarkers.y, destX: lineMarkers.destX, destY: lineMarkers.destY, trueColor: shapeColor});
             UpdateMapData();
+            isPlacingLine = false;
+            return;
         }
-        isPlacingBlocker = false;
-    }
-    if (isPlacingSquare)
-    {
-        squareMarkers.width = e.pageX - squareMarkers.x;
-        squareMarkers.height = e.pageY - squareMarkers.y;
-        if (squareMarkers.width>=-map.width && squareMarkers.width<=map.width && squareMarkers.height>=-map.height && squareMarkers.height<=map.height)
+        let pixel = hitboxCanvas.getImageData(e.pageX, e.pageY, 1, 1).data;
+        if (!(pixel[0]==0 && pixel[1]==0 && pixel[2]==0))
         {
-            RequestServer({c: "addDrawing", shape: "square", x: squareMarkers.x, y: squareMarkers.y, width: squareMarkers.width, height: squareMarkers.height, trueColor: shapeColor});
-            UpdateMapData();
+            let testString = "#"+decToHex(pixel[0]) + decToHex(pixel[1]) + decToHex(pixel[2]);
+            let shapeId = colorToSigned24Bit(testString)/16;
+            if (shapeId%1 == 0)
+            {
+                shapeId--;
+                console.log("Picked up: "+shapeId);
+                shapeMap.style.cursor = "pointer";
+                shapeDragOffset.x = mapData.drawings[shapeId].x - e.pageX;
+                shapeDragOffset.y = mapData.drawings[shapeId].y - e.pageY;
+                movingShapeId = shapeId;
+                isMovingShape = true;
+            }
         }
-        else
-        {
-            alert("That square was too large or too small");
-        }
-        isPlacingSquare = false;
     }
-    if (isPlacingLine)
+})
+
+shapeMap.addEventListener("mouseup", function(e) {
+    if (e.button==0 && isMovingShape)
     {
-        lineMarkers.destX = e.pageX;
-        lineMarkers.destY = e.pageY;
-        let dy = lineMarkers.destY-lineMarkers.y;
-        let dx = lineMarkers.destX-lineMarkers.x;
-        let distance = Math.sqrt(Math.pow((dx), 2) + Math.pow((dy), 2));
-        if (distance>lineMarkers.range)
-        {    
-            lineMarkers.destX = lineMarkers.x + dx/distance*lineMarkers.range;
-            lineMarkers.destY = lineMarkers.y + dy/distance*lineMarkers.range;
-        }
-        RequestServer({c: "addDrawing", shape: "line", x: lineMarkers.x, y: lineMarkers.y, destX: lineMarkers.destX, destY: lineMarkers.destY, trueColor: shapeColor});
+        isMovingShape = false;
+        console.log("Dropped shape!");
+        shapeMap.style.cursor = "auto";
+        RequestServer({c: "editDrawing", id: movingShapeId, x: e.pageX + shapeDragOffset.x, y: e.pageY + shapeDragOffset.y});
         UpdateMapData();
-        isPlacingLine = false;
     }
 })
 
@@ -513,8 +560,7 @@ map.addEventListener("contextmenu", function(e) {
 shapeMap.addEventListener("contextmenu", function(e) {
     e.preventDefault();
     let pixel = hitboxCanvas.getImageData(e.pageX, e.pageY, 1, 1).data;
-    console.log(pixel);
-    if (pixel[0]==0 && pixel[1]==0 && pixel[2]==0 && pixel[3]==0)
+    if (pixel[0]==0 && pixel[1]==0 && pixel[2]==0)
     {
         DisplayContextMenu(e);
     }
@@ -527,14 +573,17 @@ shapeMap.addEventListener("contextmenu", function(e) {
 function ShapeContextMenu(e, pixel)
 {
     let testString = "#"+decToHex(pixel[0]) + decToHex(pixel[1]) + decToHex(pixel[2]);
-    console.log(testString);
     let shapeId = colorToSigned24Bit(testString)/16;
     if (shapeId%1 == 0)
     {
+        shapeId--;
         let menuOptions = [
-            {text: "Erase shape", hasSubMenu: false, callback: function() {
-                RequestServer({c: "removeDrawing", id: shapeId});
-                UpdateMapData();
+            {text: "Erase shape", hasSubMenu: false, callback: async function() {
+                let result = await RequestServer({c: "removeDrawing", id: shapeId, removedDrawings: mapData.removedDrawings});
+                if (result[0]==true)
+                    UpdateMapData();
+                else
+                    alert("That drawing has already been removed by someone else!");
             }}
         ];
         DisplayMenu(e, menuOptions);
@@ -632,11 +681,11 @@ function DisplayContextMenu(e)
             isPlacingSquare = true;
         }},
         {text: "Draw Line", hasSubMenu: false, callback: function() {
-            let rangeInput = parseInt(prompt("Please enter the desired range of the line in feet, leave blank for none"));
+            let rangeInput = parseInt(prompt("Please enter the desired range of the line in feet, leave blank for no range limit"));
             if (rangeInput!=null)
                 lineMarkers.range = rangeInput/feetPerSquare*gridSize;
             else
-                lineMarkers.range = 999;
+                lineMarkers.range = 999999;
             lineMarkers.x = e.pageX;
             lineMarkers.y = e.pageY;
             isPlacingLine = true;
@@ -746,8 +795,10 @@ window.onclick = function(event)
                 customMenu.style.overflowY = "auto";
             }
             customMenu.style.display = "block";
-            customMenu.style.top = event.pageY.toString()+"px";
-            customMenu.style.left = event.pageX.toString()+"px";
+            let testx = event.pageX;
+            let testy = event.pageY;
+            customMenu.style.top = testy+"px";
+            customMenu.style.left = testx+"px";
             customMenu.style.height = tmpHeight+"vh";
             for (let p in listData)
             {
@@ -766,6 +817,14 @@ window.onclick = function(event)
                     }
                 }
                 customMenu.appendChild(listItem);
+            }
+            if (event.pageX+customMenu.offsetWidth > (window.innerWidth+window.pageXOffset))
+            {
+                scrollBy(((event.pageX+customMenu.offsetWidth+10)-(window.innerWidth+window.pageXOffset)),0);
+            }
+            if (event.pageY+customMenu.offsetHeight > (window.innerHeight+window.pageYOffset))
+            {
+                scrollBy(0, ((event.pageY+customMenu.offsetHeight+10)-(window.innerHeight+window.pageYOffset)));
             }
         }
     }
@@ -806,6 +865,10 @@ window.onclick = function(event)
                     CloseSubMenu();
                 }
                 customSubMenu.appendChild(listItem);
+            }
+            if (event.pageX+customMenu.offsetWidth*2 > (window.innerWidth+window.pageXOffset))
+            {
+                scrollBy(((event.pageX+customMenu.offsetWidth*2+10)-(window.innerWidth+window.pageXOffset)),0);
             }
         }
     }
