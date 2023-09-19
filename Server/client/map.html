@@ -3,6 +3,7 @@
         <link rel="stylesheet" type="text/css" href="map.css">
         <title>Map view</title>
         <link rel="icon" href="images/Favicon.png">
+        <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' >
     </head>
     
     <body>
@@ -117,6 +118,7 @@
         </script>
         <iframe style="display:none;" id="hiddenFrame"></iframe>
         <script type="module" src="map.js"></script>
+        <script src="DragDropTouch.js"></script>
         <form id="fileForm" style="visibility:hidden;" action='/upload' method='post' encType="multipart/form-data" target="hiddenFrame">
             <input id="fileImport" name="mapFile" type="file" accept=".json">
             <br>

@@ -918,8 +918,17 @@ function renameFolder(path, newName)
 function readFile(file) 
 {
     //Function that synchronously reads a file
-    try { return fs.readFileSync(file, 'utf-8') }
-    catch (err) { console.log("Error: " + err); return false;}
+    let fileReadSuccess = false;
+    while (!fileReadSuccess)
+    {
+        try
+        { 
+            data = fs.readFileSync(file, 'utf-8');
+            fileReadSuccess = true;
+            return data;
+        }
+        catch (err) { console.log("Error: " + err); }
+    }
 }
 
 function writeFile(file, content) 
