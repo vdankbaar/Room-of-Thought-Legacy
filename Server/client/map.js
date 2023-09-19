@@ -158,6 +158,7 @@ async function updateMapData(force)
     if (oldData != stringData || force)
     {
         console.log("Data is not identical or update has been forced, updating map!");
+        clearCanvas();
         GridColor = mapData.gridColor;
         if (mapData.antiBlockerOn)
         {
@@ -185,6 +186,16 @@ async function updateMapData(force)
 
         if (isDM) { document.getElementById("exportMap").title = mapData.mapName + " : " + mapData.map; }
         
+        if (oldParsedData) {
+            if (oldParsedData.map!=mapData.map) {
+                selectedToken = -1;
+                selectedBlocker = -1;
+                selectedShapeId = -1;
+                selectedVertHandle = -1;
+                hideDetailsScreen();
+            }
+        }
+
         loadedMap.src = "/public/maps/" + mapData.map;
         mapSelect.innerHTML = "";
         
@@ -388,7 +399,6 @@ offsetYInput.onchange = function() {
 //#region Drawing functions
 function drawCanvas()
 {
-    clearCanvas();
     map.width = loadedMap.naturalWidth;
     map.height = loadedMap.naturalHeight;
     mapCanvas.strokeStyle = GridColor;
@@ -1728,7 +1738,7 @@ function updateTracker(force)
         {
             if (initSearch.value!="") {
                 if (mapData.tokens[i].name) {
-                    if (mapData.tokens[i].name.includes(initSearch.value) || !mapData.tokens[i].dm) {
+                    if (mapData.tokens[i].name.toLowerCase().includes(initSearch.value.toLowerCase()) || !mapData.tokens[i].dm) {
                         createTracker(mapData.tokens[i]);
                     }
                 }
