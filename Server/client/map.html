@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
     <head>
         <link rel="stylesheet" type="text/css" href="map.css">
@@ -22,8 +23,12 @@
                 <button id="toggleSettingsButton" title="More Settings" class="dmOnly"><object type="image/svg+xml" data="images/settings-24px.svg"></object></button>
             </div>
             <div id="mapOptionsMenu">
+                <label for="mapSelect">Current map:</label>
+                <select id="mapSelect"></select>
                 <label for="mapSource">Current map image file:</label>
                 <select id="mapSource"></select>
+                <label for="gridColorPicker">Grid color:</label>
+                <input type="color" id="gridColorPicker" value="#222222">
                 <div id="optionsGridDisplay">
                     <label for="mapX">Grid X:<input type="number" id="mapX"></label>
                     <label for="mapY">Grid Y:<input type="number" id="mapY"></label>
@@ -33,14 +38,15 @@
                 <input id="importMap" class="dmOnly" type="button" value="Upload JSON file">
                 <input id="exportMap" class="dmOnly" type="button" value="Export JSON file">
                 <input id="hideInits" class="dmOnly" type="button" value="Toggle initiatives">
+                
             </div>
             <div id="notesEditor">
                 <textarea placeholder="Enter your notes here..."></textarea>
             </div>
             <p style="margin: 0px; font-size: 1vw;">Draw Color:</p>
             <input type="color" id="shapeColorPicker" value="#ff0000"></input>
+            <h3 id="initiativeHeader">Initiative Tracker</h3>
             <div id="initiativeTracker">
-                <h3 style="margin-bottom: 0.3vw;">Initiative Tracker</h3>
             </div>
             <div id="detailsScreen">
                 <h3 style="grid-area: title; margin: 0px;"></h3>

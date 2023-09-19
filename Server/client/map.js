@@ -1,8 +1,9 @@
 let GridActive = true;
 let GridSnap = false;
+let autoUpdate = true;
+let mapUpdateInterval = 1000;
 let offsetX = 0;
 let offsetY = 0;
-let mapUpdateInterval = 1000;
 let GridColor = "#222222FF";
 let shapeColor = "#FF0000";
 let shapeWidth = 2;
@@ -32,6 +33,8 @@ let detailsIcon = document.getElementById("detailsIcon").children[0];
 let sideMenu = document.getElementById("sideMenu");
 let noteEditor = document.getElementById("notesEditor");
 let detailsScreen = document.getElementById("detailsScreen");
+let gridColorPicker = document.getElementById("gridColorPicker");
+let mapSelect = document.getElementById("mapSelect");
 let noteArea = noteEditor.children[0];
 let mapCanvas;
 let shapeCanvas;
@@ -69,6 +72,7 @@ let oldData;
 let dataIsIdentical = false;
 let resizingSideMenu = false;
 let controlPressed = false;
+let baseTokenIndex = 4;
 
 window.onload = function() {
     if (getCookie("isDM") == 1)
@@ -97,25 +101,17 @@ async function Setup() {
     hitboxCanvas = hitboxMap.getContext("2d");
     shapeCanvas = shapeMap.getContext("2d");
     await updateMapData(true);
-    for (let i = 0; i < mapData.mapSourceList.length; i++)
+    if (autoUpdate)
     {
-        let tmpOption = document.createElement("option");
-        tmpOption.value = mapData.mapSourceList[i];
-        tmpOption.innerText = mapData.mapSourceList[i];
-        mapSourceSelect.append(tmpOption);
+        setInterval(function() {updateMapData();}, mapUpdateInterval);
     }
-    mapSourceSelect.value = mapData.map;
-    mapYInput.value = mapData.y;
-    mapXInput.value = mapData.x;
-    offsetXInput.value = mapData.offsetX;
-    offsetYInput.value = mapData.offsetY;
-    setInterval(function() {updateMapData();}, mapUpdateInterval);
     drawCanvas();
 }
 
 async function updateMapData(force) 
 {
     mapData = await requestServer({c: "currentMapData", x: loadedMap.naturalWidth, y: loadedMap.naturalHeight});
+    GridColor = mapData.gridColor;
     let stringData = JSON.stringify(mapData);
     if (force == null)
     {
@@ -138,6 +134,35 @@ async function updateMapData(force)
         document.getElementById("exportMap").title = mapData.mapName + " : " + mapData.map;
     }
     loadedMap.src = "/public/maps/" + mapData.map;
+    
+    mapSelect.innerHTML = "";
+    console.log(mapData.maps);
+    for (let i = 0; i < mapData.maps.length; i++)
+    {
+        let tmpOption = document.createElement("option");
+        tmpOption.value = mapData.maps[i];
+        tmpOption.innerText = mapData.maps[i];
+        mapSelect.append(tmpOption);
+    }
+    mapSelect.value = mapData.mapName;
+    
+    if (document.activeElement != mapSourceSelect)
+    {
+        mapSourceSelect.innerHTML = "";
+        for (let i = 0; i < mapData.mapSourceList.length; i++)
+        {
+            let tmpOption = document.createElement("option");
+            tmpOption.value = mapData.mapSourceList[i];
+            tmpOption.innerText = mapData.mapSourceList[i];
+            mapSourceSelect.append(tmpOption);
+        }
+        mapSourceSelect.value = mapData.map;
+    }
+    if (document.activeElement!=mapYInput) {mapYInput.value = mapData.y;}
+    if (document.activeElement!=mapXInput) {mapXInput.value = mapData.x;}
+    if (document.activeElement!=offsetXInput) {offsetXInput.value = mapData.offsetX;}
+    if (document.activeElement!=offsetYInput) {offsetYInput.value = mapData.offsetY;}
+    if (document.activeElement!=gridColorPicker) {gridColorPicker.value = mapData.gridColor;}
     offsetX = mapData.offsetX;
     offsetY = mapData.offsetY;
     loadedMap.onload = function() 
@@ -209,6 +234,21 @@ document.getElementById("hideInits").onclick = function() {
     updateMapData();
 }
 
+gridColorPicker.onchange = function() {
+    requestServer({c: "setMapData", map: mapData.map, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: false, gridColor: gridColorPicker.value});
+    updateMapData();
+}
+
+mapSelect.onchange = async function() {
+    requestServer({c: "changeSelectedMap", selectedMap: mapSelect.value})
+    await updateMapData();
+    mapSourceSelect.value = mapData.map;
+    mapYInput.value = mapData.y;
+    mapXInput.value = mapData.x;
+    offsetXInput.value = mapData.offsetX;
+    offsetYInput.value = mapData.offsetY;
+}
+
 mapSourceSelect.onchange = function() {
     requestServer({c: "setMapData", map: mapSourceSelect.value, x: mapData.x, y: mapData.y, offsetX: mapData.offsetX, offsetY: mapData.offsetY, hideInit: mapData.hideInit});
     updateMapData();
@@ -255,12 +295,12 @@ function drawCanvas(force)
         if (isDM)
         {
             document.body.style.setProperty("--blocker-opacity", "0.5");
-            document.body.style.setProperty("--token-index", 4);
+            baseTokenIndex = 54;
         }
         else
         {
             document.body.style.setProperty("--blocker-opacity", "1");
-            document.body.style.setProperty("--token-index", 2);
+            baseTokenIndex = 4;
         }
         gridSize = (map.width / mapData.x + map.height / mapData.y) / 2;
         drawBlockers();
@@ -424,23 +464,26 @@ function drawBlockers()
             let tmpBlocker = document.createElement("div");
             let extraBlocker = document.createElement("div");
             tmpBlocker.className = "blocker";
-            tmpBlocker.style.left = currentBlocker.x;
-            tmpBlocker.style.top = currentBlocker.y;
-            tmpBlocker.style.width = currentBlocker.width;
-            tmpBlocker.style.height = currentBlocker.height;
+            tmpBlocker.style.left = currentBlocker.x + "px";
+            tmpBlocker.style.top = currentBlocker.y + "px";
+            tmpBlocker.style.width = currentBlocker.width + "px";
+            tmpBlocker.style.height = currentBlocker.height + "px";
             if (isDM)
             {
                 tmpBlocker.style.resize = "both";
-                extraBlocker.style.width = currentBlocker.width;
-                extraBlocker.style.height = currentBlocker.height;
+                extraBlocker.style.width = currentBlocker.width + "px";
+                extraBlocker.style.height = currentBlocker.height + "px";
                 extraBlocker.draggable = true;
             }
             else
             {
                 extraBlocker.style.msUserSelect = "none";
                 extraBlocker.style.webkitUserSelect = "none";
-            }   
+            }
             tmpBlocker.appendChild(extraBlocker);
+            tmpBlocker.addEventListener("dragover", function(e) {
+                e.preventDefault();
+            })
 
             tmpBlocker.addEventListener("contextmenu", function(e) {
                 e.preventDefault();
@@ -464,8 +507,8 @@ function drawBlockers()
                 })
                 tmpBlocker.addEventListener("mouseup", function(e) {
                     isDraggingBlocker = false;
-                    extraBlocker.style.width = currentBlocker.width;
-                    extraBlocker.style.height = currentBlocker.height;
+                    extraBlocker.style.width = currentBlocker.width + "px";
+                    extraBlocker.style.height = currentBlocker.height + "px";
                     requestServer({c: "editBlocker", id: currentBlocker.id, x: currentBlocker.x, y: currentBlocker.y, width: tmpBlocker.offsetWidth, height: tmpBlocker.offsetHeight});
                     updateMapData();
                 })
@@ -574,11 +617,12 @@ function createToken(token)
     }
     
     imageElement.className = "token";
+    imageElement.style.top = token.y - (gridSize * token.size) / 2 + "px";
+    imageElement.style.left = token.x - (gridSize * token.size) / 2 + "px";
     imageElement.style.width = (token.size * gridSize).toString() + "px";
     imageElement.style.height = (token.size * gridSize).toString() + "px";
-    imageElement.style.top = token.y - (gridSize * token.size) / 2;
-    imageElement.style.left = token.x - (gridSize * token.size) / 2;
-    imageElement.style.zIndex = token.layer + 4;
+
+    imageElement.style.zIndex = (token.layer + baseTokenIndex).toString();
     imageElement.title = token.status;
     imageElement.draggable = true;
     if (token.hidden != null)
@@ -594,8 +638,8 @@ function createToken(token)
             hiddenImage.className = "hiddenToken";
             hiddenImage.style.width = (token.size * gridSize / 3).toString() + "px";
             hiddenImage.style.height = (token.size * gridSize / 3).toString() + "px";
-            hiddenImage.style.top = token.y - (gridSize * token.size) / 2;
-            hiddenImage.style.left = token.x - (gridSize * token.size) / 2;
+            hiddenImage.style.top = token.y - (gridSize * token.size) / 2 + "px";
+            hiddenImage.style.left = token.x - (gridSize * token.size) / 2 + "px";
             tokensDiv.appendChild(hiddenImage);
         }
     }
@@ -605,42 +649,65 @@ function createToken(token)
     }
 
     function LoadTokenData() {
-        nameInput.value = token.name;
-        if (token.notes == null)
-        { noteArea.value = ""; }
-        else
-        { noteArea.value = token.notes; }
-
-        if (token.initiative == null)
-        { initiativeInput.value = ""; }
-        else
-        { initiativeInput.value = token.initiative; }
+        if (document.activeElement!=nameInput)
+        {
+            nameInput.value = token.name;
+        }
         
-        if (token.ac == null)
-        { acInput.value = ""; }
-        else
-        { acInput.value = token.ac; }
-
-        if (token.hp == null)
+        if (document.activeElement!=noteArea)
         {
-            currentHpInput.value = "";
-            maxHpInput.value = "";
+            if (token.notes == null)
+            { noteArea.value = ""; }
+            else
+            { noteArea.value = token.notes; }
         }
-        else
+        
+        if (document.activeElement!=initiativeInput)
         {
-            currentHpInput.value = token.hp.split("/")[0];
-            maxHpInput.value = token.hp.split("/")[1];
+            if (token.initiative == null)
+            { initiativeInput.value = ""; }
+            else
+            { initiativeInput.value = token.initiative; }   
+        }
+        
+        if (document.activeElement!=acInput)
+        {
+            if (token.ac == null)
+            { acInput.value = ""; }
+            else
+            { acInput.value = token.ac; }
+        }
+        
+        if (document.activeElement!=currentHpInput && document.activeElement!=maxHpInput)
+        {
+            if (token.hp == null)
+            {
+                currentHpInput.value = "";
+                maxHpInput.value = "";
+            }
+            else
+            {
+                currentHpInput.value = token.hp.split("/")[0];
+                maxHpInput.value = token.hp.split("/")[1];
+            }
+        }
+        
+        if (document.activeElement!=statusInput)
+        {
+            if (token.status == null)
+            { statusInput.value = "No status"; }
+            else
+            { statusInput.value = token.status; }
+        }
+        
+        if (document.activeElement!=groupIdInput)
+        {
+            if (token.group == null)
+            { groupIdInput.value = ""; }
+            else
+            { groupIdInput.value = token.group; }
         }
 
-        if (token.status == null)
-        { statusInput.value = "No status"; }
-        else
-        { statusInput.value = token.status; }
-
-        if (token.group == null)
-        { groupIdInput.value = ""; }
-        else
-        { groupIdInput.value = token.group; }
     }
 
     imageElement.addEventListener("click", function() {
@@ -845,7 +912,7 @@ function createToken(token)
         }
         if (isDM)
         {
-            if (token.hidden) //@change naar if (token.hidden) {
+            if (token.hidden)
             {
                 menuOptions.push({text: "Reveal token", hasSubMenu: false, callback: async function() {
                     await requestServer({c: "setTokenHidden", id: token.id, hidden: false});
@@ -871,13 +938,13 @@ function createToken(token)
     {
         let textHolder = document.createElement("div");
         textHolder.style.zIndex = parseInt(imageElement.style.zIndex)+1;
-        textHolder.style.left = token.x - 0.5*token.size*gridSize;
-        textHolder.style.top = token.y - 0.5*token.size*gridSize;
-        textHolder.style.width = token.size*gridSize;
-        textHolder.style.height = token.size*gridSize;
+        textHolder.style.left = (token.x - 0.5*token.size*gridSize).toString() + "px";
+        textHolder.style.top = (token.y - 0.5*token.size*gridSize).toString() + "px";
+        textHolder.style.width = (token.size*gridSize).toString() + "px";
+        textHolder.style.height = (token.size*gridSize).toString() + "px";
         let textElement = document.createElement("a");
         textElement.innerText = token.text;
-        textElement.style.width = token.size*gridSize;
+        textElement.style.width = (token.size*gridSize).toString() + "px";
         textElement.style.fontSize = (60*token.size/token.text.length).toString()+"px";
         textElement.style.transform = "translate(-50%, -50%);";
         textHolder.appendChild(textElement);
@@ -888,10 +955,6 @@ function createToken(token)
 function updateTracker()
 {
     initiativeTrackerDiv.innerHTML = "";
-    let initHeader = document.createElement("h3");
-    initHeader.style = "margin-bottom: 0.3vw;";
-    initHeader.innerText = "Initiative Tracker";
-    initiativeTrackerDiv.append(initHeader);
     let tmpData = [];
     for (let i in mapData.tokens)
     {
@@ -907,7 +970,11 @@ function updateTracker()
             createTracker(tmpData[i]);
         }
     }
-    initiativeTrackerDiv.removeChild(initiativeTrackerDiv.children[initiativeTrackerDiv.children.length - 1]);
+    if (initiativeTrackerDiv.children.length>0)
+    {
+        initiativeTrackerDiv.removeChild(initiativeTrackerDiv.children[initiativeTrackerDiv.children.length - 1]);
+    }
+        
 }
 
 function createTracker(trackerData)
@@ -1216,7 +1283,6 @@ initiativeInput.oninput = function() {
     let newInit = parseFloat(initiativeInput.value);
     if (CheckTokenPermission(selectedTokenData))
     {
-        console.log(newInit);
         if (newInit==null)
         {
             requestServer({c: "editToken", id: selectedToken, initiative: "reset"});
@@ -1642,6 +1708,35 @@ function displayContextMenu(e)
     let DMoptions = [
         {text: "Place hidden Token", hasSubMenu: true, callback: async function() {
             let subMenu = [];
+            let textToken = {text: "Text token", callback: function() {
+                let textToDisplay = prompt("Enter the text to display on the text token:");
+                if (textToDisplay!="")
+                {
+                    let tokenSize = parseFloat(prompt("Please enter the size of the token"));
+                    if (tokenSize == null)
+                    {
+                        alert("That wasn't a valid size! Please try again!");
+                    }
+                    else
+                    {
+                        if (tokenSize < 20 && tokenSize > 0)
+                        {
+                            if (confirm("Make this a DM token?"))
+                                requestServer({c: "createToken", text: textToDisplay, x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), size: tokenSize, status: "", layer: 0, dm: true, hidden: true})
+                            else
+                                requestServer({c: "createToken", text: textToDisplay, x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), size: tokenSize, status: "", layer: 0, dm: false, hidden: true})
+                            
+                            console.log("Placing text token with size" + tokenSize + " at " + (e.pageX + board.scrollLeft).toString() + ":" + (e.pageY + board.scrollTop).toString());
+                            updateMapData();
+                        }
+                        else
+                        {
+                            alert("The desired size is too large or invalid");
+                        }
+                    }
+                }
+            }};
+            subMenu.push(textToken);
             let tokenList = mapData.tokenList;
             let dmTokenList = mapData.dmTokenList;
             for (let i in tokenList)
@@ -1659,7 +1754,7 @@ function displayContextMenu(e)
                     {
                         if (tokenSize < 20 && tokenSize > 0)
                         {
-                            requestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: tokenList[i], size: tokenSize, status: "", hidden: true})
+                            requestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: tokenList[i], size: tokenSize, status: "", hidden: true, layer: 0, dm: true})
                             console.log("Placing hidden " + tokenList[i] + " with size " + tokenSize + " at " + (e.pageX + board.scrollLeft).toString() + ":" + (e.pageY + board.scrollTop).toString());
                             updateMapData();
                         }
@@ -1671,28 +1766,25 @@ function displayContextMenu(e)
                 }
                 subMenu.push(tmpElement);
             }
-            if (isDM)
+            for (let i in dmTokenList)
             {
-                for (let i in dmTokenList)
+                let tmpElement = {};
+                tmpElement.text = dmTokenList[i].substring(0, dmTokenList[i].length - 4);
+                tmpElement.callback = function() 
                 {
-                    let tmpElement = {};
-                    tmpElement.text = dmTokenList[i].substring(0, dmTokenList[i].length - 4);
-                    tmpElement.callback = function() 
+                    let tokenSize = parseInt(prompt("Please enter the size of the token"));
+                    if (tokenSize == null)
                     {
-                        let tokenSize = parseInt(prompt("Please enter the size of the token"));
-                        if (tokenSize == null)
-                        {
-                            alert("That wasn't a valid size! Please try again!");
-                        }
-                        else
-                        {
-                            requestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: dmTokenList[i], size: tokenSize, status: "", hidden: true})
-                            console.log("Placing " + dmTokenList[i] + " with size" + tokenSize + " at " + (e.pageX + board.scrollLeft).toString() + ":" + (e.pageY + board.scrollTop).toString());
-                            updateMapData();
-                        }
+                        alert("That wasn't a valid size! Please try again!");
                     }
-                    subMenu.push(tmpElement);
+                    else
+                    {
+                        requestServer({c: "createToken", x: (e.pageX + board.scrollLeft), y: (e.pageY + board.scrollTop), image: dmTokenList[i], size: tokenSize, status: "", hidden: true, layer: 0, dm: true})
+                        console.log("Placing " + dmTokenList[i] + " with size" + tokenSize + " at " + (e.pageX + board.scrollLeft).toString() + ":" + (e.pageY + board.scrollTop).toString());
+                        updateMapData();
+                    }
                 }
+                subMenu.push(tmpElement);
             }
             displaySubMenu(e, subMenu);
         }},
@@ -1700,23 +1792,6 @@ function displayContextMenu(e)
             blockerMarkers.x = (e.pageX + board.scrollLeft);
             blockerMarkers.y = (e.pageY + board.scrollTop);
             isPlacingBlocker = true;
-        }},
-        {text: "Change Map", description: "Changes the map to the desired JSON file", hasSubMenu: true, callback: function() {
-            let subOptions = [];
-            for (let i = 0; i < mapData.maps.length; i++)
-            {
-                let tmpSubOption = {text: mapData.maps[i], hasSubMenu: false, callback: async function() {
-                    requestServer({c: "changeSelectedMap", selectedMap: mapData.maps[i]})
-                    await updateMapData();
-                    mapSourceSelect.value = mapData.map;
-                    mapYInput.value = mapData.y;
-                    mapXInput.value = mapData.x;
-                    offsetXInput.value = mapData.offsetX;
-                    offsetYInput.value = mapData.offsetY;
-                }};
-                subOptions.push(tmpSubOption);
-            }
-            displaySubMenu(e, subOptions);
         }}
     ]
     if (isDM)

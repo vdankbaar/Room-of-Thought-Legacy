@@ -46,7 +46,7 @@ body {
     display: none;
     flex-direction: column;
     background-color: lightgray;
-    height: 35vh;
+    height: auto;
     width: 12vw;
     position: fixed;
     right: 14vw;
@@ -150,6 +150,19 @@ body {
     margin: 0px auto 0.5vh auto;
     border: none;
 }
+
+#mapSelect {
+    border: none;
+    -webkit-appearance: none;
+    background-image: url(https://pngimage.net/wp-content/uploads/2018/06/upside-down-triangle-png-3.png);
+    background-size: 0.6vw;
+    background-repeat: no-repeat;
+    background-position: right;
+    background-position-x: calc(100% - 0.3vw);
+    font-size: 1vw;
+    margin-bottom: 1vh;
+}
+
 #mapSource {
     border: none;
     -webkit-appearance: none;
@@ -159,6 +172,7 @@ body {
     background-position: right;
     background-position-x: calc(100% - 0.3vw);
     font-size: 1vw;
+    margin-bottom: 1vh;
 }
 
 #shapeColorPicker {
@@ -173,6 +187,24 @@ body {
 }
 
 #shapeColorPicker::-webkit-color-swatch {
+    padding: 0;
+    outline: none;
+    border: none;
+}
+
+#gridColorPicker {
+    appearance: none;
+    border: none; 
+    margin-bottom: 1vh;
+}
+
+#gridColorPicker::-webkit-color-swatch-wrapper {
+    padding: 0;
+    outline: none;
+    border: none;
+}
+
+#gridColorPicker::-webkit-color-swatch {
     padding: 0;
     outline: none;
     border: none;
@@ -203,10 +235,6 @@ body {
     font-size: 1vw;
     font-family: Helvetica;
     width: 100%;
-}
-
-#initiativeHeader h3 {
-    margin: 0px;
 }
 
 #initiativeTracker {
@@ -462,7 +490,7 @@ body {
     position: absolute;
     margin: 0px;
     padding: 0px;
-    z-index: 800;
+    z-index: 50;
     background-color: var(--blocker-color);
     opacity: var(--blocker-opacity);
     overflow: hidden;
@@ -488,7 +516,6 @@ body {
 
 .token {
     position: absolute;
-    z-index: var(--token-index);
 }
 
 .hiddenToken {
@@ -543,4 +570,3 @@ body {
     width: 10vw;
     height: 5vh;
 }
-

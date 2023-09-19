@@ -52,12 +52,13 @@ app.post("/api", function(request, response) {
         
         case "setMapData":
             loadCurrentMap();
-            currentMap.map = request.body.map;
-            currentMap.x = request.body.x;
-            currentMap.y = request.body.y;
-            currentMap.offsetX = request.body.offsetX;
-            currentMap.offsetY = request.body.offsetY;
-            currentMap.hideInit = request.body.hideInit;
+            if (request.body.map!=null) {currentMap.map = request.body.map;}
+            if (request.body.x!=null) {currentMap.x = request.body.x;}
+            if (request.body.y!=null) {currentMap.y = request.body.y;}
+            if (request.body.offsetX!=null) {currentMap.offsetX = request.body.offsetX;}
+            if (request.body.offsetY!=null) {currentMap.offsetY = request.body.offsetY;}
+            if (request.body.hideInit!=null) {currentMap.hideInit = request.body.hideInit;}
+            if (request.body.gridColor!=null) {currentMap.gridColor = request.body.gridColor;}
             saveCurrentMap();
             response.send(true);
             break;
@@ -480,6 +481,8 @@ function loadCurrentMap()
         currentMap.offsetX = 0;
     if (currentMap.offsetY == null)
         currentMap.offsetY = 0;
+    if (currentMap.gridColor == null)
+        currentMap.gridColor = "#222222FF";
     currentMap.mapName = selectedMap;
     currentMap.tokenList = readDirectory(publicFolder + "tokens", "jpg|png");
     currentMap.dmTokenList = readDirectory(publicFolder + "dmTokens", "jpg|png");
